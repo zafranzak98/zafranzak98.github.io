@@ -52,7 +52,7 @@ function Work({ p }: { p: Project }) {
     case 'about-face':
       return (
         <>
-          <div className="phones">{sup.map((s, i) => <Phone key={i} img={s} width="max(150px, 12.4vw)" caption={s.caption} />)}</div>
+          <div className="phones">{sup.map((s, i) => <Phone key={i} img={s} width="max(150px, 14vw)" caption={s.caption} />)}</div>
           {note}
         </>
       )

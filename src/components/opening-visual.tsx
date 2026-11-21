@@ -3,7 +3,7 @@ import type { Project } from '#/lib/site'
 
 // Each original case study keeps its own approved opening composition; new projects use the standard one.
 // Shared by the case-study opening and the Projects lookbook, so both always show the same visual.
-export default function OpeningVisual({ p, phoneWidth = 'max(140px, 11vw)' }: { p: Project; phoneWidth?: string }) {
+export default function OpeningVisual({ p, phoneWidth = 'max(140px, 12.4vw)' }: { p: Project; phoneWidth?: string }) {
   switch (p.design) {
     case 'cancel-me-not':
       return <div className="tilt"><Media img={p.cover} ratio="3/4" /></div>

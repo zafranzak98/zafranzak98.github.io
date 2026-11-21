@@ -8,7 +8,7 @@ import { OPENING, categoryName, yearOf, type Project } from '#/lib/site'
 export default function ProjectBand({ p, number }: { p: Project; number: number }) {
   const o = OPENING[p.opening_colour]
   // Long titles step down so every title fits on one line at desktop widths.
-  const titleSize = Math.min(10, +(118 / p.title.length).toFixed(2))
+  const titleSize = Math.min(10.8, +(128 / p.title.length).toFixed(2))
   return (
     <Link
       to="/projects/$projectCat/$projectId"
@@ -24,7 +24,7 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
         <span>My role: {p.role} <span className="band-arrow" aria-hidden="true">→</span></span>
       </div>
       <p className="band-line">{p.summary}</p>
-      <div className="band-visual"><OpeningVisual p={p} phoneWidth="max(110px, 8.4vw)" /></div>
+      <div className="band-visual"><OpeningVisual p={p} phoneWidth="max(110px, 9.4vw)" /></div>
       <b className="c band-title">{p.title}</b>
     </Link>
   )

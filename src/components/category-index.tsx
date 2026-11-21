@@ -15,7 +15,7 @@ export default function CategoryIndex() {
     <nav aria-label="Filter by category" className="cat-index c">
       {items.map((item, i) => (
         <Fragment key={item.key}>
-          {i > 0 && <span className="cat-index-sep" aria-hidden="true">/</span>}
+          {i > 0 && <><span className="cat-index-sep" aria-hidden="true">/</span><wbr /></>}
           {item.key === 'all' ? (
             <Link to="/projects" activeOptions={{ exact: true }}>{item.name}</Link>
           ) : (
