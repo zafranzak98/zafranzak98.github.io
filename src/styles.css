@@ -25,6 +25,12 @@
   --t-statement: 1.5rem;  /* home intro, About statement, footer email */
   --measure: 42rem;       /* longest comfortable line of running text */
   --section: 5.5rem;      /* space between sections, and before the footer */
+  /* Receding navigation. Links stay muted but readable (WCAG 1.4.3, measured on --off):
+     --recede 3.4:1 for large text, --recede-small 4.9:1 for text under 18.66px bold.
+     The slashes between them are decorative and stay faint. */
+  --recede: color-mix(in srgb, var(--olive) 64%, var(--off));
+  --recede-small: color-mix(in srgb, var(--olive) 79%, var(--off));
+  --faint: color-mix(in srgb, var(--olive) 32%, var(--off));
 }
 html { font-size: clamp(16px, calc(10px + .555vw), 22px); line-height: 1.5; -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 @media (max-width: 899px) {
@@ -60,7 +66,10 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .lab { display: block; font-size: var(--t-meta); line-height: 1.25rem; font-weight: 600; color: var(--terra); }
 .terra { color: var(--terra); }
 .w600 { font-weight: 600; }
-.hl { background: var(--lsage); color: inherit; font-weight: 600; box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: .02em 0 .08em; }
+/* A highlight reads as one continuous phrase: short phrases never break (.hl-keep), and a long
+   phrase that has to wrap keeps an unbroken band from line to line. */
+.hl { background: var(--lsage); color: inherit; font-weight: 600; padding: 0.08em 0; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.hl-keep { white-space: nowrap; }
 .text-link { font-size: var(--t-small); font-weight: 600; }
 .draft-badge { display: inline-block; margin-left: 0.625rem; padding: 1px 0.5rem; background: var(--terra); color: var(--off); font-size: 0.75rem; font-weight: 600; letter-spacing: 0; text-transform: none; vertical-align: 2px; }
 .m-only { display: none; }
@@ -187,7 +196,6 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
   .ix-body, .cs-body { padding-top: 1.875rem; }
   .ix-label h2, .cs-label h2,
   .ix-body > :first-child, .cs-body > :first-child,
-  .ix-row:first-child > *, .edu:first-child > .edu-row:first-child > *,
   .figures:first-child > div > * { text-box: trim-start cap alphabetic; }
 }
 @media (max-width: 899px) {
@@ -207,7 +215,7 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .about-portrait figcaption b, .about-caption b { font-weight: 600; }
 /* The portrait hangs 4vw below the hero; the first section clears it and its caption. */
 .about-hero + .about-caption + .ix-sec { margin-top: calc(4vw + 5.5rem); }
-.about-statement { margin: 0; font-size: var(--t-statement); line-height: 1.3; font-weight: 500; letter-spacing: -0.015em; }
+.about-statement { margin: 0; font-size: var(--t-statement); line-height: 1.36; font-weight: 500; letter-spacing: -0.015em; }
 .about-statement .hl { font-weight: 700; }
 .about-more { margin: 1.75rem 0 0; font-size: var(--t-body); line-height: 1.6; max-width: var(--measure); }
 .about-languages { font-size: var(--t-small); line-height: 1.5; }
@@ -218,18 +226,23 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
   .about-languages { grid-column: 10 / span 3; grid-row: 2; margin-top: 1.75rem; }
 }
 .about-languages b { font-weight: 600; }
-.ix-row { display: grid; grid-template-columns: 7.5rem repeat(8, minmax(0, 1fr)); column-gap: var(--gut); align-items: baseline; padding: 1.25rem 0 1.375rem; border-bottom: 1px solid var(--terra); }
+.ix-row { display: grid; grid-template-columns: 7.5rem repeat(8, minmax(0, 1fr)); column-gap: var(--gut); align-items: start; padding: 1.5rem 0; border-bottom: 1px solid var(--terra); }
 .ix-row:first-child { padding-top: 0; }
 .ix-row > .lab { grid-column: 1; }
 .ix-row-title { grid-column: 2 / span 4; font-size: var(--h3); line-height: .9; }
 .ix-row-note { grid-column: 6 / span 4; font-size: var(--t-small); line-height: 1.5; }
-.edu-row { display: grid; grid-template-columns: 7.5rem repeat(8, minmax(0, 1fr)); column-gap: var(--gut); align-items: baseline; padding: 0.875rem 0; border-bottom: 1px solid var(--terra); font-size: var(--t-body); line-height: 1.5; }
+.edu-row { display: grid; grid-template-columns: 7.5rem repeat(8, minmax(0, 1fr)); column-gap: var(--gut); align-items: start; padding: 1.0625rem 0; border-bottom: 1px solid var(--terra); font-size: var(--t-body); line-height: 1.5; }
 .edu-row:first-child { padding-top: 0; }
 .edu-key { grid-column: 1; font-size: var(--t-small); }
 .edu-val { grid-column: 2 / span 4; }
 .edu-last { border-bottom: 0; padding-bottom: 0; }
 .edu-note { grid-column: 6 / span 4; margin: 0; font-size: var(--t-small); line-height: 1.5; }
 .edu + .edu { margin-top: 2.5rem; }
+/* Within a row the number, title and note hang from one cap line, and each rule sits the
+   same distance above the capitals as below the last baseline. */
+@media (min-width: 900px) {
+  .ix-row > *, .edu-row > * { text-box: trim-both cap alphabetic; }
+}
 @media (max-width: 899px) {
   /* Mobile sets its own height: the stacked title must clear the portrait above it. */
   .about-hero { height: 28.75rem; margin-top: 0; }
@@ -247,7 +260,7 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
   .ix-row-title-exp { margin: 0.25rem 0 0.5rem; }
   .ix-row-note { display: block; margin-top: 0.5rem; }
   .ix-row-title-exp + .ix-row-note { margin-top: 0; }
-  .edu-row { grid-template-columns: 6.5rem 1fr; column-gap: 0.75rem; padding: 0.8125rem 0; }
+  .edu-row { grid-template-columns: 6.5rem 1fr; column-gap: 0.75rem; align-items: baseline; padding: 0.8125rem 0; }
   .edu-key { font-size: var(--t-meta); }
   .edu-val { grid-column: 2; }
   .edu-note { grid-column: 2; margin-top: 0.875rem; }
@@ -262,8 +275,8 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .listing-cat .listing-intro { margin-top: 1.125rem; max-width: 37.5rem; }
 .cat-count { margin-top: 2.25rem; }
 /* Category filter as a running headline: inactive categories recede, the current one is terracotta. */
-.cat-index { margin-top: 2.25rem; font-size: max(22px, 2.1vw); line-height: 1.05; letter-spacing: -0.005em; color: color-mix(in srgb, var(--olive) 32%, transparent); }
-.cat-index a { color: inherit; white-space: nowrap; }
+.cat-index { margin-top: 2.25rem; font-size: max(22px, 2.1vw); line-height: 1.05; letter-spacing: -0.005em; color: var(--faint); }
+.cat-index a { color: var(--recede); white-space: nowrap; }
 .cat-index a:hover { color: var(--olive); }
 .cat-index a[aria-current="page"] { color: var(--terra); }
 .cat-index-sep { margin: 0 .28em; font-weight: 400; }
@@ -333,7 +346,8 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .facts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1.5rem; padding: 1.5rem var(--m); border-bottom: 1px solid var(--terra); }
 .fact-val { display: block; margin-top: 0.375rem; font-size: var(--t-small); line-height: 1.5; }
 /* The section index follows the Headline Index: receding links, slashes, the current section in terracotta. */
-.secnav { position: sticky; top: 0; z-index: 10; display: flex; align-items: baseline; padding: 0.875rem var(--m); border-bottom: 1px solid var(--terra); font-size: max(17px, 1.6vw); line-height: 1.1; background: var(--off); color: color-mix(in srgb, var(--olive) 32%, transparent); }
+.secnav { position: sticky; top: 0; z-index: 10; display: flex; align-items: baseline; padding: 0.875rem var(--m); border-bottom: 1px solid var(--terra); font-size: max(17px, 1.6vw); line-height: 1.1; background: var(--off); color: var(--faint); }
+.secnav a { color: var(--recede); }
 .secnav a:hover { color: var(--olive); }
 .secnav a.on { color: var(--terra); }
 .cs-gap { height: 4rem; }
@@ -410,6 +424,7 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
   .facts { grid-template-columns: 1fr 1fr; gap: 1rem 0.75rem; padding: 1.375rem 1.5rem; }
   .fact-val { margin-top: 0; }
   .secnav { padding: 0.75rem 1.5rem; font-size: 1.0625rem; white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .secnav a { color: var(--recede-small); }
   .cs-gap { height: 2.5rem; }
   .cs-body > .lead + .lead, .figures + .lead { font-size: var(--t-body); font-weight: 400; line-height: 1.55; }
   .did, .did-two { grid-template-columns: minmax(0, 1fr); gap: 1.25rem; margin-top: 1.5rem; }
