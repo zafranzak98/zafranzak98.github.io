@@ -223,7 +223,7 @@ function CaseStudy() {
           <ul>
             {siblings.map((x) => (
               <li key={x.slug}>
-                <Link to="/projects/$projectCat/$projectId" params={{ projectCat: x.category, projectId: x.slug }}>{x.title}</Link>
+                <Link to="/projects/$projectCat/$projectId/" params={{ projectCat: x.category, projectId: x.slug }}>{x.title}</Link>
               </li>
             ))}
           </ul>
@@ -232,11 +232,11 @@ function CaseStudy() {
 
       {caseStudies.length > 1 && (
         <nav aria-label="More projects" className="pn">
-          <Link to="/projects/$projectCat/$projectId" params={{ projectCat: prev.category, projectId: prev.slug }} className="pn-prev d-only">
+          <Link to="/projects/$projectCat/$projectId/" params={{ projectCat: prev.category, projectId: prev.slug }} className="pn-prev d-only">
             <span className="lab">← Previous</span><b className="c">{prev.title}</b>
           </Link>
-          <Link to="/projects" className="text-link pn-all">All projects →</Link>
-          <Link to="/projects/$projectCat/$projectId" params={{ projectCat: next.category, projectId: next.slug }} className="pn-next">
+          <Link to="/projects/" className="text-link pn-all">All projects →</Link>
+          <Link to="/projects/$projectCat/$projectId/" params={{ projectCat: next.category, projectId: next.slug }} className="pn-next">
             <span className="lab">Next →</span><b className="c">{next.title}</b>
           </Link>
         </nav>

@@ -17,9 +17,9 @@ export default function CategoryIndex() {
         <Fragment key={item.key}>
           {i > 0 && <><span className="cat-index-sep" aria-hidden="true">/</span><wbr /></>}
           {item.key === 'all' ? (
-            <Link to="/projects" activeOptions={{ exact: true }}>{item.name}</Link>
+            <Link to="/projects/" activeOptions={{ exact: true }}>{item.name}</Link>
           ) : (
-            <Link to="/projects/$projectCat" params={{ projectCat: item.key }}>{item.name}</Link>
+            <Link to="/projects/$projectCat/" params={{ projectCat: item.key }}>{item.name}</Link>
           )}
         </Fragment>
       ))}

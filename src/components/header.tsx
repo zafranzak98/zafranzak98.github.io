@@ -19,8 +19,8 @@ export default function Header() {
         <b className="c">{site.name}</b>
       </Link>
       <nav aria-label="Main" className="nav-desktop">
-        <Link to="/about">About</Link>
-        <Link to="/projects">Projects</Link>
+        <Link to="/about/">About</Link>
+        <Link to="/projects/">Projects</Link>
         {cvUrl && <a href={cvUrl}>CV</a>}
         <a href={mailto} className="nav-gap">Email</a>
         {site.instagram && <a href={site.instagram} target="_blank" rel="noreferrer">Instagram</a>}
@@ -33,8 +33,8 @@ export default function Header() {
       </button>
       {open && (
         <nav id="mobile-menu" aria-label="Menu" className="menu-panel">
-          <Link to="/about" onClick={done}>About</Link>
-          <Link to="/projects" onClick={done}>Projects</Link>
+          <Link to="/about/" onClick={done}>About</Link>
+          <Link to="/projects/" onClick={done}>Projects</Link>
           {cvUrl && <a href={cvUrl} onClick={done}>Download CV</a>}
           <a href={mailto} className="menu-sep" onClick={done}>Email</a>
           {site.instagram && <a href={site.instagram} target="_blank" rel="noreferrer" onClick={done}>Instagram</a>}

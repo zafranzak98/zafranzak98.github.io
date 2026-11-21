@@ -21,9 +21,9 @@ function Home() {
           {site.areas_of_focus.map((a) => (
             <li key={a.label}>
               {a.category ? (
-                <Link to="/projects/$projectCat" params={{ projectCat: a.category }}>{a.label}<span className="hover-arrow"> →</span></Link>
+                <Link to="/projects/$projectCat/" params={{ projectCat: a.category }}>{a.label}<span className="hover-arrow"> →</span></Link>
               ) : (
-                <Link to="/projects">{a.label}<span className="hover-arrow"> →</span></Link>
+                <Link to="/projects/">{a.label}<span className="hover-arrow"> →</span></Link>
               )}
             </li>
           ))}
@@ -35,7 +35,7 @@ function Home() {
           {featured.map((p) => (
             <li key={p.slug}>
               <Link
-                to="/projects/$projectCat/$projectId"
+                to="/projects/$projectCat/$projectId/"
                 params={{ projectCat: p.category, projectId: p.slug }}
                 className="work-link"
                 onMouseEnter={() => setHover(p.slug)}

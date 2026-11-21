@@ -22,8 +22,8 @@ export default function Footer() {
         <div className="footer-bottom">
           <nav aria-label="Pages">
             <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-            <Link to="/projects">Projects</Link>
+            <Link to="/about/">About</Link>
+            <Link to="/projects/">Projects</Link>
           </nav>
           <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo(0, 0) }}>Back to top ↑</a>
         </div>

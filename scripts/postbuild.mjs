@@ -45,22 +45,40 @@ for (const m of siteText.match(/\/(media|files)\/[^\s"']+/g) ?? []) if (!existsS
 const NOINDEX = '<meta name="robots" content="noindex, nofollow" />'
 const shell = readFileSync(join(DIST, 'index.html'), 'utf8')
 if (PREVIEW && !shell.includes(NOINDEX)) writeFileSync(join(DIST, 'index.html'), shell.replace('  </head>', `    ${NOINDEX}\n  </head>`))
-const html = readFileSync(join(DIST, 'index.html'), 'utf8')
-const page = (path, title) => {
-  mkdirSync(join(DIST, path), { recursive: true })
-  writeFileSync(join(DIST, path, 'index.html'), html.replace(/<title>.*?<\/title>/, `<title>${`${title} · ${siteName}`.replace(/&/g, '&amp;')}</title>`))
+// Every page names its production address as canonical, on the test site too, so search engines
+// only ever treat zafranzakaria.com as the real address. Drafts have no production address, so none.
+const PRODUCTION_URL = 'https://zafranzakaria.com'
+const canonical = (path) => `<link rel="canonical" href="${PRODUCTION_URL}/${path ? `${path}/` : ''}" />`
+const html = readFileSync(join(DIST, 'index.html'), 'utf8').replace(/\s*<link rel="canonical"[^>]*>/g, '')
+writeFileSync(join(DIST, '404.html'), html)
+const expected = new Map([['index.html', canonical('')]])
+const withHead = (path, title, isDraft) => {
+  let out = html
+  if (title) out = out.replace(/<title>.*?<\/title>/, `<title>${`${title} · ${siteName}`.replace(/&/g, '&amp;')}</title>`)
+  if (!isDraft) out = out.replace('  </head>', `    ${canonical(path)}\n  </head>`)
+  return out
 }
+const page = (path, title, isDraft = false) => {
+  mkdirSync(join(DIST, path), { recursive: true })
+  writeFileSync(join(DIST, path, 'index.html'), withHead(path, title, isDraft))
+  if (!isDraft) expected.set(join(path, 'index.html'), canonical(path))
+}
+writeFileSync(join(DIST, 'index.html'), withHead('', null, false))
 page('about', 'About')
 page('projects', 'Projects')
 const usedCats = new Set(live.map((p) => p.category))
-for (const c of categories) if (usedCats.has(c.slug)) page(`projects/${c.slug}`, c.name)
-for (const p of live) if (p.page_type === 'Full case study') page(`projects/${p.category}/${p.slug}`, p.title)
-cpSync(join(DIST, 'index.html'), join(DIST, '404.html'))
+const draftOnly = (slug) => !live.some((p) => p.category === slug && p.status !== 'Draft')
+for (const c of categories) if (usedCats.has(c.slug)) page(`projects/${c.slug}`, c.name, draftOnly(c.slug))
+for (const p of live) if (p.page_type === 'Full case study') page(`projects/${p.category}/${p.slug}`, p.title, p.status === 'Draft')
 
 for (const f of walk(DIST).filter((f) => f.endsWith('.html'))) {
   const tagged = readFileSync(f, 'utf8').includes(NOINDEX)
   if (PREVIEW && !tagged) errors.push(`Test site page is missing its noindex tag: ${relative(DIST, f)}`)
   if (!PREVIEW && tagged) errors.push(`Production page must not carry a noindex tag: ${relative(DIST, f)}`)
+  const found = readFileSync(f, 'utf8').match(/<link rel="canonical"[^>]*>/g) ?? []
+  const want = expected.get(relative(DIST, f))
+  if (want ? found.length !== 1 || found[0] !== want.replace(' />', '>') && found[0] !== want : found.length)
+    errors.push(`Wrong canonical address on ${relative(DIST, f)}: ${found.join(' ') || 'none'}${want ? ` (expected ${want})` : ''}`)
 }
 
 // ---- 2. drafts: hidden from the production website (the repository itself is public)

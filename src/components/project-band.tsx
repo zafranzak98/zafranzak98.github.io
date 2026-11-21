@@ -11,7 +11,7 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
   const titleSize = Math.min(9.4, +(128 / p.title.length).toFixed(2))
   return (
     <Link
-      to="/projects/$projectCat/$projectId"
+      to="/projects/$projectCat/$projectId/"
       params={{ projectCat: p.category, projectId: p.slug }}
       className={`band band-${p.design ?? 'standard'}${p.opening_colour === 'Off-white' ? ' band-rule' : ''}`}
       style={{ background: o.bg, color: o.fg, '--title': titleSize } as CSSProperties}
