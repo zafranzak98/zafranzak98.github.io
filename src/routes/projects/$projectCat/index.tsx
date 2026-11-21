@@ -1,5 +1,5 @@
 import { Link, createFileRoute, notFound } from '@tanstack/react-router'
-import Chips from '#/components/chips'
+import CategoryIndex from '#/components/category-index'
 import ProjectRow from '#/components/project-row'
 import { categories, categoryBySlug, projects, projectsIn } from '#/lib/site'
 import { useTitle } from '#/lib/title'
@@ -26,7 +26,7 @@ function CategoryPage() {
         <span className="lab cat-count">Category · {list.length} {list.length === 1 ? 'project' : 'projects'}</span>
         <h1 className="c listing-title cat-title">{category.name}</h1>
         {category.intro && <p className="listing-intro">{category.intro}</p>}
-        <Chips active={category.slug} used={used} />
+        <CategoryIndex used={used} />
       </section>
       <section className="rows">{list.map((p) => <ProjectRow key={p.slug} p={p} />)}</section>
       {others.length > 0 && (

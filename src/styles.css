@@ -232,9 +232,12 @@ img { max-width: 100%; }
 .back { font-size: 15px; }
 .back:hover { text-decoration: underline; }
 .cat-count { margin-top: 40px; }
-.chips { display: flex; gap: 8px 28px; flex-wrap: wrap; margin-top: 40px; font-size: 16px; }
-.chip { white-space: nowrap; }
-.chip-on { color: var(--terra); font-weight: 600; }
+/* Category filter as a running headline: inactive categories recede, the current one is terracotta. */
+.cat-index { margin-top: 40px; font-size: 38px; line-height: 1.05; letter-spacing: -0.005em; color: color-mix(in srgb, var(--olive) 32%, transparent); }
+.cat-index a { color: inherit; }
+.cat-index a:hover { color: var(--olive); }
+.cat-index a[aria-current="page"] { color: var(--terra); }
+.cat-index-sep { margin: 0 .28em; font-weight: 400; }
 .rows { margin: 48px var(--m) 0; border-bottom: 1px solid var(--terra); }
 .listing > .rows:last-child { margin-bottom: 120px; }
 .row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); padding: 32px 0; border-top: 1px solid var(--terra); align-items: center; }
@@ -264,12 +267,12 @@ img { max-width: 100%; }
   .listing-head { padding: 56px 24px 0; }
   .listing-cat .listing-head { padding-top: 40px; }
   .listing-title { font-size: 96px; letter-spacing: -0.01em; }
-  .cat-title { margin-top: 8px; font-size: 56px; line-height: .85; }
+  .cat-title { margin-top: 8px; font-size: min(56px, 12.5vw); line-height: .85; }
   .listing-intro, .listing-cat .listing-intro { margin-top: 16px; font-size: 17px; }
   .listing-cat .listing-intro { margin-top: 14px; font-size: 16px; }
   .back { font-size: 14px; }
   .cat-count { margin-top: 28px; }
-  .chips { flex-wrap: nowrap; overflow-x: auto; gap: 20px; margin: 24px -24px 0 0; padding-right: 24px; font-size: 15px; scrollbar-width: none; }
+  .cat-index { margin-top: 24px; font-size: 26px; line-height: 1.15; }
   .rows { margin: 32px 24px 0; }
   .listing-cat .rows { margin-top: 24px; }
   .listing > .rows:last-child { margin-bottom: 72px; }
