@@ -238,20 +238,31 @@ img { max-width: 100%; }
 .cat-index a:hover { color: var(--olive); }
 .cat-index a[aria-current="page"] { color: var(--terra); }
 .cat-index-sep { margin: 0 .28em; font-weight: 400; }
-.rows { margin: 48px var(--m) 0; border-bottom: 1px solid var(--terra); }
-.listing > .rows:last-child { margin-bottom: 120px; }
-.row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); padding: 32px 0; border-top: 1px solid var(--terra); align-items: center; }
-.row-img { grid-column: 1 / span 4; }
-.row-text { grid-column: 6 / span 6; }
-.row-title { display: block; margin: 10px 0 12px; font-size: 72px; line-height: .88; }
-.row-line { margin: 0; font-size: 18px; line-height: 1.5; }
-.row-role { margin: 12px 0 0; font-size: 15px; }
-.row-role b { font-weight: 600; }
-.row-arrow { grid-column: 12; justify-self: end; font-size: 30px; color: var(--terra); }
-.row-link:hover { color: inherit; }
-.row-link:hover .row-title { color: var(--terra); }
-.row-link:hover .row-arrow { transform: translateX(4px); }
-.row-arrow { transition: transform .2s; }
+/* Lookbook: one full-width band per project, in its own opening colour. */
+.bands { margin-top: 72px; }
+.band { position: relative; display: block; overflow: hidden; min-height: 660px; padding: 44px var(--m) 0; }
+.band-rule { border-top: 1px solid var(--terra); }
+.band-rule + .band-rule { border-top-color: color-mix(in srgb, var(--terra) 45%, transparent); }
+.band-top { position: relative; z-index: 3; display: flex; justify-content: space-between; gap: 24px; font-size: 14px; }
+.band-top b { font-weight: 600; }
+.band-arrow { display: inline-block; transition: transform .25s; }
+.band:hover .band-arrow, .band:focus-visible .band-arrow { transform: translateX(5px); }
+.band-line { position: relative; z-index: 3; max-width: 380px; margin: 120px 0 0; font-size: 18px; line-height: 1.5; }
+.band-visual { position: absolute; z-index: 2; top: 92px; right: calc(var(--m) + 8%); width: 256px; transition: transform .4s; }
+.band:hover .band-visual { transform: translateY(-6px); }
+.band-evoke .band-visual { width: 420px; }
+.band-about-face .band-visual { width: auto; right: calc(var(--m) + 12%); }
+/* --title is the title's size at 1440 px wide; it scales down with the window from there. */
+.band-title { position: absolute; z-index: 1; left: calc(var(--m) - 10px); bottom: -0.12em; font-size: min(calc(var(--title) * 1px), calc(var(--title) * 100vw / 1440)); line-height: .8; letter-spacing: -0.02em; white-space: nowrap; }
+.listed { margin: 0 var(--m) 120px; border-top: 1px solid var(--terra); }
+/* When the last band shares the page colour, a rule closes it off before the listed projects. */
+.band-rule:last-child { border-bottom: 1px solid var(--terra); }
+.bands + .listed { margin-top: 56px; border-top: 0; }
+.listed-item { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); align-items: baseline; padding: 28px 0; border-bottom: 1px solid var(--terra); }
+.listed-item .lab { grid-column: 1 / span 3; }
+.listed-item b { grid-column: 4 / span 4; font-size: 56px; line-height: .9; }
+.listed-item p { grid-column: 9 / span 4; margin: 0; font-size: 15px; line-height: 1.5; }
+.listing > .bands:last-child { margin-bottom: 0; }
 .others { margin: 96px var(--m) 120px; }
 .others-list { margin-top: 12px; border-bottom: 1px solid var(--terra); }
 .others-list a { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; padding: 18px 0; border-top: 1px solid var(--terra); }
@@ -261,7 +272,6 @@ img { max-width: 100%; }
 @media (max-width: 1279px) and (min-width: 900px) {
   .listing-title { font-size: 150px; }
   .cat-title { font-size: 112px; }
-  .row-title { font-size: 56px; }
 }
 @media (max-width: 899px) {
   .listing-head { padding: 56px 24px 0; }
@@ -273,15 +283,19 @@ img { max-width: 100%; }
   .back { font-size: 14px; }
   .cat-count { margin-top: 28px; }
   .cat-index { margin-top: 24px; font-size: 26px; line-height: 1.15; }
-  .rows { margin: 32px 24px 0; }
-  .listing-cat .rows { margin-top: 24px; }
-  .listing > .rows:last-child { margin-bottom: 72px; }
-  .row { display: block; padding: 24px 0; }
-  .row-text .lab { margin-top: 14px; }
-  .row-title { margin: 6px 0 8px; font-size: 44px; line-height: .9; }
-  .row-line { font-size: 16px; }
-  .row-role { margin-top: 8px; font-size: 14px; }
-  .row-arrow { display: none; }
+  .bands { margin-top: 40px; }
+  .band { display: flex; flex-direction: column; min-height: 0; padding: 24px 24px 0; }
+  .band-top { flex-direction: column; gap: 4px; font-size: 13px; }
+  .band-line { margin: 16px 0 0; max-width: none; font-size: 15px; }
+  .band-visual, .band-about-face .band-visual { position: relative; top: auto; right: auto; width: 62%; margin: 28px 0 0 auto; }
+  .band-evoke .band-visual { width: 80%; }
+  .band-about-face .band-visual { width: auto; margin-right: 12%; }
+  .band:hover .band-visual { transform: none; }
+  .band-title { position: relative; left: auto; bottom: auto; display: block; margin: 28px 0 -0.1em -3px; font-size: 64px; line-height: .84; white-space: normal; }
+  .listed, .bands + .listed { margin: 32px 24px 72px; }
+  .listed-item { display: block; padding: 24px 0; }
+  .listed-item b { display: block; margin-top: 6px; font-size: 40px; }
+  .listed-item p { margin-top: 8px; }
 }
 
 /* ---------- case study (P3) ---------- */

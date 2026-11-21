@@ -2,6 +2,7 @@ import { Link, createFileRoute, notFound } from '@tanstack/react-router'
 import { useEffect, useState, type ReactNode } from 'react'
 import Gallery from '#/components/gallery'
 import { Media, Phone } from '#/components/media'
+import OpeningVisual from '#/components/opening-visual'
 import { Rich } from '#/components/rich'
 import { OPENING, caseStudies, categoryName, projectBySlug, yearOf, type Img, type Project } from '#/lib/site'
 import { useTitle } from '#/lib/title'
@@ -21,27 +22,6 @@ const SECTIONS = [
   ['work', '03', 'The work'],
   ['outcomes', '04', 'Outcomes'],
 ] as const
-
-// ---- Opening visual: each existing case study keeps its own approved composition. New projects use the standard one.
-function OpeningVisual({ p }: { p: Project }) {
-  switch (p.design) {
-    case 'cancel-me-not':
-      return <div className="tilt"><Media img={p.cover} ratio="3/4" /></div>
-    case 'evoke':
-      return (
-        <div className="pair">
-          <Media img={p.cover_before} ratio="3/4" label="before" />
-          <Media img={p.cover} ratio="3/4" label="after" />
-        </div>
-      )
-    case 'about-face':
-      return <Phone img={p.cover} width={200} />
-    case 'bersih':
-      return <Media img={p.cover} ratio="4/5" label="poster" />
-    default:
-      return <Media img={p.cover} ratio="3/4" label="strongest image" />
-  }
-}
 
 const caption = (img?: Img) => img?.caption && <p className="cap">{img.caption}</p>
 
