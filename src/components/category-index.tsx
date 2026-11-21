@@ -1,10 +1,12 @@
 import { Fragment } from 'react'
 import { Link } from '@tanstack/react-router'
-import { categories } from '#/lib/site'
+import { categories, projects } from '#/lib/site'
 
 // Category filter set as a running headline: All, then every category that has projects.
-// The router marks the current page's link with aria-current, which the CSS colours terracotta.
-export default function CategoryIndex({ used }: { used: Set<string> }) {
+// The router marks the current page's link with aria-current, which the CSS colours terracotta;
+// on a case study its category stays marked because the case study sits under that category's path.
+export default function CategoryIndex() {
+  const used = new Set(projects.map((p) => p.category))
   const items = [
     { key: 'all', name: 'All' },
     ...categories.filter((c) => used.has(c.slug)).map((c) => ({ key: c.slug, name: c.name })),

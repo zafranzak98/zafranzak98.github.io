@@ -1,5 +1,6 @@
 import { Link, createFileRoute, notFound } from '@tanstack/react-router'
-import { useEffect, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import CategoryIndex from '#/components/category-index'
 import Gallery from '#/components/gallery'
 import { Media, Phone } from '#/components/media'
 import OpeningVisual from '#/components/opening-visual'
@@ -50,7 +51,7 @@ function Work({ p }: { p: Project }) {
     case 'about-face':
       return (
         <>
-          <div className="phones">{sup.map((s, i) => <Phone key={i} img={s} width={220} caption={s.caption} />)}</div>
+          <div className="phones">{sup.map((s, i) => <Phone key={i} img={s} width={196} caption={s.caption} />)}</div>
           {note}
         </>
       )
@@ -145,19 +146,12 @@ function CaseStudy() {
 
   return (
     <main className="case">
+      <div className="cs-index"><CategoryIndex /></div>
       <section className="cs-open" style={{ background: o.bg, color: o.fg }}>
-        <nav aria-label="Breadcrumb" className="crumbs">
-          <span>
-            <Link to="/projects">Projects</Link> /{' '}
-            <Link to="/projects/$projectCat" params={{ projectCat: p.category }}>{categoryName(p.category)}</Link>
-            <span className="d-only"> / <b>{p.title}</b></span>
-          </span>
-          <span className="d-only">Project {idx + 1} of {caseStudies.length}</span>
-        </nav>
         <div className="cs-open-grid">
           <div className="cs-open-text">
             <span className="cs-sub" style={{ color: o.sub }}>
-              {categoryName(p.category)} · {yearOf(p)}<span className="m-only"> · {idx + 1} of {caseStudies.length}</span>
+              {categoryName(p.category)} · {yearOf(p)} · Project {idx + 1} of {caseStudies.length}
               {p.status === 'Draft' && <span className="draft-badge">Draft</span>}
             </span>
             <h1 className="c cs-title">{p.title}</h1>
@@ -171,11 +165,14 @@ function CaseStudy() {
         {facts.map(([k, v]) => <div key={k}><span className="lab">{k}</span><span className="fact-val">{v}</span></div>)}
       </section>
 
-      <nav aria-label="On this page" className="secnav">
-        {SECTIONS.map(([id, n, t]) => (
-          <a key={id} href={`#${id}`} className={active === id ? 'on' : ''} aria-current={active === id ? 'true' : undefined}>
-            <span className="d-only">{n} </span>{t}
-          </a>
+      <nav aria-label="On this page" className="secnav c">
+        {SECTIONS.map(([id, n, t], i) => (
+          <Fragment key={id}>
+            {i > 0 && <span className="cat-index-sep" aria-hidden="true">/</span>}
+            <a href={`#${id}`} className={active === id ? 'on' : ''} aria-current={active === id ? 'true' : undefined}>
+              <span className="d-only">{n} </span>{t}
+            </a>
+          </Fragment>
         ))}
       </nav>
       <div className="cs-gap" />
