@@ -152,7 +152,7 @@ function CaseStudy() {
   }, [p.slug])
 
   return (
-    <main className="case">
+    <main id="main" className="case">
       <div className="cs-index"><CategoryIndex /></div>
       <section className="cs-open" style={{ background: o.bg, color: o.fg }}>
         <div className="cs-open-grid">

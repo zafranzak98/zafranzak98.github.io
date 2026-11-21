@@ -13,7 +13,7 @@ function Home() {
   const [hover, setHover] = useState<string | null>(null)
   const preview = featured.find((p) => p.slug === hover && p.cover?.image)
   return (
-    <main className="home">
+    <main id="main" className="home">
       <p className="home-intro"><Rich text={site.home_intro} /></p>
       <section aria-label="Areas of focus" className="home-focus">
         <h2 className="lab">Areas of Focus</h2>

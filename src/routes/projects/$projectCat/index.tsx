@@ -19,7 +19,7 @@ function CategoryPage() {
   useTitle(category.name)
   const full = list.filter((p) => p.page_type === 'Full case study')
   return (
-    <main className="listing listing-cat">
+    <main id="main" className="listing listing-cat">
       <section className="listing-head">
         <span className="lab cat-count">Category · {list.length} {list.length === 1 ? 'project' : 'projects'}</span>
         <h1 className="c listing-title cat-title">{category.name}</h1>

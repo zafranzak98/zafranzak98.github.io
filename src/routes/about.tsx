@@ -12,7 +12,7 @@ export const Route = createFileRoute('/about')({ component: About })
 function Section({ n, title, children }: { n: string; title: string; children: ReactNode }) {
   return (
     <section aria-label={title} className="ix-sec">
-      <div className={`ix-label ix-label-${title.toLowerCase()}`}>
+      <div className="ix-label">
         <span className="lab">{n}</span>
         <h2 className="c">{title}</h2>
       </div>
@@ -21,11 +21,15 @@ function Section({ n, title, children }: { n: string; title: string; children: R
   )
 }
 
+function EduRow({ label, children }: { label: string; children: ReactNode }) {
+  return <div className="edu-row"><span className="edu-key">{label}</span><span className="edu-val">{children}</span></div>
+}
+
 function About() {
   useTitle('About')
   const edu = about.education ?? []
   return (
-    <main className="about">
+    <main id="main" className="about">
       <section className="about-hero">
         <span className="about-kicker">About</span>
         <div className="about-title-clip"><h1 className="c">About <br className="m-only" />me</h1></div>
@@ -37,7 +41,7 @@ function About() {
       <div className="about-caption m-only"><b>{site.name}</b><span>{about.portrait_caption}</span></div>
 
       <section aria-label="Intro" className="ix-sec">
-        <div className="ix-label ix-label-intro"><span className="lab">01</span><h2 className="c">Intro</h2></div>
+        <div className="ix-label"><span className="lab">01</span><h2 className="c">Intro</h2></div>
         <div className="ix-body ix-body-intro">
           <p className="about-statement"><Rich text={about.intro} /></p>
           {about.intro_more && <p className="about-more">{about.intro_more}</p>}
@@ -63,16 +67,10 @@ function About() {
         <Section n="03" title="Education">
           {edu.map((e, k) => (
             <div key={k} className="edu">
-              {[
-                ['Qualification', <b className="w600">{e.qualification}</b>],
-                ['Course', e.course],
-                ['Institution', e.institution && <b className="w600 terra">{e.institution}</b>],
-                ['Years', e.years && <span className="terra">{e.years}</span>],
-              ]
-                .filter(([, v]) => v)
-                .map(([k2, v]) => (
-                  <div key={k2 as string} className="edu-row"><span className="edu-key">{k2}</span><span className="edu-val">{v}</span></div>
-                ))}
+              {e.qualification && <EduRow label="Qualification"><b className="w600">{e.qualification}</b></EduRow>}
+              {e.course && <EduRow label="Course">{e.course}</EduRow>}
+              {e.institution && <EduRow label="Institution"><b className="w600 terra">{e.institution}</b></EduRow>}
+              {e.years && <EduRow label="Years"><span className="terra">{e.years}</span></EduRow>}
               {e.result && (
                 <div className="edu-row edu-last">
                   <span className="edu-key">Result</span>

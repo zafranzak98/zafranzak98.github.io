@@ -9,7 +9,7 @@ export const Route = createFileRoute('/projects/')({ component: Projects })
 function Projects() {
   useTitle('Projects')
   return (
-    <main className="listing">
+    <main id="main" className="listing">
       <section className="listing-head">
         <h1 className="c listing-title">Projects</h1>
         {site.projects_intro && <p className="listing-intro">{site.projects_intro}</p>}

@@ -1,7 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { mailto, site } from '#/lib/site'
 
-// Footer B, without the location line.
 export default function Footer() {
   return (
     <footer>

@@ -24,6 +24,7 @@ const projects = read('content/projects')
 const categories = read('content/categories')
 const about = matter(readFileSync('content/about.md', 'utf8')).data
 const siteText = readFileSync('content/site.yml', 'utf8')
+const siteName = siteText.match(/^name: *(.+)$/m)?.[1].trim() ?? ''
 const catSlugs = new Set(categories.map((c) => c.slug))
 const live = projects.filter((p) => PREVIEW || p.status !== 'Draft')
 const drafts = projects.filter((p) => p.status === 'Draft')
@@ -41,7 +42,7 @@ for (const m of siteText.match(/\/(media|files)\/[^\s"']+/g) ?? []) if (!existsS
 const html = readFileSync(join(DIST, 'index.html'), 'utf8')
 const page = (path, title) => {
   mkdirSync(join(DIST, path), { recursive: true })
-  writeFileSync(join(DIST, path, 'index.html'), html.replace(/<title>.*?<\/title>/, `<title>${title.replace(/&/g, '&amp;')} · Zafran Zakaria</title>`))
+  writeFileSync(join(DIST, path, 'index.html'), html.replace(/<title>.*?<\/title>/, `<title>${`${title} · ${siteName}`.replace(/&/g, '&amp;')}</title>`))
 }
 page('about', 'About')
 page('projects', 'Projects')

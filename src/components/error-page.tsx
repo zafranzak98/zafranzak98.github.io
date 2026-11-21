@@ -4,7 +4,7 @@ import { useTitle } from '#/lib/title'
 function ErrorPage({ label, title, text }: { label: string; title: string; text: string }) {
   useTitle(title)
   return (
-    <main className="not-found">
+    <main id="main" className="not-found">
       <span className="lab">{label}</span>
       <h1 className="c">{title}</h1>
       <p>{text}</p>

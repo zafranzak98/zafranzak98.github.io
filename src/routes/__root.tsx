@@ -15,6 +15,7 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <div className="page" id="top">
+      <a href="#main" className="skip">Skip to content</a>
       <Header />
       <Outlet />
       <Footer />

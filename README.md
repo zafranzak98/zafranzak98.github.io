@@ -14,8 +14,9 @@ Original build by Liana. Redesign, content model and build checks added in 2026.
 | `content/site.yml` | Homepage intro, Areas of Focus, CV file, contact links. |
 | `public/media/` | Images used by the content. `public/files/` holds PDFs such as the CV. |
 | `src/routes/` | One file per page type (home, About, Projects, category, case study). |
-| `src/components/` | Header, footer, project rows, gallery and image handling. |
+| `src/components/` | Header, footer, category index, project bands, gallery, opening visuals and image handling. |
 | `src/lib/site.ts` | Reads the content and provides it to the pages. |
+| `src/styles.css` | All styling, in one file, ordered by page. No CSS framework. |
 | `content-collections.ts` | The content fields and their rules. A build fails if a file breaks them. |
 | `scripts/postbuild.mjs` | Runs after every build: page files, draft removal and checks. |
 | `docs/` | Frozen copy of the original live site, kept as a fallback. Not used by the build. |
@@ -26,6 +27,18 @@ Original build by Liana. Redesign, content model and build checks added in 2026.
 - **Case-study designs.** The five original case studies set a hidden `design` field that selects their own approved opening and "The work" layout. Projects without it use the standard template.
 - **Highlights.** In the homepage and About intros, text wrapped in `**double asterisks**` is shown with the light-sage highlight.
 - **Missing images** show a labelled placeholder rather than breaking the layout.
+
+## Styling
+
+Everything is in `src/styles.css`, without a framework. The tokens at the top set the system:
+
+- **Layout and display type** scale with the window (`--m` margins, `--d1`/`--d2` titles, `--h2`/`--h3` headings), so a page keeps its composition from a laptop to a large monitor.
+- **Text** uses five sizes, `--t-meta`, `--t-small`, `--t-body`, `--t-lead` and `--t-statement`, in rem. One rem is 18px on a 1440px window and 16px on phones.
+- **Spacing** between sections and before the footer comes from `--section`.
+
+Phones (under 900px) have their own values in each section's mobile block. Each original case study keeps its own layout through its `design` field, so not every page is built from the same template.
+
+The typeface is Instrument Sans, bundled with the site rather than loaded from Google.
 
 ## Working on it
 
@@ -47,6 +60,8 @@ Both builds type-check the code, then finish with a report from `scripts/postbui
 It also prints the size of the published site, the repository and the largest file against GitHub's limits. It warns above 500 MB, and for files over 20 MB or images over 1 MB.
 
 ## Deployment
+
+Day-to-day work happens on the `dev` branch and is merged into `main` when it is ready. `live-backup-2026-11` is a recovery point and is never changed.
 
 `.github/workflows/deploy.yml` runs on every push to `main`. It runs the production build as a check, then publishes the preview build to GitHub Pages. If a size warning appears, it opens or updates a "Website size warning" issue, which GitHub emails to the repository owner. A failed build publishes nothing, so the site stays as it was.
 

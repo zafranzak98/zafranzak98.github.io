@@ -5,8 +5,6 @@ export type Project = (typeof allProjects)[number]
 export type Category = (typeof allCategories)[number]
 export type Img = { image?: string; alt?: string; caption?: string }
 
-export const PREVIEW = import.meta.env.VITE_SITE_MODE === 'preview'
-
 const byOrder = <T extends { order?: number; title?: string; name?: string }>(a: T, b: T) =>
   (a.order ?? 999) - (b.order ?? 999) || (a.title ?? a.name ?? '').localeCompare(b.title ?? b.name ?? '')
 
