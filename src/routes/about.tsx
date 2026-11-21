@@ -74,7 +74,7 @@ function About() {
               {e.result && (
                 <div className="edu-row edu-last">
                   <span className="edu-key">Result</span>
-                  <b className="edu-val terra">{e.result}</b>
+                  <span className="edu-val"><Rich text={`**${e.result}**`} /></span>
                   {e.note && <p className="edu-note">{e.note}</p>}
                 </div>
               )}

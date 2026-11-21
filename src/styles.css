@@ -216,7 +216,7 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 /* The portrait hangs 4vw below the hero; the first section clears it and its caption. */
 .about-hero + .about-caption + .ix-sec { margin-top: calc(4vw + 5.5rem); }
 .about-statement { margin: 0; font-size: var(--t-statement); line-height: 1.36; font-weight: 500; letter-spacing: -0.015em; }
-.about-statement .hl { font-weight: 700; }
+.about-statement .hl, .edu-val .hl { font-weight: 700; }
 .about-more { margin: 1.75rem 0 0; font-size: var(--t-body); line-height: 1.6; max-width: var(--measure); }
 .about-languages { font-size: var(--t-small); line-height: 1.5; }
 @media (min-width: 900px) {
