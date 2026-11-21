@@ -18,10 +18,10 @@ export const Route = createFileRoute('/projects/$projectCat/$projectId')({
 })
 
 const SECTIONS = [
-  ['overview', '01', 'Overview'],
-  ['research', '02', 'Research & thinking'],
-  ['work', '03', 'The work'],
-  ['outcomes', '04', 'Outcomes'],
+  ['overview', 'Overview'],
+  ['research', 'Research & thinking'],
+  ['work', 'The work'],
+  ['outcomes', 'Outcomes'],
 ] as const
 
 const caption = (img?: Img) => img?.caption && <p className="cap">{img.caption}</p>
@@ -166,12 +166,10 @@ function CaseStudy() {
       </section>
 
       <nav aria-label="On this page" className="secnav c">
-        {SECTIONS.map(([id, n, t], i) => (
+        {SECTIONS.map(([id, t], i) => (
           <Fragment key={id}>
             {i > 0 && <span className="cat-index-sep" aria-hidden="true">/</span>}
-            <a href={`#${id}`} className={active === id ? 'on' : ''} aria-current={active === id ? 'true' : undefined}>
-              <span className="d-only">{n} </span>{t}
-            </a>
+            <a href={`#${id}`} className={active === id ? 'on' : ''} aria-current={active === id ? 'true' : undefined}>{t}</a>
           </Fragment>
         ))}
       </nav>
