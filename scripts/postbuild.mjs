@@ -39,6 +39,12 @@ for (const m of mediaIn(about)) if (!existsSync(join('public', m))) errors.push(
 for (const m of siteText.match(/\/(media|files)\/[^\s"']+/g) ?? []) if (!existsSync(join('public', m))) errors.push(`Site settings: file not found: ${m}`)
 
 // ---- 1. real pages for direct links
+// The test site asks search engines not to index it. It stays public: this keeps drafts and
+// placeholder text out of search results, it does not hide anything. Production pages carry no
+// such tag. robots.txt is left open on purpose, since a crawler must read a page to see its noindex.
+const NOINDEX = '<meta name="robots" content="noindex, nofollow" />'
+const shell = readFileSync(join(DIST, 'index.html'), 'utf8')
+if (PREVIEW && !shell.includes(NOINDEX)) writeFileSync(join(DIST, 'index.html'), shell.replace('  </head>', `    ${NOINDEX}\n  </head>`))
 const html = readFileSync(join(DIST, 'index.html'), 'utf8')
 const page = (path, title) => {
   mkdirSync(join(DIST, path), { recursive: true })
@@ -50,6 +56,12 @@ const usedCats = new Set(live.map((p) => p.category))
 for (const c of categories) if (usedCats.has(c.slug)) page(`projects/${c.slug}`, c.name)
 for (const p of live) if (p.page_type === 'Full case study') page(`projects/${p.category}/${p.slug}`, p.title)
 cpSync(join(DIST, 'index.html'), join(DIST, '404.html'))
+
+for (const f of walk(DIST).filter((f) => f.endsWith('.html'))) {
+  const tagged = readFileSync(f, 'utf8').includes(NOINDEX)
+  if (PREVIEW && !tagged) errors.push(`Test site page is missing its noindex tag: ${relative(DIST, f)}`)
+  if (!PREVIEW && tagged) errors.push(`Production page must not carry a noindex tag: ${relative(DIST, f)}`)
+}
 
 // ---- 2. drafts: hidden from the production website (the repository itself is public)
 if (!PREVIEW) {
