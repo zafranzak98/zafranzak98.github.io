@@ -45,7 +45,7 @@ export default function Gallery({ images = [], note }: { images?: Img[]; note?: 
           )}
         </>
       ) : (
-        <Media ratio="3/2" label="gallery images" />
+        <Media ratio="21/9" label="gallery images" />
       )}
     </div>
   )

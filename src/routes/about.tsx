@@ -30,7 +30,7 @@ function About() {
         <span className="about-kicker">About</span>
         <div className="about-title-clip"><h1 className="c">About <br className="m-only" />me</h1></div>
         <figure className="about-portrait">
-          <Media img={about.portrait} ratio="4/5" label="Needed: portrait photograph" tone="sage" />
+          <Media img={about.portrait} ratio="4/5" label="Needed: portrait photograph" />
           <figcaption className="d-only"><b>{site.name}</b><span>{about.portrait_caption}</span></figcaption>
         </figure>
       </section>

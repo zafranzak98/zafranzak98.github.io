@@ -8,7 +8,7 @@ function ErrorPage() {
       <span className="lab">404</span>
       <h1 className="c">Page not found</h1>
       <p>The page you are looking for does not exist or is no longer available.</p>
-      <Link to="/" className="button">Back to home</Link>
+      <Link to="/" className="text-link">Back to home →</Link>
     </main>
   )
 }

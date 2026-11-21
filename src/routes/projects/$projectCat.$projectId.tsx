@@ -2,6 +2,7 @@ import { Link, createFileRoute, notFound } from '@tanstack/react-router'
 import { useEffect, useState, type ReactNode } from 'react'
 import Gallery from '#/components/gallery'
 import { Media, Phone } from '#/components/media'
+import { Rich } from '#/components/rich'
 import { OPENING, caseStudies, categoryName, projectBySlug, yearOf, type Img, type Project } from '#/lib/site'
 import { useTitle } from '#/lib/title'
 
@@ -29,7 +30,7 @@ function OpeningVisual({ p }: { p: Project }) {
     case 'evoke':
       return (
         <div className="pair">
-          <Media img={p.cover_before} ratio="3/4" label="before" tone="off" />
+          <Media img={p.cover_before} ratio="3/4" label="before" />
           <Media img={p.cover} ratio="3/4" label="after" />
         </div>
       )
@@ -47,12 +48,12 @@ const caption = (img?: Img) => img?.caption && <p className="cap">{img.caption}<
 // ---- The work: same section on every project, laid out as approved for each one.
 function Work({ p }: { p: Project }) {
   const sup = p.supporting ?? []
-  const grid = (outline = false, tone: 'lsage' | 'off' = 'lsage') =>
+  const grid = (framed = false) =>
     sup.length > 0 && (
-      <div className={`work-grid cols-${sup.length}`}>
+      <div className={`work-grid cols-${sup.length}${framed ? ' work-grid-framed' : ''}`}>
         {sup.map((s, i) => (
           <figure key={i}>
-            <Media img={s} ratio="4/5" tone={tone} outline={outline} />
+            <Media img={s} ratio="4/5" />
             {caption(s)}
           </figure>
         ))}
@@ -87,7 +88,7 @@ function Work({ p }: { p: Project }) {
         </>
       )
     case 'evoke':
-      return <>{key}{grid(true, 'off')}{note}</>
+      return <>{key}{grid(true)}{note}</>
     case 'fc-yeah':
       return <>{key}{grid()}{note}<Film p={p} /></>
     default:
@@ -117,9 +118,9 @@ function Film({ p }: { p: Project }) {
   )
 }
 
-function Sec({ id, n, title, children }: { id: string; n: string; title: string; children: ReactNode }) {
+function Sec({ id, n, title, children, wide }: { id: string; n: string; title: string; children: ReactNode; wide?: boolean }) {
   return (
-    <section id={id} className="cs-sec">
+    <section id={id} className={wide ? 'cs-sec cs-sec-wide' : 'cs-sec'}>
       <div className="cs-label"><span className="lab">{n}</span><h2 className="c">{title}</h2></div>
       <div className="cs-body">{children}</div>
     </section>
@@ -138,6 +139,7 @@ function CaseStudy() {
   const idx = caseStudies.findIndex((x) => x.slug === p.slug)
   const prev = caseStudies[(idx - 1 + caseStudies.length) % caseStudies.length]
   const next = caseStudies[(idx + 1) % caseStudies.length]
+  const siblings = caseStudies.filter((x) => x.category === p.category && x.slug !== p.slug)
   const o = OPENING[p.opening_colour]
   const type = [p.project_type, p.type_detail].filter(Boolean).join(' · ')
   const facts = [
@@ -201,8 +203,8 @@ function CaseStudy() {
       <Sec id="overview" n="01" title="Overview">
         {p.objective && <p className="lead">{p.objective}</p>}
         <div className={p.what_team_did ? 'did did-two' : 'did'}>
-          {p.what_i_did && <div className="did-me"><span className="lab">What I did</span><p>{p.what_i_did}</p></div>}
-          {p.what_team_did && <div className="did-team"><span className="lab">What the team did</span><p>{p.what_team_did}</p></div>}
+          {p.what_i_did && <div><span className="lab">What I did</span><p><Rich text={p.what_i_did} /></p></div>}
+          {p.what_team_did && <div><span className="lab">What the team did</span><p><Rich text={p.what_team_did} /></p></div>}
         </div>
       </Sec>
 
@@ -213,30 +215,43 @@ function CaseStudy() {
         {r?.moodboard && <div className="mood"><Media img={r.moodboard} ratio="21/9" label="moodboard" /></div>}
       </Sec>
 
-      <Sec id="work" n="03" title="The work">
+      <Sec id="work" n="03" title="The work" wide>
         <Work p={p} />
         <Gallery images={p.gallery} note={p.gallery_note} />
       </Sec>
 
-      <Sec id="outcomes" n="04" title="Outcomes">
+      <Sec id="outcomes" n="04" title="Outcomes" wide>
         {p.results_label && <span className="lab">{p.results_label}</span>}
         {p.results?.length ? <Figures items={p.results} big /> : null}
         {p.outcome_note && <p className="body-text outcome-note">{p.outcome_note}</p>}
         {p.skills?.length ? (
           <div className="skills">
             <span className="lab">Skills shown</span>
-            <div>{p.skills.map((s) => <span key={s} className="tag">{s}</span>)}</div>
+            <p>{p.skills.join(' / ')}</p>
           </div>
         ) : null}
-        {p.link && <a href={p.link.url} target="_blank" rel="noreferrer" className="button ext-link">{p.link.label} ↗</a>}
+        {p.link && <a href={p.link.url} target="_blank" rel="noreferrer" className="text-link ext-link">{p.link.label} ↗</a>}
       </Sec>
+
+      {siblings.length > 0 && (
+        <nav aria-label={`Also in ${categoryName(p.category)}`} className="also">
+          <span className="lab">Also in {categoryName(p.category)}</span>
+          <ul>
+            {siblings.map((x) => (
+              <li key={x.slug}>
+                <Link to="/projects/$projectCat/$projectId" params={{ projectCat: x.category, projectId: x.slug }}>{x.title}</Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
 
       {caseStudies.length > 1 && (
         <nav aria-label="More projects" className="pn">
           <Link to="/projects/$projectCat/$projectId" params={{ projectCat: prev.category, projectId: prev.slug }} className="pn-prev d-only">
             <span className="lab">← Previous</span><b className="c">{prev.title}</b>
           </Link>
-          <Link to="/projects" className="button pn-all">All projects</Link>
+          <Link to="/projects" className="text-link pn-all">All projects →</Link>
           <Link to="/projects/$projectCat/$projectId" params={{ projectCat: next.category, projectId: next.slug }} className="pn-next">
             <span className="lab">Next →</span><b className="c">{next.title}</b>
           </Link>

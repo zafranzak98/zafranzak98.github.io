@@ -1,16 +1,16 @@
 import type { CSSProperties } from 'react'
 import { asset, type Img } from '#/lib/site'
 
-type Props = { img?: Img; ratio?: string; label?: string; className?: string; tone?: 'lsage' | 'off' | 'sage'; outline?: boolean }
+type Props = { img?: Img; ratio?: string; label?: string; className?: string }
 
-// An image from the CMS, or a clearly marked placeholder when no image has been uploaded yet.
-export function Media({ img, ratio = '4/3', label, className = '', tone = 'lsage', outline }: Props) {
+// Until an image is uploaded, a hairline frame holds its place so layouts can be judged without it.
+export function Media({ img, ratio = '4/3', label, className = '' }: Props) {
   const style = { aspectRatio: ratio } as CSSProperties
   if (img?.image) {
     return <img className={`media ${className}`} src={asset(img.image)} alt={img.alt ?? ''} style={style} loading="lazy" />
   }
   return (
-    <div className={`ph ph-${tone} ${outline ? 'ph-outline' : ''} ${className}`} style={style}>
+    <div className={`ph ${className}`} style={style}>
       <span>
         <b>Placeholder</b> · {label ?? img?.alt ?? 'image'}
       </span>
