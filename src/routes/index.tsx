@@ -1,16 +1,67 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { Rich } from '#/components/rich'
+import { asset, projects, site, yearOf } from '#/lib/site'
+import { useTitle } from '#/lib/title'
 
 export const Route = createFileRoute('/')({ component: Home })
 
+const featured = projects.filter((p) => p.featured && p.page_type === 'Full case study')
+
 function Home() {
-  return ( 
-    <div className="flex flex-col lg:flex-row lg:items-center justify-center min-h-body-height w-full gap-15 lg:gap-8 pt-20 p-10 lg:p-25">
-      <div className="lg:max-w-1/2">
-        <h1 className='text-7xl lg:text-9xl font-bold font-mono text-dark-green'>Hello!</h1>
-        <h3 className='text-4xl font-bold font-mono text-dark-green'>I'm <span className='text-custom-white'>Zafran</span></h3>
-        <p className='lg:max-w-3/5 text-custom-black'>Welcome to my portfolio! Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum, dolor sit amet consectetur adipisicing elit. Atque, necessitatibus fugit nobis at perferendis voluptatum eos dignissimos sint. perferendis voluptatum eos dignissimos sint.</p>
+  useTitle()
+  const [hover, setHover] = useState<string | null>(null)
+  const preview = featured.find((p) => p.slug === hover && p.cover?.image)
+  return (
+    <main className="home">
+      <p className="home-intro"><Rich text={site.home_intro} /></p>
+      <section aria-label="Areas of focus" className="home-focus">
+        <h2 className="lab">Areas of Focus</h2>
+        <ul>
+          {site.areas_of_focus.map((a) => (
+            <li key={a.label}>
+              {a.category ? (
+                <Link to="/projects/$projectCat" params={{ projectCat: a.category }}>{a.label}<span className="hover-arrow"> →</span></Link>
+              ) : (
+                <Link to="/projects">{a.label}<span className="hover-arrow"> →</span></Link>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section aria-label="Selected projects" className="home-work">
+        <h2 className="lab">Selected Projects</h2>
+        <ul>
+          {featured.map((p) => (
+            <li key={p.slug}>
+              <Link
+                to="/projects/$projectCat/$projectId"
+                params={{ projectCat: p.category, projectId: p.slug }}
+                className="work-link"
+                onMouseEnter={() => setHover(p.slug)}
+                onMouseLeave={() => setHover(null)}
+                onFocus={() => setHover(p.slug)}
+                onBlur={() => setHover(null)}
+              >
+                <span className="c work-title">{p.title}</span>
+                <span className="work-meta">
+                  <span>{p.homepage_label ?? p.role} · {yearOf(p)}</span>
+                  <span className="hover-arrow"> →</span>
+                </span>
+                <span className="work-arrow" aria-hidden="true">→</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <div className="home-preview" aria-hidden="true">
+        {preview && (
+          <figure>
+            <img src={asset(preview.cover?.image)} alt="" />
+            <figcaption><span>{preview.title}</span><span className="terra">View case study</span></figcaption>
+          </figure>
+        )}
       </div>
-      <div className='w-full aspect-2/1 items-center bg-custom-white rounded-lg'></div>
-    </div>
+    </main>
   )
 }

@@ -1,7 +1,7 @@
 import { Outlet, createRootRoute } from '@tanstack/react-router'
 
 import '../styles.css'
-import Navbar from '#/components/navbar'
+import Header from '#/components/header'
 import Footer from '#/components/footer'
 import ErrorPage from '#/components/error-page'
 
@@ -13,10 +13,10 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <>
-      <Navbar />
+    <div className="page" id="top">
+      <Header />
       <Outlet />
       <Footer />
-    </>
+    </div>
   )
 }

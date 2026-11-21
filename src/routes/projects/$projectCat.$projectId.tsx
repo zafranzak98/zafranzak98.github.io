@@ -1,108 +1,247 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { projectCategories } from '../projects'
-import CustomLink from '#/components/link'
-import { useState } from 'react'
+import { Link, createFileRoute, notFound } from '@tanstack/react-router'
+import { useEffect, useState, type ReactNode } from 'react'
+import Gallery from '#/components/gallery'
+import { Media, Phone } from '#/components/media'
+import { OPENING, caseStudies, categoryName, projectBySlug, yearOf, type Img, type Project } from '#/lib/site'
+import { useTitle } from '#/lib/title'
 
 export const Route = createFileRoute('/projects/$projectCat/$projectId')({
-  component: RouteComponent,
+  loader: ({ params }) => {
+    const project = projectBySlug(params.projectId)
+    if (!project || project.category !== params.projectCat) throw notFound()
+    return { project }
+  },
+  component: CaseStudy,
 })
 
-function ImageIndicators({
-  imageCount,
-  currentImage,
-  onSelect,
-}: {
-  imageCount: number
-  currentImage: number
-  onSelect: (imageIndex: number) => void
-}) {
+const SECTIONS = [
+  ['overview', '01', 'Overview'],
+  ['research', '02', 'Research & thinking'],
+  ['work', '03', 'The work'],
+  ['outcomes', '04', 'Outcomes'],
+] as const
+
+// ---- Opening visual: each existing case study keeps its own approved composition. New projects use the standard one.
+function OpeningVisual({ p }: { p: Project }) {
+  switch (p.design) {
+    case 'cancel-me-not':
+      return <div className="tilt"><Media img={p.cover} ratio="3/4" /></div>
+    case 'evoke':
+      return (
+        <div className="pair">
+          <Media img={p.cover_before} ratio="3/4" label="before" tone="off" />
+          <Media img={p.cover} ratio="3/4" label="after" />
+        </div>
+      )
+    case 'about-face':
+      return <Phone img={p.cover} width={200} />
+    case 'bersih':
+      return <Media img={p.cover} ratio="4/5" label="poster" />
+    default:
+      return <Media img={p.cover} ratio="3/4" label="strongest image" />
+  }
+}
+
+const caption = (img?: Img) => img?.caption && <p className="cap">{img.caption}</p>
+
+// ---- The work: same section on every project, laid out as approved for each one.
+function Work({ p }: { p: Project }) {
+  const sup = p.supporting ?? []
+  const grid = (outline = false, tone: 'lsage' | 'off' = 'lsage') =>
+    sup.length > 0 && (
+      <div className={`work-grid cols-${sup.length}`}>
+        {sup.map((s, i) => (
+          <figure key={i}>
+            <Media img={s} ratio="4/5" tone={tone} outline={outline} />
+            {caption(s)}
+          </figure>
+        ))}
+      </div>
+    )
+  const key = p.key_piece && (
+    <figure className="work-key">
+      <Media img={p.key_piece} ratio="16/9" />
+      {caption(p.key_piece)}
+    </figure>
+  )
+  const note = p.supporting_note && <p className="cap">{p.supporting_note}</p>
+  switch (p.design) {
+    case 'about-face':
+      return (
+        <>
+          <div className="phones">{sup.map((s, i) => <Phone key={i} img={s} width={220} caption={s.caption} />)}</div>
+          {note}
+        </>
+      )
+    case 'bersih':
+      return (
+        <>
+          {key}
+          {grid()}
+          {p.context && (
+            <div className="work-context">
+              <Media img={p.context} ratio="9/16" />
+              <p>{p.context.text}</p>
+            </div>
+          )}
+        </>
+      )
+    case 'evoke':
+      return <>{key}{grid(true, 'off')}{note}</>
+    case 'fc-yeah':
+      return <>{key}{grid()}{note}<Film p={p} /></>
+    default:
+      return <>{key}{grid()}{note}<Film p={p} /></>
+  }
+}
+
+function Film({ p }: { p: Project }) {
+  if (!p.film) return null
+  const url = p.film.url
+  const embed = url && (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com'))
   return (
-    <div className="flex items-center justify-center gap-2 pt-3" aria-label="Image selection">
-      {Array.from({ length: imageCount }, (_, imageIndex) => (
-        <button
-          key={imageIndex}
-          type="button"
-          aria-label={`Show image ${imageIndex + 1}`}
-          aria-current={currentImage === imageIndex}
-          onClick={() => onSelect(imageIndex)}
-          className={`h-2 w-2 rounded-full bg-custom-black transition-transform ${
-            currentImage === imageIndex
-              ? 'scale-150'
-              : 'opacity-40 hover:opacity-70'
-          }`}
-        />
-      ))}
-    </div>
+    <figure className="film">
+      {url ? (
+        embed ? (
+          <iframe src={url} title={p.film.caption ?? `${p.title} film`} allow="fullscreen; picture-in-picture" loading="lazy" />
+        ) : (
+          <video src={url} controls preload="metadata" />
+        )
+      ) : (
+        <div className="film-ph">
+          <span className="play" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor" /></svg></span>
+          <span className="film-ph-label">Placeholder · {p.film.caption ?? 'the short film'}, embedded</span>
+        </div>
+      )}
+    </figure>
   )
 }
 
-function RouteComponent() {
-  const { projectId } = Route.useParams()
-  const project = Object.values(projectCategories).flatMap((cat) => cat.projects).find((p) => p.id === projectId)
-  const category = projectCategories[project?.projectCat as keyof typeof projectCategories]
-  const [currentImage, setCurrentImage] = useState(0);
-  
+function Sec({ id, n, title, children }: { id: string; n: string; title: string; children: ReactNode }) {
   return (
-    <div className="flex flex-col lg:flex-row pt-25 p-5 lg:p-25 pb-0 gap-20 lg:gap-30 min-h-body-height">
-      <div className="lg:pt-10">
-        <div className='flex items-center'>
-          <Link to=".." >
-            <span className="material-symbols-outlined text-5xl text-dark-green hover:text-custom-white cursor-pointer">
-              arrow_left
+    <section id={id} className="cs-sec">
+      <div className="cs-label"><span className="lab">{n}</span><h2 className="c">{title}</h2></div>
+      <div className="cs-body">{children}</div>
+    </section>
+  )
+}
+
+const Figures = ({ items, big }: { items: { figure: string; label: string }[]; big?: boolean }) => (
+  <div className={big ? 'figures figures-big' : 'figures'}>
+    {items.map((f, i) => <div key={i}><b className="c">{f.figure}</b><span>{f.label}</span></div>)}
+  </div>
+)
+
+function CaseStudy() {
+  const { project: p } = Route.useLoaderData()
+  useTitle(p.title)
+  const idx = caseStudies.findIndex((x) => x.slug === p.slug)
+  const prev = caseStudies[(idx - 1 + caseStudies.length) % caseStudies.length]
+  const next = caseStudies[(idx + 1) % caseStudies.length]
+  const o = OPENING[p.opening_colour]
+  const type = [p.project_type, p.type_detail].filter(Boolean).join(' · ')
+  const facts = [
+    ['My role', p.role],
+    ['Type', type],
+    ['When', p.when],
+    ['Deliverables', p.deliverables?.join(', ')],
+    ['Tools', p.tools?.join(', ')],
+  ].filter(([, v]) => v)
+  const r = p.research
+
+  // Highlights the section currently on screen in the sticky section nav.
+  const [active, setActive] = useState<string>('overview')
+  useEffect(() => {
+    const els = SECTIONS.map(([id]) => document.getElementById(id)).filter(Boolean) as HTMLElement[]
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && setActive(e.target.id)),
+      { rootMargin: '-30% 0px -60% 0px' },
+    )
+    els.forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [p.slug])
+
+  return (
+    <main className="case">
+      <section className="cs-open" style={{ background: o.bg, color: o.fg }}>
+        <nav aria-label="Breadcrumb" className="crumbs">
+          <span>
+            <Link to="/projects">Projects</Link> /{' '}
+            <Link to="/projects/$projectCat" params={{ projectCat: p.category }}>{categoryName(p.category)}</Link>
+            <span className="d-only"> / <b>{p.title}</b></span>
+          </span>
+          <span className="d-only">Project {idx + 1} of {caseStudies.length}</span>
+        </nav>
+        <div className="cs-open-grid">
+          <div className="cs-open-text">
+            <span className="cs-sub" style={{ color: o.sub }}>
+              {categoryName(p.category)} · {yearOf(p)}<span className="m-only"> · {idx + 1} of {caseStudies.length}</span>
+              {p.status === 'Draft' && <span className="draft-badge">Draft</span>}
             </span>
-          </Link>
-          <p className='text-xl font-bold font-mono text-dark-green'>{category.title ?? 'Unknown category'}</p>
-        </div>
-        <ul className="pl-5 pt-3">
-          {Object.entries(category.projects).map(([key, project]) => (
-            <li key={key}>
-                <CustomLink label={project.title} href="/projects/$projectCat/$projectId" params={{ projectCat: project.projectCat, projectId: project.id }} />
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div>
-        <h1 className='text-4xl font-bold font-mono text-dark-green'>{project?.title}</h1>
-        <div className="flex flex-col lg:flex-row gap-15 pt-5 items-center lg:items-start">
-          <div className='justify-items-center items-center max-w-1/2 max-h-fit'>
-            <div className='flex flex-row items-center max-w-screen'>
-              <button className='h-fit' onClick={() => {
-                if (currentImage > 0) {
-                  setCurrentImage(currentImage - 1)
-                }
-              }}>
-                <span className={`material-symbols-outlined text-5xl text-custom-black ${currentImage > 0 ? 'cursor-pointer hover:text-custom-white' : 'cursor-default opacity-20'}`}>
-                  chevron_left
-                </span>
-              </button>
-              <div className='flex w-80 h-120 p-3 items-center justify-center overflow-hidden bg-custom-white rounded-lg'>
-                {project?.images?.[currentImage] && (
-                  <img
-                    src={project.images[currentImage]}
-                    alt={`${project.title} image ${currentImage + 1}`}
-                    className='max-w-full max-h-full object-contain rounded-lg'
-                  />
-                )}
-              </div>
-              <button className='h-fit' onClick={() => {
-                if (project?.images && currentImage < project.images.length - 1) {
-                  setCurrentImage(currentImage + 1)
-                }
-              }}>
-                <span className={`material-symbols-outlined text-5xl text-custom-black ${(project?.images && currentImage < project.images.length - 1) ? 'cursor-pointer hover:text-custom-white' : 'cursor-default opacity-20'}`}>
-                  chevron_right
-                </span>
-              </button>
-            </div>
-            <ImageIndicators
-              imageCount={project?.images?.length ?? 0}
-              currentImage={currentImage}
-              onSelect={setCurrentImage}
-            />
+            <h1 className="c cs-title">{p.title}</h1>
+            <p className="cs-line">{p.summary}</p>
           </div>
-          <p className='lg:max-w-1/2'>{project?.description}</p>
+          <div className="cs-open-visual"><OpeningVisual p={p} /></div>
         </div>
-      </div>
-    </div>
+      </section>
+
+      <section className="facts">
+        {facts.map(([k, v]) => <div key={k}><span className="lab">{k}</span><span className="fact-val">{v}</span></div>)}
+      </section>
+
+      <nav aria-label="On this page" className="secnav">
+        {SECTIONS.map(([id, n, t]) => (
+          <a key={id} href={`#${id}`} className={active === id ? 'on' : ''} aria-current={active === id ? 'true' : undefined}>
+            <span className="d-only">{n} </span>{t}
+          </a>
+        ))}
+      </nav>
+      <div className="cs-gap" />
+
+      <Sec id="overview" n="01" title="Overview">
+        {p.objective && <p className="lead">{p.objective}</p>}
+        <div className={p.what_team_did ? 'did did-two' : 'did'}>
+          {p.what_i_did && <div className="did-me"><span className="lab">What I did</span><p>{p.what_i_did}</p></div>}
+          {p.what_team_did && <div className="did-team"><span className="lab">What the team did</span><p>{p.what_team_did}</p></div>}
+        </div>
+      </Sec>
+
+      <Sec id="research" n="02" title="Research & thinking">
+        {r?.stats?.length ? <Figures items={r.stats} /> : null}
+        {r?.text && <p className="lead">{r.text}</p>}
+        {r?.extra && <p className="body-text">{r.extra}</p>}
+        {r?.moodboard && <div className="mood"><Media img={r.moodboard} ratio="21/9" label="moodboard" /></div>}
+      </Sec>
+
+      <Sec id="work" n="03" title="The work">
+        <Work p={p} />
+        <Gallery images={p.gallery} note={p.gallery_note} />
+      </Sec>
+
+      <Sec id="outcomes" n="04" title="Outcomes">
+        {p.results_label && <span className="lab">{p.results_label}</span>}
+        {p.results?.length ? <Figures items={p.results} big /> : null}
+        {p.outcome_note && <p className="body-text outcome-note">{p.outcome_note}</p>}
+        {p.skills?.length ? (
+          <div className="skills">
+            <span className="lab">Skills shown</span>
+            <div>{p.skills.map((s) => <span key={s} className="tag">{s}</span>)}</div>
+          </div>
+        ) : null}
+        {p.link && <a href={p.link.url} target="_blank" rel="noreferrer" className="button ext-link">{p.link.label} ↗</a>}
+      </Sec>
+
+      {caseStudies.length > 1 && (
+        <nav aria-label="More projects" className="pn">
+          <Link to="/projects/$projectCat/$projectId" params={{ projectCat: prev.category, projectId: prev.slug }} className="pn-prev d-only">
+            <span className="lab">← Previous</span><b className="c">{prev.title}</b>
+          </Link>
+          <Link to="/projects" className="button pn-all">All projects</Link>
+          <Link to="/projects/$projectCat/$projectId" params={{ projectCat: next.category, projectId: next.slug }} className="pn-next">
+            <span className="lab">Next →</span><b className="c">{next.title}</b>
+          </Link>
+        </nav>
+      )}
+    </main>
   )
 }

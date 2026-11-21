@@ -1,30 +1,47 @@
-import ProjectCard from '#/components/project-card'
-import { projectCategories } from '#/routes/projects'
-import type { Project } from '#/types/project'
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { Link, createFileRoute, notFound } from '@tanstack/react-router'
+import Chips from '#/components/chips'
+import ProjectRow from '#/components/project-row'
+import { categories, categoryBySlug, projects, projectsIn } from '#/lib/site'
+import { useTitle } from '#/lib/title'
 
 export const Route = createFileRoute('/projects/$projectCat/')({
-  component: RouteComponent,
+  loader: ({ params }) => {
+    const category = categoryBySlug(params.projectCat)
+    const list = projectsIn(params.projectCat)
+    if (!category || !list.length) throw notFound()
+    return { category, list }
+  },
+  component: CategoryPage,
 })
 
-function RouteComponent() {
-  const { projectCat } = Route.useParams()
-  const category = projectCategories[projectCat as keyof typeof projectCategories] ?? {
-    title: 'the selected category is not available',
-    projects: [],
-  }
-
+function CategoryPage() {
+  const { category, list } = Route.useLoaderData()
+  useTitle(category.name)
+  const used = new Set(projects.map((p) => p.category))
+  const others = categories.filter((c) => c.slug !== category.slug && used.has(c.slug))
   return (
-    <div className="pt-20">
-      <h2 className="pl-5 text-2xl font-bold font-mono text-dark-green">
-        Projects in {category.title}
-      </h2>
-      <div className="flex flex-row gap-5 flex-wrap justify-center mt-10">
-        {category.projects.map((project: Project) => (
-          <ProjectCard key={project.id} project={project} />
-        ))}
-      </div>
-      <Outlet />
-    </div>
+    <main className="listing listing-cat">
+      <section className="listing-head">
+        <Link to="/projects" className="back">← All projects</Link>
+        <span className="lab cat-count">Category · {list.length} {list.length === 1 ? 'project' : 'projects'}</span>
+        <h1 className="c listing-title cat-title">{category.name}</h1>
+        {category.intro && <p className="listing-intro">{category.intro}</p>}
+        <Chips active={category.slug} used={used} />
+      </section>
+      <section className="rows">{list.map((p) => <ProjectRow key={p.slug} p={p} />)}</section>
+      {others.length > 0 && (
+        <section className="others d-only">
+          <span className="lab">Other categories</span>
+          <div className="others-list">
+            {others.map((c) => (
+              <Link key={c.slug} to="/projects/$projectCat" params={{ projectCat: c.slug }}>
+                <b className="c">{c.name}</b>
+                <span>{c.intro} →</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+    </main>
   )
 }

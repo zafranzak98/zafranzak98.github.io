@@ -1,11 +1,42 @@
-function Footer () {
-    return (
-        <footer className="text-custom-black pr-5 pb-5">
-            <div className="text-right">
-                <p className="text-sm">website by <a href="https://www.linkedin.com/in/liana-asef-496b3a2l" target="_blank" className="text-dark-green font-bold underline hover:text-custom-white">liana</a></p>
-            </div>
-        </footer>
-    )
-}
+import { Link } from '@tanstack/react-router'
+import { mailto, site } from '#/lib/site'
 
-export default Footer
+// Footer B, without the location line.
+export default function Footer() {
+  return (
+    <footer className="site-footer">
+      <div className="footer-main">
+        <div>
+          <p className="footer-kicker">Contact</p>
+          <h2 className="c footer-title">
+            Let's <br className="m-only" />
+            talk
+          </h2>
+        </div>
+        <div>
+          <a href={mailto} className="footer-email">{site.email}</a>
+          <div className="footer-social">
+            {site.instagram && <a href={site.instagram} target="_blank" rel="noreferrer">Instagram ↗</a>}
+            {site.linkedin && <a href={site.linkedin} target="_blank" rel="noreferrer">LinkedIn ↗</a>}
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <nav aria-label="Pages">
+            <Link to="/">Home</Link>
+            <Link to="/about">About</Link>
+            <Link to="/projects">Projects</Link>
+          </nav>
+          <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Back to top ↑</a>
+        </div>
+      </div>
+      {site.credit_name && (
+        <div className="footer-credit">
+          <p>
+            website by{' '}
+            <a href={site.credit_url} target="_blank" rel="noreferrer" className="credit-link">{site.credit_name}</a>
+          </p>
+        </div>
+      )}
+    </footer>
+  )
+}
