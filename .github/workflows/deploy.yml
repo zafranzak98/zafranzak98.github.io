@@ -1,6 +1,7 @@
-# Phase 1 baseline: publishes the existing docs/ folder exactly as it is.
-# No build step. Test repository only (zafranzak98.github.io).
-name: Deploy test site
+# Test site: builds the website from its content, checks it, and publishes the
+# preview version (drafts shown) to zafranzak98.github.io.
+# A production build also runs and must pass: it proves drafts are excluded.
+name: Build and deploy test site
 
 on:
   push:
@@ -9,24 +10,56 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - name: Production build and checks (drafts must be excluded)
+        run: bun run build
+      - name: Preview build for the test site (drafts shown)
+        id: preview
+        run: rm -rf dist .content-collections && bun run build:preview
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Email a warning if a size limit is getting close
+        if: steps.preview.outputs.warnings != ''
+        uses: actions/github-script@v7
+        env:
+          WARNINGS: ${{ steps.preview.outputs.warnings }}
+        with:
+          script: |
+            const title = 'Website size warning'
+            const open = await github.rest.issues.listForRepo({ ...context.repo, state: 'open' })
+            const body = process.env.WARNINGS + '\n\nFrom build ' + context.runId + '.'
+            const existing = open.data.find(i => i.title === title)
+            if (existing) await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body })
+            else await github.rest.issues.create({ ...context.repo, title, body })
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
       - id: deployment
         uses: actions/deploy-pages@v4
