@@ -81,7 +81,6 @@ img { max-width: 100%; }
 }
 
 /* ---------- footer B ---------- */
-.site-footer { margin-top: 0; }
 .footer-main { background: var(--olive); color: var(--off); padding: 56px var(--m) 32px; display: flex; flex-direction: column; gap: 48px; }
 .footer-kicker { margin: 0; font-size: 12px; color: var(--sage); }
 .footer-title { margin: 8px 0 0 -10px; font-size: 200px; line-height: .8; color: var(--off); }
@@ -179,7 +178,6 @@ img { max-width: 100%; }
 .about-portrait { position: absolute; right: var(--m); top: 120px; width: 314px; margin: 0; z-index: 2; }
 .about-portrait figcaption { display: flex; justify-content: space-between; margin-top: 10px; font-size: 13px; line-height: 20px; color: var(--olive); }
 .about-portrait figcaption b, .about-caption b { font-weight: 600; }
-.about + * { margin-top: 0; }
 .about-hero + .about-caption + .ix-sec { margin-top: 120px; }
 .about-statement { margin: 0; font-size: 34px; line-height: 1.24; font-weight: 500; letter-spacing: -0.015em; }
 .about-statement .hl { font-weight: 700; }
@@ -283,7 +281,6 @@ img { max-width: 100%; }
   .row-line { font-size: 16px; }
   .row-role { margin-top: 8px; font-size: 14px; }
   .row-arrow { display: none; }
-  .listing-cat .others + * { margin-top: 0; }
 }
 
 /* ---------- case study (P3) ---------- */
@@ -402,7 +399,7 @@ img { max-width: 100%; }
   .skills { margin-top: 20px; }
   .tag { font-size: 13px; }
   .pn { display: flex; flex-direction: column-reverse; align-items: stretch; gap: 0; padding: 0; }
-  .pn-next { text-align: left; justify-self: stretch; padding: 22px 24px; border-bottom: 0; }
+  .pn-next { text-align: left; justify-self: stretch; padding: 22px 24px; }
   .pn-all { margin: 0 24px 32px; text-align: center; padding: 14px; }
 }
 
