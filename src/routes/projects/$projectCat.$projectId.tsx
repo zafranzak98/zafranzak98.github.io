@@ -17,12 +17,13 @@ export const Route = createFileRoute('/projects/$projectCat/$projectId')({
   component: CaseStudy,
 })
 
-const SECTIONS = [
+// The optional third value is a shorter name for the narrow mobile bar.
+const SECTIONS: [string, string, string?][] = [
   ['overview', 'Overview'],
-  ['research', 'Research & thinking'],
+  ['research', 'Research & thinking', 'Research'],
   ['work', 'The work'],
   ['outcomes', 'Outcomes'],
-] as const
+]
 
 const caption = (img?: Img) => img?.caption && <p className="cap">{img.caption}</p>
 
@@ -51,7 +52,7 @@ function Work({ p }: { p: Project }) {
     case 'about-face':
       return (
         <>
-          <div className="phones">{sup.map((s, i) => <Phone key={i} img={s} width={196} caption={s.caption} />)}</div>
+          <div className="phones">{sup.map((s, i) => <Phone key={i} img={s} width="max(150px, 12.4vw)" caption={s.caption} />)}</div>
           {note}
         </>
       )
@@ -70,22 +71,28 @@ function Work({ p }: { p: Project }) {
       )
     case 'evoke':
       return <>{key}{grid(true)}{note}</>
-    case 'fc-yeah':
-      return <>{key}{grid()}{note}<Film p={p} /></>
     default:
       return <>{key}{grid()}{note}<Film p={p} /></>
   }
 }
 
+// Accepts the link as copied from YouTube or Vimeo and returns the address their players embed.
+function embedUrl(url: string) {
+  const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/)
+  if (yt) return `https://www.youtube-nocookie.com/embed/${yt[1]}`
+  const vimeo = url.match(/vimeo\.com\/(?:video\/)?(\d+)/)
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`
+}
+
 function Film({ p }: { p: Project }) {
   if (!p.film) return null
   const url = p.film.url
-  const embed = url && (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com'))
+  const embed = url && embedUrl(url)
   return (
     <figure className="film">
       {url ? (
         embed ? (
-          <iframe src={url} title={p.film.caption ?? `${p.title} film`} allow="fullscreen; picture-in-picture" loading="lazy" />
+          <iframe src={embed} title={p.film.caption ?? `${p.title} film`} allow="fullscreen; picture-in-picture" loading="lazy" />
         ) : (
           <video src={url} controls preload="metadata" />
         )
@@ -166,10 +173,12 @@ function CaseStudy() {
       </section>
 
       <nav aria-label="On this page" className="secnav c">
-        {SECTIONS.map(([id, t], i) => (
+        {SECTIONS.map(([id, t, short], i) => (
           <Fragment key={id}>
             {i > 0 && <span className="cat-index-sep" aria-hidden="true">/</span>}
-            <a href={`#${id}`} className={active === id ? 'on' : ''} aria-current={active === id ? 'true' : undefined}>{t}</a>
+            <a href={`#${id}`} className={active === id ? 'on' : ''} aria-current={active === id ? 'true' : undefined}>
+              {short ? <><span className="d-only">{t}</span><span className="m-only">{short}</span></> : t}
+            </a>
           </Fragment>
         ))}
       </nav>
@@ -192,7 +201,7 @@ function CaseStudy() {
 
       <Sec id="work" n="03" title="The work" wide>
         <Work p={p} />
-        <Gallery images={p.gallery} note={p.gallery_note} />
+        <Gallery key={p.slug} images={p.gallery} note={p.gallery_note} />
       </Sec>
 
       <Sec id="outcomes" n="04" title="Outcomes" wide>

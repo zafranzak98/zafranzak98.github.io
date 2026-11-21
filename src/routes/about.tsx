@@ -9,14 +9,14 @@ export const Route = createFileRoute('/about')({ component: About })
 
 // The label column (number and heading) sits beside the content, with its cap height
 // aligned to the first line of content, as approved on the Clay About board.
-function Section({ n, title, children, wide }: { n: string; title: string; children: ReactNode; wide?: boolean }) {
+function Section({ n, title, children }: { n: string; title: string; children: ReactNode }) {
   return (
     <section aria-label={title} className="ix-sec">
       <div className={`ix-label ix-label-${title.toLowerCase()}`}>
         <span className="lab">{n}</span>
         <h2 className="c">{title}</h2>
       </div>
-      <div className={wide ? 'ix-body' : 'ix-body ix-body-narrow'}>{children}</div>
+      <div className="ix-body">{children}</div>
     </section>
   )
 }
@@ -48,7 +48,7 @@ function About() {
       </section>
 
       {about.skills?.length ? (
-        <Section n="02" title="Skills" wide>
+        <Section n="02" title="Skills">
           {about.skills.map((s, i) => (
             <div key={i} className="ix-row">
               <span className="lab">{String(i + 1).padStart(2, '0')}</span>
@@ -60,7 +60,7 @@ function About() {
       ) : null}
 
       {edu.length ? (
-        <Section n="03" title="Education" wide>
+        <Section n="03" title="Education">
           {edu.map((e, k) => (
             <div key={k} className="edu">
               {[
@@ -86,7 +86,7 @@ function About() {
       ) : null}
 
       {about.experience?.length ? (
-        <Section n="04" title="Experience" wide>
+        <Section n="04" title="Experience">
           {about.experience.map((x, i) => (
             <div key={i} className="ix-row">
               <span className="lab">{x.years}</span>

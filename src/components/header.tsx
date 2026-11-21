@@ -15,7 +15,7 @@ export default function Header() {
   return (
     <header className="site-header">
       <Link to="/" className="brand" aria-label={`${site.name}, home`} onClick={done}>
-        <img src={asset('/favicon-48x48.png')} width="40" height="40" alt="" />
+        <img src={asset('/favicon-48x48.png')} width="36" height="36" alt="" />
         <b className="c">{site.name}</b>
       </Link>
       <nav aria-label="Main" className="nav-desktop">

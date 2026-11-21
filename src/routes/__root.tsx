@@ -1,13 +1,14 @@
 import { Outlet, createRootRoute } from '@tanstack/react-router'
 
+import '@fontsource-variable/instrument-sans/wdth.css'
 import '../styles.css'
 import Header from '#/components/header'
 import Footer from '#/components/footer'
-import ErrorPage from '#/components/error-page'
+import { NotFound, PageError } from '#/components/error-page'
 
 export const Route = createRootRoute({
-  errorComponent: ErrorPage,
-  notFoundComponent: ErrorPage,
+  errorComponent: PageError,
+  notFoundComponent: NotFound,
   component: RootComponent,
 })
 

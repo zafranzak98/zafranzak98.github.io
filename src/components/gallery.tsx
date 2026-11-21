@@ -37,7 +37,7 @@ export default function Gallery({ images = [], note }: { images?: Img[]; note?: 
             <img src={asset(cur.image)} alt={cur.alt ?? ''} />
           </div>
           {n > 1 && (
-            <div className="dots" aria-label="Image selection">
+            <div className="dots" role="group" aria-label="Choose an image">
               {shown.map((_, k) => (
                 <button key={k} type="button" aria-label={`Show image ${k + 1}`} aria-current={k === i} className={k === i ? 'dot dot-on' : 'dot'} onClick={() => setI(k)} />
               ))}

@@ -4,7 +4,7 @@ import { mailto, site } from '#/lib/site'
 // Footer B, without the location line.
 export default function Footer() {
   return (
-    <footer className="site-footer">
+    <footer>
       <div className="footer-main">
         <div>
           <p className="footer-kicker">Contact</p>
@@ -26,7 +26,7 @@ export default function Footer() {
             <Link to="/about">About</Link>
             <Link to="/projects">Projects</Link>
           </nav>
-          <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Back to top ↑</a>
+          <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo(0, 0) }}>Back to top ↑</a>
         </div>
       </div>
       {site.credit_name && (
