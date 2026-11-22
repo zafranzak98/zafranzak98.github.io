@@ -131,7 +131,7 @@ collections:
         widget: select
         options: [Olive, Sage, Light sage, Off-white, Terracotta, Ink]
         default: Olive
-        hint: Background colour of the project's opening section.
+        hint: Background colour of the project's opening section and of its band on the Projects page. Choose a colour clearly different from the projects just before and after it in the list.
       - name: cover
         label: Cover image
         widget: object
