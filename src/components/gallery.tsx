@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { imageProps, photoSize, type Img } from '#/lib/site'
 import { Media } from '#/components/media'
+import { Rich } from '#/components/rich'
 
 function Chevron({ dir, enabled, onClick }: { dir: 'l' | 'r'; enabled: boolean; onClick: () => void }) {
   return (
@@ -30,7 +31,7 @@ export default function Gallery({ images = [], note }: { images?: Img[]; note?: 
           </div>
         )}
       </div>
-      {n > 0 && note && <p className="gallery-note">{note}</p>}
+      {n > 0 && note && <p className="gallery-note"><Rich text={note} /></p>}
       {n ? (
         <>
           <div className="gallery-frame">

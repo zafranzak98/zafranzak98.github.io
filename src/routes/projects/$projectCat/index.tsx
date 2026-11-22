@@ -3,6 +3,7 @@ import CategoryIndex from '#/components/category-index'
 import { ProjectBands } from '#/components/project-band'
 import { categoryBySlug, projectsIn } from '#/lib/site'
 import { useTitle } from '#/lib/title'
+import { Rich } from '#/components/rich'
 
 export const Route = createFileRoute('/projects/$projectCat/')({
   loader: ({ params }) => {
@@ -22,7 +23,7 @@ function CategoryPage() {
       <section className="listing-head">
         <span className="lab cat-count">Category · {list.length} {list.length === 1 ? 'project' : 'projects'}</span>
         <h1 className="c listing-title cat-title">{category.name}</h1>
-        {category.intro && <p className="listing-intro">{category.intro}</p>}
+        {category.intro && <p className="listing-intro"><Rich text={category.intro} /></p>}
         <CategoryIndex />
       </section>
       <ProjectBands items={list} />

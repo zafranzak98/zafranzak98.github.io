@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { imageProps, photoSize, type Img } from '#/lib/site'
+import { Rich } from '#/components/rich'
 
 // sizes: how wide the image is shown, so the browser can choose the right-sized copy.
 type Props = { img?: Img; ratio?: string; label?: string; sizes?: string }
@@ -39,7 +40,7 @@ export function Phone({ img, width, caption, sizes = '(max-width: 899px) 250px, 
           )}
         </div>
       </div>
-      {caption && <figcaption>{caption}</figcaption>}
+      {caption && <figcaption><Rich text={caption} /></figcaption>}
     </figure>
   )
 }

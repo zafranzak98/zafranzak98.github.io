@@ -73,6 +73,8 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
    phrase that has to wrap keeps an unbroken band from line to line. */
 .hl { background: var(--lsage); color: inherit; font-weight: 600; padding: 0.08em 0; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .hl-keep { white-space: nowrap; }
+/* *bold* from the website editor: same typeface and colour, only the weight changes. */
+.b { font-weight: 700; }
 .text-link { font-size: var(--t-small); font-weight: 600; }
 .draft-badge { display: inline-block; margin-left: 0.625rem; padding: 1px 0.5rem; background: var(--terra); color: var(--off); font-size: 0.75rem; font-weight: 600; letter-spacing: 0; text-transform: none; vertical-align: 2px; }
 .m-only { display: none; }
@@ -368,6 +370,8 @@ a.band:hover .band-visual { transform: translateY(-0.375rem); }
 .figures span { display: block; margin-top: 0.375rem; font-size: var(--t-small); line-height: 1.35; }
 .figures-big { margin: 0 0 0.5rem; }
 .figures-big b { --size: 7.4vw; }
+/* Outcomes labels are semi-bold, as they were before the alignment pass. */
+.figures-big span { font-weight: 600; }
 /* Results stack one per row on a phone, so each keeps the full width. */
 @media (max-width: 599px) {
   .figures-big { grid-auto-flow: row; gap: 1.25rem; }

@@ -55,7 +55,8 @@ const canonical = (path) => `<link rel="canonical" href="${address(path)}" />`
 // Shared links need full image addresses: the test site's own while testing, the real one in production.
 const ORIGIN = PREVIEW ? 'https://zafranzak98.github.io' : PRODUCTION_URL
 const esc = (text) => String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-const plain = (text) => text?.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim()
+// Text for titles, descriptions and sharing: formatting marks (**highlight**, *bold*) removed.
+const plain = (text) => text?.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*\s](?:[^*]*[^*\s])?)\*/g, '$1').replace(/\s+/g, ' ').trim()
 const html = readFileSync(join(DIST, 'index.html'), 'utf8')
   .replace(/\s*<link rel="canonical"[^>]*>/g, '')
   .replace(/<title>.*?<\/title>/, `<title>${esc(site.site_title)}</title>`)

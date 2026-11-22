@@ -25,7 +25,7 @@ const SECTIONS: [string, string, string?][] = [
   ['outcomes', 'Outcomes'],
 ]
 
-const caption = (img?: Img) => img?.caption && <p className="cap">{img.caption}</p>
+const caption = (img?: Img) => img?.caption && <p className="cap"><Rich text={img.caption} /></p>
 
 // How wide supporting images are shown: one, two or three across (two across on a phone).
 const GRID_SIZES: Record<number, string> = {
@@ -54,7 +54,7 @@ function Work({ p }: { p: Project }) {
       {caption(p.key_piece)}
     </figure>
   )
-  const note = p.supporting_note && <p className="cap">{p.supporting_note}</p>
+  const note = p.supporting_note && <p className="cap"><Rich text={p.supporting_note} /></p>
   switch (p.design) {
     case 'about-face':
       return (
@@ -71,7 +71,7 @@ function Work({ p }: { p: Project }) {
           {p.context && (
             <div className="work-context">
               <Media img={p.context} ratio="9/16" sizes="(max-width: 899px) 33vw, 30vw" />
-              <p>{p.context.text}</p>
+              <p><Rich text={p.context.text} /></p>
             </div>
           )}
         </>
@@ -127,7 +127,7 @@ const Figures = ({ items, big }: { items: { figure: string; label: string }[]; b
     {items.map((f, i) => (
       <div key={i}>
         <b className="c" style={{ '--chars': Math.max(3, [...f.figure].length) } as CSSProperties}>{f.figure}</b>
-        <span>{f.label}</span>
+        <span><Rich text={f.label} /></span>
       </div>
     ))}
   </div>
@@ -174,7 +174,7 @@ function CaseStudy() {
               {p.status === 'Draft' && <span className="draft-badge">Draft</span>}
             </span>
             <h1 className="c cs-title">{p.title}</h1>
-            <p className="cs-line">{p.summary}</p>
+            <p className="cs-line"><Rich text={p.summary} /></p>
           </div>
           <div className="cs-open-visual"><OpeningVisual p={p} /></div>
         </div>
@@ -198,17 +198,17 @@ function CaseStudy() {
       <div className="cs-gap" />
 
       <Sec id="overview" n="01" title="Overview">
-        {p.objective && <p className="lead">{p.objective}</p>}
+        {p.objective && <p className="lead"><Rich text={p.objective} highlight /></p>}
         <div className={p.what_team_did ? 'did did-two' : 'did'}>
-          {p.what_i_did && <div><span className="lab">What I did</span><p><Rich text={p.what_i_did} /></p></div>}
-          {p.what_team_did && <div><span className="lab">What the team did</span><p><Rich text={p.what_team_did} /></p></div>}
+          {p.what_i_did && <div><span className="lab">What I did</span><p><Rich text={p.what_i_did} highlight /></p></div>}
+          {p.what_team_did && <div><span className="lab">What the team did</span><p><Rich text={p.what_team_did} highlight /></p></div>}
         </div>
       </Sec>
 
       <Sec id="research" n="02" title="Research & thinking">
         {r?.stats?.length ? <Figures items={r.stats} /> : null}
-        {r?.text && <p className="lead">{r.text}</p>}
-        {r?.extra && <p className="body-text">{r.extra}</p>}
+        {r?.text && <p className="lead"><Rich text={r.text} /></p>}
+        {r?.extra && <p className="body-text"><Rich text={r.extra} /></p>}
         {r?.moodboard && <div className="mood"><Media img={r.moodboard} ratio="21/9" label="moodboard" sizes="(max-width: 899px) 100vw, 67vw" /></div>}
       </Sec>
 
@@ -218,9 +218,9 @@ function CaseStudy() {
       </Sec>
 
       <Sec id="outcomes" n="04" title="Outcomes">
-        {p.results_label && <span className="lab">{p.results_label}</span>}
+        {p.results_label && <span className="lab"><Rich text={p.results_label} /></span>}
         {p.results?.length ? <Figures items={p.results} big /> : null}
-        {p.outcome_note && <p className="body-text outcome-note">{p.outcome_note}</p>}
+        {p.outcome_note && <p className="body-text outcome-note"><Rich text={p.outcome_note} /></p>}
         {p.skills?.length ? (
           <div className="skills">
             <span className="lab">Skills shown</span>

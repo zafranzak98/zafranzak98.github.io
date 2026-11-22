@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import OpeningVisual from '#/components/opening-visual'
 import { bandOrder } from '#/lib/project-colours.js'
 import { categoryName, colourOf, openingOf, yearOf, type Project } from '#/lib/site'
+import { Rich } from '#/components/rich'
 
 // One project in the Projects lookbook: a full-width band in the project's own opening colour,
 // its opening visual, and the title set large across the foot of the band. Every project uses
@@ -23,7 +24,7 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
         </span>
         <span>My role: {p.role}{hasPage && <> <span className="band-arrow" aria-hidden="true">→</span></>}</span>
       </div>
-      <p className="band-line">{p.summary}</p>
+      <p className="band-line"><Rich text={p.summary} /></p>
       <div className="band-visual"><OpeningVisual p={p} inBand /></div>
       <b className="c band-title">{p.title}</b>
     </>
