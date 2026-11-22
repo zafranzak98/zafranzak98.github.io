@@ -1,0 +1,77 @@
+{
+  "root": {
+    "props": {}
+  },
+  "content": [
+    {
+      "type": "CategoryNav",
+      "props": {
+        "id": "CategoryNav-standard"
+      }
+    },
+    {
+      "type": "Opening",
+      "props": {
+        "id": "Opening-standard"
+      }
+    },
+    {
+      "type": "Facts",
+      "props": {
+        "id": "Facts-standard"
+      }
+    },
+    {
+      "type": "SectionNav",
+      "props": {
+        "id": "SectionNav-standard"
+      }
+    },
+    {
+      "type": "Gap",
+      "props": {
+        "id": "Gap-standard"
+      }
+    },
+    {
+      "type": "Overview",
+      "props": {
+        "id": "Overview-standard"
+      }
+    },
+    {
+      "type": "Research",
+      "props": {
+        "id": "Research-standard"
+      }
+    },
+    {
+      "type": "Work",
+      "props": {
+        "id": "Work-standard"
+      }
+    },
+    {
+      "type": "Outcomes",
+      "props": {
+        "id": "Outcomes-standard",
+        "design": {
+          "background": "Terracotta"
+        }
+      }
+    },
+    {
+      "type": "AlsoIn",
+      "props": {
+        "id": "AlsoIn-standard"
+      }
+    },
+    {
+      "type": "PrevNext",
+      "props": {
+        "id": "PrevNext-standard"
+      }
+    }
+  ],
+  "zones": {}
+}
