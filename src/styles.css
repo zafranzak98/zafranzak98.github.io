@@ -475,3 +475,51 @@ a.band:hover .band-visual { transform: translateY(-0.375rem); }
   .not-found { padding: 4.5rem 1.5rem 6rem; }
   .not-found h1 { font-size: 4rem; }
 }
+
+/* ---------- design editor (src/layout) ----------
+   Free blocks: your own text, images and grids, on the page's margins and twelve-column grid. */
+.free-block { margin-left: var(--m); margin-right: var(--m); }
+.free-cell > .free-block, .free-grid .free-block { margin-left: 0; margin-right: 0; }
+.free-heading { margin: 0.5rem 0 0; font-size: var(--h2); line-height: .95; }
+h3.free-heading { font-size: var(--h3); }
+.free-text .lead, .free-text .body-text, .free-statement { margin-top: 0.875rem; }
+.free-statement { max-width: var(--measure); font-size: var(--t-statement); line-height: 1.3; }
+.free-image { margin-top: 0; margin-bottom: 0; }
+.free-image .media { width: 100%; object-fit: cover; }
+.free-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); row-gap: 1.5rem; }
+.free-gap-none { column-gap: 0; row-gap: 0; }
+.free-gap-tight { column-gap: 0.75rem; row-gap: 0.75rem; }
+.free-gap-wide { column-gap: 3rem; row-gap: 3rem; }
+.free-items-center { align-items: center; }
+.free-items-end { align-items: end; }
+.free-cell { grid-column: var(--start, 1) / span var(--span, 12); min-width: 0; }
+.free-spacer { height: var(--h); }
+@media (max-width: 899px) {
+  .free-grid { display: block; }
+  .free-cell + .free-cell { margin-top: 1.5rem; }
+  .free-spacer { height: var(--h-m, var(--h)); }
+}
+
+/* Design settings chosen for a block in the editor (src/layout/design.ts). They are deliberate
+   overrides of that one block, so they take precedence over its usual spacing and colour. */
+.d-bg { background: var(--d-bg) !important; }
+.d-fg { color: var(--d-fg) !important; }
+.d-pt { padding-top: var(--d-pt) !important; }
+.d-pb { padding-bottom: var(--d-pb) !important; }
+.d-shift { position: relative; left: var(--d-x, 0); top: var(--d-y, 0); }
+.d-align-left { text-align: left; }
+.d-align-center { text-align: center; margin-left: auto; margin-right: auto; }
+.d-align-right { text-align: right; margin-left: auto; }
+.d-w-full { max-width: none; }
+.d-w-wide { max-width: 80%; }
+.d-w-text { max-width: var(--measure); }
+.d-w-narrow { max-width: 30rem; }
+.d-align-center.d-w-wide, .d-align-center.d-w-text, .d-align-center.d-w-narrow { margin-left: auto; margin-right: auto; }
+@media (min-width: 900px) { .d-only-phone { display: none !important; } }
+@media (max-width: 899px) {
+  .d-only-desktop { display: none !important; }
+  .d-pt-m { padding-top: var(--d-pt-m) !important; }
+  .d-pb-m { padding-bottom: var(--d-pb-m) !important; }
+  .d-shift { left: 0; top: 0; }
+  .d-w-wide, .d-w-text, .d-w-narrow { max-width: none; }
+}
