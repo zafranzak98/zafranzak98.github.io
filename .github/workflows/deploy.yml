@@ -2,16 +2,25 @@
 # preview version (drafts shown) to zafranzak98.github.io.
 # A production build also runs and must pass: it proves drafts are excluded.
 #
-# Build guard: a push to main is published only if it changes content alone (content/,
-# public/media/, public/files/), which is all the website editor can change, or if it is a pull
-# request the site owner merged. Any other change stops here, before the build, and the website
-# stays as it was. Running the workflow by hand from GitHub (workflow_dispatch) is allowed.
+# Build guard: compares main with the version the website was last published from (GitHub's
+# deployment records). Publishing goes ahead only if everything since then is content (content/,
+# public/media/, public/files/), which is all the website editor can change, or came through a pull
+# request the site owner merged. Anything else stops here, before the build, and the website stays
+# as it was. If the last published version cannot be read or verified, nothing is published (fail
+# closed). Running the workflow by hand from GitHub (workflow_dispatch) publishes content and code from
+# merged pull requests as usual; code changes that did not come through a merged pull request are
+# published only if the "Publish code without a pull request" box is ticked, and are listed as warnings.
 name: Build and deploy test site
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      publish_unapproved_code:
+        description: 'Publish code without a pull request (tick only if a previous run asked for it)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -26,6 +35,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      deployments: read # read-only: finds the version the website was last published from
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,86 +43,47 @@ jobs:
       - name: Allow content changes and merged pull requests only
         env:
           GH_TOKEN: ${{ github.token }}
-          BEFORE: ${{ github.event.before }}
           EVENT: ${{ github.event_name }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
+          CONFIRM: ${{ inputs.publish_unapproved_code }}
         run: |
           set -euo pipefail
-          if [ "$EVENT" = "workflow_dispatch" ]; then echo "Started by hand: allowed."; exit 0; fi
-          # 1. Content only (what the website editor saves): allowed straight away.
-          other="unknown"
-          if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-            other=$(git diff --name-only "$BEFORE" "$SHA" | grep -vE '^(content/|public/media/|public/files/)' || true)
-          fi
-          if [ -z "$other" ]; then echo "Content only: allowed."; exit 0; fi
-          # 2. Anything else must be a pull request the site owner merged into main. GitHub can take a few
-          #    seconds to link a new merge to its pull request, so ask twice per try (the commit's linked
-          #    pull requests, and recently merged pull requests whose merge commit is this one) and wait
-          #    between tries, for up to about a minute.
-          for try in 1 2 3 4 5 6; do
-            linked=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main")] | length')
-            if [ "$linked" -gt 0 ]; then echo "From a merged pull request: allowed."; exit 0; fi
-            merged=$(gh api "repos/$REPO/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=30" --jq "[.[] | select(.merged_at != null and .merge_commit_sha == \"$SHA\")] | length")
-            if [ "$merged" -gt 0 ]; then echo "From a merged pull request: allowed."; exit 0; fi
-            [ "$try" -lt 6 ] && sleep "${WAIT:-10}"
-          done
-          if [ "$other" = "unknown" ]; then
-            echo "::error::Not published: cannot tell what this push changed. Merge it through a pull request."; exit 1
-          fi
-          {
-            echo "### Not published: this push changes more than content"
-            echo "Changes outside content/, public/media/ and public/files/ must come through a merged pull request."
-            echo '```'; echo "$other"; echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          echo "::error::Not published: files outside content were changed without a pull request: $(echo $other | tr '\n' ' ')"
-          exit 1
-
-  build:
-    needs: guard
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.4
-      - run: bun install --frozen-lockfile
-      - name: Production build and checks (drafts must be excluded)
-        run: bun run build
-      - name: Preview build for the test site (drafts shown)
-        id: preview
-        run: rm -rf dist .content-collections && bun run build:preview
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-      - name: Email a warning if a size limit is getting close
-        if: steps.preview.outputs.warnings != ''
-        uses: actions/github-script@v7
-        env:
-          WARNINGS: ${{ steps.preview.outputs.warnings }}
-        with:
-          script: |
-            const title = 'Website size warning'
-            const open = await github.rest.issues.listForRepo({ ...context.repo, state: 'open' })
-            const body = process.env.WARNINGS + '\n\nFrom build ' + context.runId + '.'
-            const existing = open.data.find(i => i.title === title)
-            if (existing) await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body })
-            else await github.rest.issues.create({ ...context.repo, title, body })
-
-  deploy:
-    needs: [guard, build]
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          CONTENT='^(content/|public/media/|public/files/)'
+          stop() { echo "::error::Not published: $1"; echo "### Not published" >> "$GITHUB_STEP_SUMMARY"; echo "$1" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+          # Is commit $1 part of a pull request merged into main? GitHub can take a few seconds to link a new
+          # merge to its pull request, so ask twice per try and wait between tries, for up to about a minute.
+          # A failed GitHub request counts as "not confirmed", never as approved.
+          approved() {
+            local try linked merged
+            for try in 1 2 3 4 5 6; do
+              linked=$(gh api "repos/$REPO/commits/$1/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main")] | length' 2>/dev/null || echo 0)
+              [ "${linked:-0}" -gt 0 ] 2>/dev/null && return 0
+              merged=$(gh api "repos/$REPO/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=30" --jq "[.[] | select(.merged_at != null and .merge_commit_sha == \"$1\")] | length" 2>/dev/null || echo 0)
+              [ "${merged:-0}" -gt 0 ] 2>/dev/null && return 0
+              [ "$try" -lt 6 ] && sleep "${WAIT:-10}"
+            done
+            return 1
+          }
+          # 1. The version the website was last published from: the newest github-pages deployment whose
+          #    latest status is "success". Fail closed: if GitHub cannot answer, or no such version is found
+          #    in the last 30 deployments, or it is not in main's history, nothing is published.
+          list=$(gh api "repos/$REPO/deployments?environment=github-pages&per_page=30" --jq '.[] | "\(.id) \(.sha)"') \
+            || stop "GitHub's deployment records could not be read, so the live version cannot be checked. Run the workflow again later."
+          BASE=""
+          while read -r id sha; do
+            [ -n "$id" ] || continue
+            state=$(gh api "repos/$REPO/deployments/$id/statuses?per_page=1" --jq '.[0].state // ""') \
+              || stop "A deployment status could not be read, so the live version cannot be checked. Run the workflow again later."
+            if [ "$state" = "success" ]; then BASE=$sha; break; fi
+          done <<< "$list"
+          [ -n "$BASE" ] || stop "No successfully published version was found in GitHub's deployment records."
+          git cat-file -e "$BASE^{commit}" 2>/dev/null || stop "The last published version ($BASE) is not in main's history."
+          echo "Last published version: $BASE"
+          # 2. Started by hand (Actions tab, Run workflow). Content and code from merged pull requests are
+          #    published as usual. Code changes that did not come through a merged pull request are published
+          #    only if the "Publish code without a pull request" box was ticked (input publish_unapproved_code,
+          #    default false); otherwise the run stops and lists them. The checks above always run first.
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            unapproved=""; details=""
+            for c
