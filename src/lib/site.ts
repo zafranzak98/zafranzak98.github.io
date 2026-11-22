@@ -41,9 +41,10 @@ export const colourOf = (p: Project) => colours.get(p.slug) ?? p.opening_colour
 export const openingOf = (p: Project) => OPENING[colourOf(p)]
 
 // Small text on Sage sits on the Light sage highlight for contrast (see .on-sage in styles.css).
-// AF-Binary is a deliberate exception at the owner's request (22 Nov 2026): on its band and its case
-// study opening the text sits directly on Sage (4.27:1). Every other project keeps the highlight.
-export const highlightOnSage = (p: Project) => colourOf(p) === 'Sage' && p.design !== 'about-face'
+// AF-Binary and Evoke are deliberate exceptions at the owner's request (22 Nov 2026): on their bands
+// and case study openings the text sits directly on Sage (4.27:1). Any other project keeps the highlight.
+const NO_SAGE_HIGHLIGHT = ['about-face', 'evoke']
+export const highlightOnSage = (p: Project) => colourOf(p) === 'Sage' && !NO_SAGE_HIGHLIGHT.includes(p.design ?? '')
 
 // The address a file in /public is served from. Keeps working if the site ever sits in a sub-folder.
 export const asset = (path?: string) => (path ? import.meta.env.BASE_URL.replace(/\/$/, '') + path : undefined)
