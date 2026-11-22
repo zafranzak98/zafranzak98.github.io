@@ -1,4 +1,5 @@
 import { defineCollection, defineConfig, defineSingleton } from '@content-collections/core'
+import { addressOf } from './src/lib/project-urls.js'
 import { z } from 'zod'
 
 // Preview builds (the test website) include drafts. Production builds leave them out
@@ -34,6 +35,8 @@ const projects = defineCollection({
     status: z.enum(['Draft', 'Published']),
     page_type: z.enum(['Full case study', 'Listed only']),
     category: z.string().min(1),
+    // Web address override from the editor. Empty means the address follows the title.
+    url: z.string().optional(),
     featured: z.boolean().optional(),
     homepage_label: z.string().max(70).optional(),
     order: z.number().optional(),
@@ -79,7 +82,8 @@ const projects = defineCollection({
   }),
   transform: (doc, { skip }) => {
     if (doc.status === 'Draft' && !PREVIEW) return skip('draft')
-    return { ...doc, slug: doc._meta.path }
+    // slug: the file name, the project's permanent internal ID. address: the last part of its URL.
+    return { ...doc, slug: doc._meta.path, address: addressOf(doc) }
   },
 })
 

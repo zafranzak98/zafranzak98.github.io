@@ -31,7 +31,7 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
   )
   if (!hasPage) return <article className={className} style={style}>{content}</article>
   return (
-    <Link to="/projects/$projectCat/$projectId/" params={{ projectCat: p.category, projectId: p.slug }} className={className} style={style}>
+    <Link to="/projects/$projectCat/$projectId/" params={{ projectCat: p.category, projectId: p.address }} className={className} style={style}>
       {content}
     </Link>
   )
