@@ -12,6 +12,7 @@ import matter from 'gray-matter'
 import { assignColours, FOOTER, listings, tooSimilar } from '../src/lib/project-colours.js'
 import { isPhoto, variantPath, widthsFor } from '../src/lib/image-variants.js'
 import sharp from 'sharp'
+import { mediaIn, publishedMedia } from './published-media.mjs'
 
 const PREVIEW = process.env.VITE_SITE_MODE === 'preview'
 const DIST = 'dist'
@@ -19,12 +20,6 @@ const errors = []
 const warnings = []
 const read = (dir) => readdirSync(dir).filter((f) => f.endsWith('.md')).map((f) => ({ slug: f.replace(/\.md$/, ''), ...matter(readFileSync(join(dir, f), 'utf8')).data }))
 const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]))
-const mediaIn = (value, out = new Set()) => {
-  if (typeof value === 'string') { if (value.startsWith('/media/') || value.startsWith('/files/')) out.add(value) }
-  else if (Array.isArray(value)) value.forEach((v) => mediaIn(v, out))
-  else if (value && typeof value === 'object') Object.values(value).forEach((v) => mediaIn(v, out))
-  return out
-}
 
 const projects = read('content/projects')
 const categories = read('content/categories')
@@ -118,7 +113,7 @@ for (const f of walk(DIST).filter((f) => f.endsWith('.html') && !f.startsWith(jo
 // Only files the content refers to are published. Deleting a project in the editor leaves its
 // images in the repository; they stay there (and in the editor's media library) but are never
 // put on the website.
-const keep = new Set([...live.flatMap((p) => [...mediaIn(p)]), ...mediaIn(about), ...(siteText.match(/\/(media|files)\/[^\s"']+/g) ?? [])])
+const keep = publishedMedia(PREVIEW)
 for (const folder of ['media', 'files'].map((d) => join(DIST, d)).filter(existsSync))
   for (const f of walk(folder)) {
     const path = `/${relative(DIST, f).split('\\').join('/')}`
