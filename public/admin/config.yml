@@ -130,7 +130,7 @@ collections:
         widget: number
         value_type: int
         required: false
-        hint: Lower numbers come first. Projects without a number come last, in alphabetical order.
+        hint: Lower numbers come first on category pages. On the All projects page, projects are shown newest Year first, and this number orders projects from the same year. Projects without a number come last, in alphabetical order.
 
       # ---- Opening
       - name: opening_colour
@@ -162,7 +162,7 @@ collections:
         options: [Individual project, Team project (lead), Team project (member), Freelance, University project, Personal project]
       - { name: type_detail, label: Project type detail, widget: string, required: false, hint: 'For example "team of five, student agency module".' }
       - { name: when, label: When, widget: string, hint: 'For example "Sep–Dec 2023".' }
-      - { name: year, label: Year, widget: number, value_type: int, required: false, hint: Used for sorting and on the homepage. }
+      - { name: year, label: Year, widget: number, value_type: int, required: false, hint: Sets the order on the All projects page (newest first) and shows on the homepage. }
       - { name: deliverables, label: Deliverables, widget: list, required: false, hint: One per line. }
       - { name: tools, label: Tools, widget: list, required: false, hint: One per line. }
 

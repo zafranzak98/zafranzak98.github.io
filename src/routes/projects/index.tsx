@@ -16,7 +16,7 @@ function Projects() {
         {site.projects_intro && <p className="listing-intro"><Rich text={site.projects_intro} /></p>}
         <CategoryIndex />
       </section>
-      <ProjectBands items={projects} />
+      <ProjectBands items={projects} all />
     </main>
   )
 }
