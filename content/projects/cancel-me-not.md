@@ -3,42 +3,41 @@ title: Cancel Me, Not!
 status: Published
 page_type: Full case study
 category: editorial
+summary: A research-led editorial and social campaign on cancel culture in fashion.
 featured: true
 homepage_label: Lead Creator, solo project
 order: 1
-design: cancel-me-not
-summary: A research-led editorial and social campaign on cancel culture in fashion.
 opening_colour: Olive
 cover:
-  image: /media/projects/cancel-me-not/cover.jpg
+  image: /media/projects/cancel-me-not/front-cover-ver-3.webp
   alt: Cancel Me, Not! booklet cover
 role: Lead Creator & Campaigner
 project_type: Individual project
-type_detail: final degree project
-when: Jan–Jun 2025
+type_detail: Final Degree Project
+when: Jan – Jun 2025
 year: 2025
 deliverables:
   - 44-page booklet
-  - postcards
-  - 54 social assets including Reels
-  - short film
+  - Postcards
+  - 54 Social assets including Reels
+  - Short Film
 tools:
-  - InDesign
-  - Photoshop
-  - Illustrator
-  - Premiere Pro
+  - Adobe InDesign
+  - Adobe Photoshop
+  - Adobe Illustrator
+  - Adobe Premiere Pro
 objective: Explore cancel culture in fashion through primary research, then turn the findings into an editorial publication and a social campaign.
-what_i_did: "Everything: research design and interviews, writing, booklet and postcard design, the social content plan and all 54 assets, and filming and editing the short film."
+what_i_did: Led **end-to-end project delivery**, including research and interviews, copywriting, booklet and postcard design, social media strategy and production of 54 content assets, alongside filming and editing a short film.
 research:
   stats:
-    - figure: "8"
+    - figure: '8'
       label: interviews
     - figure: 50+
       label: survey respondents
-    - figure: "[#]"
-      label: focus groups
-  text: "[The key insight from the research, in one or two sentences.]"
-  extra: "Handled a polarised topic carefully: no individuals or brands named or shamed, different viewpoints included, and expert interviewees offered a review of the final edit."
+    - figure: 4 Participants
+      label: Focus Group
+  text: '[The key insight from the research, in one or two sentences.]'
+  extra: Approached a sensitive and polarising topic with care, ensuring balanced representation of different viewpoints, avoiding the naming or shaming of individuals or brands, and offering expert interviewees the opportunity to review the final edit.
 key_piece:
   image: /media/projects/cancel-me-not/full.jpg
   alt: Booklet spreads
@@ -83,4 +82,5 @@ skills:
   - Publication design
   - Social content planning
   - Video editing
+design: cancel-me-not
 ---
