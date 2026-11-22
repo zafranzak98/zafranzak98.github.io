@@ -174,7 +174,7 @@ collections:
             required: false
             max: 4
             fields: &figure
-              - { name: figure, label: Figure, widget: string, hint: 'For example "50+" or "20%".' }
+              - { name: figure, label: Figure, widget: string, maxlength: 12, hint: 'The number or short value only, for example "50+", "20%" or "First-Class". Put any words in Label.' }
               - { name: label, label: Label, widget: string }
           - { name: text, label: What you found, widget: text, required: false }
           - { name: extra, label: More detail, widget: text, required: false }

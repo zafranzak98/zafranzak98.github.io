@@ -34,8 +34,8 @@ research:
       label: interviews
     - figure: 50+
       label: survey respondents
-    - figure: 4 Participants
-      label: Focus Group
+    - figure: '4'
+      label: focus group participants
   text: '[The key insight from the research, in one or two sentences.]'
   extra: Approached a sensitive and polarising topic with care, ensuring balanced representation of different viewpoints, avoiding the naming or shaming of individuals or brands, and offering expert interviewees the opportunity to review the final edit.
 key_piece:

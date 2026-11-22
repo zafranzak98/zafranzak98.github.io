@@ -45,10 +45,10 @@ function About() {
         <div className="ix-body ix-body-intro">
           <p className="about-statement"><Rich text={about.intro} /></p>
           {about.intro_more && <p className="about-more">{about.intro_more}</p>}
+          {about.languages?.length ? (
+            <p className="about-languages"><b>Languages</b><br />{about.languages.map((l, i) => <span key={l}>{i > 0 && <><br className="d-only" /><span className="m-only"> · </span></>}{l}</span>)}</p>
+          ) : null}
         </div>
-        {about.languages?.length ? (
-          <p className="about-languages"><b>Languages</b><br />{about.languages.map((l, i) => <span key={l}>{i > 0 && <><br className="d-only" /><span className="m-only"> · </span></>}{l}</span>)}</p>
-        ) : null}
       </section>
 
       {about.skills?.length ? (

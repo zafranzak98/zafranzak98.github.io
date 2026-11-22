@@ -1,5 +1,5 @@
 import { Link, createFileRoute, notFound } from '@tanstack/react-router'
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import CategoryIndex from '#/components/category-index'
 import Gallery from '#/components/gallery'
 import { Media, Phone } from '#/components/media'
@@ -117,7 +117,12 @@ function Sec({ id, n, title, children, wide }: { id: string; n: string; title: s
 
 const Figures = ({ items, big }: { items: { figure: string; label: string }[]; big?: boolean }) => (
   <div className={big ? 'figures figures-big' : 'figures'}>
-    {items.map((f, i) => <div key={i}><b className="c">{f.figure}</b><span>{f.label}</span></div>)}
+    {items.map((f, i) => (
+      <div key={i}>
+        <b className="c" style={{ '--chars': Math.max(3, [...f.figure].length) } as CSSProperties}>{f.figure}</b>
+        <span>{f.label}</span>
+      </div>
+    ))}
   </div>
 )
 
@@ -169,7 +174,8 @@ function CaseStudy() {
       </section>
 
       <section className="facts">
-        {facts.map(([k, v]) => <div key={k}><span className="lab">{k}</span><span className="fact-val">{v}</span></div>)}
+        {facts.slice(0, 1).map(([k, v]) => <div key={k}><span className="lab">{k}</span><span className="fact-val">{v}</span></div>)}
+        <div className="facts-rest">{facts.slice(1).map(([k, v]) => <div key={k}><span className="lab">{k}</span><span className="fact-val">{v}</span></div>)}</div>
       </section>
 
       <nav aria-label="On this page" className="secnav c">
@@ -204,7 +210,7 @@ function CaseStudy() {
         <Gallery key={p.slug} images={p.gallery} note={p.gallery_note} />
       </Sec>
 
-      <Sec id="outcomes" n="04" title="Outcomes" wide>
+      <Sec id="outcomes" n="04" title="Outcomes">
         {p.results_label && <span className="lab">{p.results_label}</span>}
         {p.results?.length ? <Figures items={p.results} big /> : null}
         {p.outcome_note && <p className="body-text outcome-note">{p.outcome_note}</p>}
