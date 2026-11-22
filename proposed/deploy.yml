@@ -1,0 +1,120 @@
+# Test site: builds the website from its content, checks it, and publishes the
+# preview version (drafts shown) to zafranzak98.github.io.
+# A production build also runs and must pass: it proves drafts are excluded.
+#
+# Build guard: a push to main is published only if it changes content alone (content/,
+# public/media/, public/files/), which is all the website editor can change, or if it is a pull
+# request the site owner merged. Any other change stops here, before the build, and the website
+# stays as it was. Running the workflow by hand from GitHub (workflow_dispatch) is allowed.
+name: Build and deploy test site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Allow content changes and merged pull requests only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "workflow_dispatch" ]; then echo "Started by hand: allowed."; exit 0; fi
+          # A merged pull request: GitHub links the commit on main to the pull request.
+          merged=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main")] | length')
+          if [ "$merged" -gt 0 ]; then echo "From a merged pull request: allowed."; exit 0; fi
+          # Otherwise every changed file must be content. If the earlier commit is unknown, block.
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "::error::Not published: cannot tell what this push changed. Merge it through a pull request." ; exit 1
+          fi
+          other=$(git diff --name-only "$BEFORE" "${{ github.sha }}" | grep -vE '^(content/|public/media/|public/files/)' || true)
+          if [ -n "$other" ]; then
+            {
+              echo "### Not published: this push changes more than content"
+              echo "Changes outside content/, public/media/ and public/files/ must come through a merged pull request."
+              echo '```'; echo "$other"; echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Not published: files outside content were changed without a pull request: $(echo $other | tr '\n' ' ')"
+            exit 1
+          fi
+          echo "Content only: allowed."
+
+  build:
+    needs: guard
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - name: Production build and checks (drafts must be excluded)
+        run: bun run build
+      - name: Preview build for the test site (drafts shown)
+        id: preview
+        run: rm -rf dist .content-collections && bun run build:preview
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Email a warning if a size limit is getting close, and close it once fixed
+        uses: actions/github-script@v7
+        env:
+          WARNINGS: ${{ steps.preview.outputs.warnings }}
+        with:
+          script: |
+            // One open issue holds the warnings. A build adds a comment only when the warnings
+            // change, so an unresolved problem is not repeated on every save. When a build has no
+            // warnings, the issue is closed with a note saying so.
+            const title = 'Website size warning'
+            const warnings = (process.env.WARNINGS || '').trim()
+            const open = await github.rest.issues.listForRepo({ ...context.repo, state: 'open', per_page: 100 })
+            const existing = open.data.find(i => i.title === title && !i.pull_request)
+            const body = warnings + '\n\nFrom build ' + context.runId + '.'
+            if (!existing) {
+              if (warnings) await github.rest.issues.create({ ...context.repo, title, body })
+              return
+            }
+            if (!warnings) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body: 'Build ' + context.runId + ' has no size warnings, so this is resolved.' })
+              await github.rest.issues.update({ ...context.repo, issue_number: existing.number, state: 'closed' })
+              return
+            }
+            const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: existing.number, per_page: 100 })
+            const latest = (comments.length ? comments[comments.length - 1].body : existing.body) || ''
+            if (latest.split('\n\nFrom build')[0].trim() !== warnings) await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body })
+
+  deploy:
+    needs: [guard, build]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
