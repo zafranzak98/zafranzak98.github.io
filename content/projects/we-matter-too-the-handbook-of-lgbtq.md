@@ -5,7 +5,7 @@ page_type: Full case study
 category: editorial
 summary: Researched LGBTQ+ influence on the fashion industry, exploring trends, gender norms and inclusivity. Translated findings into an editorial zine highlighting influential figures and cultural milestones.
 featured: false
-opening_colour: Sage
+opening_colour: Off-white
 role: Researcher & Creative Director
 project_type: University project
 type_detail: Fashion Research, Editorial Design & Zine Publication
