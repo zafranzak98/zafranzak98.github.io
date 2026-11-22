@@ -11,20 +11,22 @@ opening_colour: Terracotta
 cover:
   image: /media/projects/about-face-beauty/brand-proposal-cover-art.webp
   alt: AF-Binary cover artwork, a blurred face in purple and pale pink with AF-Binary scrawled in black
-role: '[Your role]'
+role: Creative Designer & AR Filter Developer
 project_type: University project
-type_detail: AF-Binary, speculative proposal
+type_detail: Brand collaboration & speculative proposal with About-Face Beauty
 when: Jan–Apr 2024
 year: 2024
 deliverables:
   - 3 Instagram AR makeup filters
 tools:
   - Meta Spark AR
-objective: Propose a collaboration with About-Face Beauty, supporting its SS25 "Beyond Binary" trend. A university project, not commissioned by the brand.
-what_i_did: Designed and built three Instagram AR makeup filters in Meta Spark AR. [Add the proposal work you led, and whether it was solo or team work.]
-what_team_did: '[If this was a team project, what the team produced.]'
+  - Adobe Photoshop
+  - Adobe Illustrator
+  - Adobe InDesign
+objective: To propose a **creative collaboration with About-Face Beauty**, aligning with the **Spring/Summer 25 "Beyond Binary" trend** through **inclusive beauty concepts and interactive AR experiences**. An **independent university project**, not commissioned by the brand.
+what_i_did: Developed an individual creative collaboration proposal for About-Face Beauty, designing three Instagram AR makeup filters. Created initial filter layouts in Adobe Photoshop using Meta Spark AR templates, then built the interactive experiences in Meta Spark AR.
 research:
-  text: '[How the "Beyond Binary" trend shaped the filter concepts.]'
+  text: Explored how the "Beyond Binary" trend challenged traditional beauty norms, informing inclusive filter concepts that embraced self-expression, individuality and gender fluidity.
 supporting:
   - alt: AR filter on a face
     caption: Filter 01
@@ -32,15 +34,13 @@ supporting:
     caption: Filter 02
   - alt: AR filter on a face
     caption: Filter 03
-supporting_note: Screen recordings of each filter would play here
 results:
   - figure: '3'
     label: AR filters built
-outcome_note: '[Grade or feedback, if you want to share it.]'
 skills:
-  - Trend-led concepting
-  - AR filter design
+  - Trend-Led Concepting
+  - AR-Filter Design
   - Digital content
-  - Brand collaboration proposal
+  - Brand Collaboration Proposal
 design: about-face
 ---
