@@ -3,7 +3,7 @@ title: 'We Matter Too: The Handbook of LGBTQ+'
 status: Published
 page_type: Full case study
 category: editorial
-summary: We matter too
+summary: Researched LGBTQ+ influence on the fashion industry, exploring trends, gender norms and inclusivity. Translated findings into an editorial zine highlighting influential figures and cultural milestones.
 featured: false
 opening_colour: Sage
 role: Researcher & Creative Director
