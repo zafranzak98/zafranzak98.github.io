@@ -135,11 +135,13 @@ if (!PREVIEW) {
 // hash, so the browser refuses a file that differs from the one built here.
 const CMS = 'node_modules/@sveltia/cms/dist'
 const ADMIN = join(DIST, 'admin')
+const CMS_VERSION = JSON.parse(readFileSync('node_modules/@sveltia/cms/package.json', 'utf8')).version
 cpSync(CMS, ADMIN, { recursive: true, filter: (f) => !/\.(map|mjs)$/.test(f) })
 const integrity = `sha384-${createHash('sha384').update(readFileSync(join(CMS, 'sveltia-cms.js'))).digest('base64')}`
 // The editor holds a GitHub sign-in, so the page may only run code from this site and talk to
-// GitHub. Also allowed: the editor's fonts (jsDelivr), GitHub's status page and the editor's
-// version number (data only). Extra code the editor would fetch from unpkg.com is refused.
+// GitHub. Also allowed, as data only: the editor's fonts (jsDelivr), GitHub's status page, and
+// the editor's version number and interface wording for its pinned version (unpkg.com).
+// Extra code the editor would fetch from unpkg.com is refused.
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
@@ -147,7 +149,7 @@ const CSP = [
   "font-src 'self' https://cdn.jsdelivr.net",
   "img-src 'self' blob: data: https://*.githubusercontent.com",
   "media-src 'self' blob: https://*.githubusercontent.com",
-  "connect-src 'self' blob: data: https://api.github.com https://*.githubusercontent.com https://www.githubstatus.com https://unpkg.com/@sveltia/cms/package.json",
+  `connect-src 'self' blob: data: https://api.github.com https://*.githubusercontent.com https://www.githubstatus.com https://unpkg.com/@sveltia/cms/package.json https://unpkg.com/@sveltia/cms@${CMS_VERSION}/locales/`,
   "worker-src 'self' blob:",
   "frame-src 'self' blob:",
   "object-src 'none'",
