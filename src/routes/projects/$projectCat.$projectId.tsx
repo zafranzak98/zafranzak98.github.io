@@ -179,7 +179,7 @@ function CaseStudy() {
   }, [p.slug])
 
   return (
-    <main id="main" className="case">
+    <main id="main" className={`case case-${p.design ?? 'standard'}`}>
       <div className="cs-index"><CategoryIndex /></div>
       <section className={highlightOnSage(p) ? 'cs-open on-sage' : 'cs-open'} style={{ background: o.bg, color: o.fg }}>
         <div className="cs-open-grid">
