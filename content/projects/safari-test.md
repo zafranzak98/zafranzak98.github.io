@@ -3,7 +3,7 @@ title: Safari Test
 status: Draft
 page_type: Full case study
 category: editorial
-summary: Test
+summary: Testing *bold words* here
 featured: false
 opening_colour: Olive
 cover:
@@ -11,4 +11,5 @@ cover:
 role: Test
 project_type: Team project (member)
 when: '2026'
+objective: A **highlighted phrase** and a *bold phrase*
 ---
