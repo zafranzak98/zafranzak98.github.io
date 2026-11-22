@@ -1,0 +1,351 @@
+# Website editor (Sveltia CMS). The field names and allowed values here must match
+# content-collections.ts: the build checks every saved file against that schema and
+# stops, leaving the website as it was, if anything does not fit.
+
+backend:
+  name: github
+  repo: zafranzak98/zafranzak98.github.io
+  branch: main
+  # Sign in with a fine-grained personal access token only. No OAuth server needed.
+  auth_methods: [token]
+  commit_messages:
+    create: 'Website editor: add {{collection}} "{{slug}}"'
+    update: 'Website editor: update {{collection}} "{{slug}}"'
+    delete: 'Website editor: delete {{collection}} "{{slug}}"'
+    uploadMedia: 'Website editor: upload "{{path}}"'
+    deleteMedia: 'Website editor: delete "{{path}}"'
+
+app_title: Website editor · Zafran Zakaria
+logo:
+  src: /apple-touch-icon.png
+show_preview_links: true
+site_url: https://zafranzak98.github.io
+display_url: https://zafranzak98.github.io
+
+media_folder: public/media
+public_folder: /media
+media_libraries:
+  default:
+    config:
+      max_file_size: 26214400
+      slugify_filename: true
+      # Photos are converted to WebP and scaled down to 2400px wide when uploaded,
+      # so a phone photo or an export at full size never slows the website down.
+      transformations:
+        raster_image:
+          format: webp
+          quality: 85
+          width: 2400
+
+# Web addresses use plain letters, numbers and hyphens only.
+slug:
+  encoding: ascii
+
+output:
+  omit_empty_optional_fields: true
+
+collections:
+  - name: projects
+    label: Projects
+    label_singular: Project
+    description: >-
+      Every project on the website. Drafts appear only on this test website, never on
+      zafranzakaria.com. Changes go live about two minutes after you press Save.
+    folder: content/projects
+    extension: md
+    format: frontmatter
+    create: true
+    delete: true
+    slug: '{{title}}'
+    identifier_field: title
+    summary: '{{title}} · {{status}} · {{page_type}}'
+    media_folder: '/public/media/projects/{{slug}}'
+    public_folder: '/media/projects/{{slug}}'
+    sortable_fields: [title, order, status, year]
+    view_groups:
+      - { name: status, label: Status, field: status }
+      - { name: category, label: Category, field: category }
+    view_filters:
+      - { name: drafts, label: Drafts, field: status, pattern: Draft }
+      - { name: published, label: Published, field: status, pattern: Published }
+    thumbnail: cover.image
+    fields:
+      # ---- Basics
+      - name: title
+        label: Title
+        widget: string
+        maxlength: 60
+        hint: The project name. A new project's web address is made from this title when it is first saved.
+      - name: status
+        label: Status
+        widget: select
+        options: [Draft, Published]
+        default: Draft
+        hint: Draft shows the project on this test website only. Published also puts it on zafranzakaria.com.
+      - name: page_type
+        label: Page type
+        widget: select
+        options: [Full case study, Listed only]
+        default: Full case study
+        hint: A full case study has its own page. Listed only appears in the project lists without a page.
+      - name: category
+        label: Category
+        widget: relation
+        collection: categories
+        value_field: '{{slug}}'
+        search_fields: [name]
+        display_fields: [name]
+      - name: summary
+        label: Summary
+        widget: text
+        maxlength: 220
+        hint: One or two sentences shown in project lists and at the top of the page.
+
+      # ---- Homepage and order
+      - name: featured
+        label: Show on the homepage
+        widget: boolean
+        default: false
+        required: false
+        hint: Only full case studies can appear on the homepage.
+      - name: homepage_label
+        label: Homepage line
+        widget: string
+        maxlength: 70
+        required: false
+        hint: Short line under the title on the homepage, for example "Team Leader, student agency". Leave empty to use your role.
+      - name: order
+        label: Order
+        widget: number
+        value_type: int
+        required: false
+        hint: Lower numbers come first. Projects without a number come last, in alphabetical order.
+
+      # ---- Opening
+      - name: opening_colour
+        label: Opening colour
+        widget: select
+        options: [Olive, Sage, Light sage, Off-white, Terracotta, Ink]
+        default: Olive
+        hint: Background colour of the project's opening section.
+      - name: cover
+        label: Cover image
+        widget: object
+        required: false
+        collapsed: auto
+        fields: &image
+          - { name: image, label: Image, widget: image, required: false }
+          - { name: alt, label: Image description, widget: string, required: false, hint: Describe the image for people who cannot see it. }
+          - { name: caption, label: Caption, widget: string, required: false }
+      - name: cover_before
+        label: Before image
+        widget: object
+        required: false
+        collapsed: true
+        hint: For rebrands only. Shown beside the cover as the "before".
+        fields: *image
+
+      # ---- Project facts
+      - { name: role, label: Your role, widget: string, maxlength: 60 }
+      - name: project_type
+        label: Project type
+        widget: select
+        options: [Individual project, Team project (lead), Team project (member), Freelance, University project, Personal project]
+      - { name: type_detail, label: Project type detail, widget: string, required: false, hint: 'For example "team of five, student agency module".' }
+      - { name: when, label: When, widget: string, hint: 'For example "Sep–Dec 2023".' }
+      - { name: year, label: Year, widget: number, value_type: int, required: false, hint: Used for sorting and on the homepage. }
+      - { name: deliverables, label: Deliverables, widget: list, required: false, hint: One per line. }
+      - { name: tools, label: Tools, widget: list, required: false, hint: One per line. }
+
+      # ---- The story
+      - { name: objective, label: Objective, widget: text, required: false, hint: 'Wrap words in **double asterisks** to highlight them.' }
+      - { name: what_i_did, label: What I did, widget: text, required: false, hint: 'Wrap words in **double asterisks** to highlight them.' }
+      - { name: what_team_did, label: What the team delivered, widget: text, required: false, hint: For team projects. }
+      - name: research
+        label: Research
+        widget: object
+        required: false
+        collapsed: auto
+        fields:
+          - name: stats
+            label: Research figures
+            widget: list
+            required: false
+            max: 4
+            fields: &figure
+              - { name: figure, label: Figure, widget: string, hint: 'For example "50+" or "20%".' }
+              - { name: label, label: Label, widget: string }
+          - { name: text, label: What you found, widget: text, required: false }
+          - { name: extra, label: More detail, widget: text, required: false }
+          - { name: moodboard, label: Moodboard, widget: object, required: false, collapsed: true, fields: *image }
+
+      # ---- The work
+      - { name: key_piece, label: Key piece, widget: object, required: false, collapsed: auto, hint: The main image of the work., fields: *image }
+      - name: supporting
+        label: Supporting images
+        widget: list
+        required: false
+        max: 3
+        collapsed: true
+        fields: *image
+      - { name: supporting_note, label: Supporting images note, widget: string, required: false }
+      - name: film
+        label: Film
+        widget: object
+        required: false
+        collapsed: true
+        fields:
+          - { name: url, label: Video link, widget: string, required: false, hint: A YouTube or Vimeo link. }
+          - { name: caption, label: Caption, widget: string, required: false }
+      - name: context
+        label: In context
+        widget: object
+        required: false
+        collapsed: true
+        hint: An image of the work in use, with a short note.
+        fields:
+          - { name: image, label: Image, widget: image, required: false }
+          - { name: alt, label: Image description, widget: string, required: false }
+          - { name: text, label: Note, widget: text, required: false }
+      - name: gallery
+        label: Gallery
+        widget: list
+        required: false
+        collapsed: true
+        hint: Drag to reorder.
+        fields: *image
+      - { name: gallery_note, label: Gallery note, widget: string, required: false }
+
+      # ---- Results
+      - { name: results_label, label: Results heading, widget: string, required: false }
+      - { name: results, label: Results, widget: list, required: false, max: 4, fields: *figure }
+      - { name: outcome_note, label: Outcome note, widget: text, required: false }
+      - { name: skills, label: Skills shown, widget: list, required: false, hint: One per line. }
+      - name: link
+        label: External link
+        widget: object
+        required: false
+        collapsed: true
+        fields:
+          - { name: label, label: Link text, widget: string }
+          - { name: url, label: Web address, widget: string, type: url }
+
+      # ---- Search and sharing
+      - name: seo
+        label: Search and sharing (optional)
+        widget: object
+        required: false
+        collapsed: true
+        hint: Leave empty to use the title, summary and cover image automatically.
+        fields:
+          - { name: title, label: Page title in search results, widget: string, required: false, maxlength: 60, hint: Defaults to the project title. }
+          - { name: description, label: Description in search results, widget: text, required: false, maxlength: 160, hint: Defaults to the summary. }
+          - { name: image, label: Image when shared, widget: image, required: false, hint: 'Defaults to the cover image. Shown when the page is shared on LinkedIn, WhatsApp and similar.' }
+
+      # Chosen with Zafran's approval only: selects a bespoke page design. Kept as it is when you edit.
+      - { name: design, widget: hidden }
+
+  - name: categories
+    label: Categories
+    label_singular: Category
+    description: Groups of projects, each with its own page. To remove one, ask for help, so no project is left without a category.
+    folder: content/categories
+    extension: md
+    format: frontmatter
+    create: true
+    delete: false
+    slug: '{{name}}'
+    identifier_field: name
+    sortable_fields: [name, order]
+    fields:
+      - { name: name, label: Name, widget: string, maxlength: 40 }
+      - { name: intro, label: Introduction, widget: text, required: false }
+      - { name: order, label: Order, widget: number, value_type: int, required: false, hint: Lower numbers come first. }
+
+  - name: pages
+    label: About and site settings
+    files:
+      - name: about
+        label: About page
+        file: content/about.md
+        format: frontmatter
+        media_folder: /public/media/about
+        public_folder: /media/about
+        fields:
+          - { name: intro, label: Introduction, widget: text, hint: 'Wrap words in **double asterisks** to highlight them.' }
+          - { name: intro_more, label: More about you, widget: text, required: false }
+          - { name: languages, label: Languages, widget: list, required: false }
+          - name: portrait
+            label: Portrait
+            widget: object
+            required: false
+            fields:
+              - { name: image, label: Image, widget: image, required: false }
+              - { name: alt, label: Image description, widget: string, required: false }
+          - { name: portrait_caption, label: Portrait caption, widget: string, required: false }
+          - name: skills
+            label: Skills
+            widget: list
+            required: false
+            summary: '{{fields.title}}'
+            fields:
+              - { name: title, label: Skill, widget: string }
+              - { name: text, label: Description, widget: text, required: false }
+          - name: education
+            label: Education
+            widget: list
+            required: false
+            summary: '{{fields.qualification}} {{fields.course}}'
+            fields:
+              - { name: qualification, label: Qualification, widget: string }
+              - { name: course, label: Course, widget: string, required: false }
+              - { name: institution, label: Institution, widget: string, required: false }
+              - { name: years, label: Years, widget: string, required: false }
+              - { name: result, label: Result, widget: string, required: false }
+              - { name: note, label: Note, widget: text, required: false }
+          - name: experience
+            label: Experience
+            widget: list
+            required: false
+            summary: '{{fields.years}} · {{fields.role}}'
+            fields:
+              - { name: years, label: Years, widget: string }
+              - { name: role, label: Role, widget: string }
+              - { name: organisation, label: Organisation, widget: string, required: false }
+              - { name: note, label: Note, widget: string, required: false }
+
+      - name: site
+        label: Site settings
+        file: content/site.yml
+        format: yaml
+        fields:
+          - { name: site_title, label: Website title, widget: string, hint: Shown in the browser tab on the homepage. }
+          - { name: name, label: Your name, widget: string }
+          - { name: home_intro, label: Homepage introduction, widget: text, hint: 'Wrap words in **double asterisks** to highlight them.' }
+          - name: areas_of_focus
+            label: Areas of focus
+            widget: list
+            summary: '{{fields.label}}'
+            fields:
+              - { name: label, label: Label, widget: string }
+              - name: category
+                label: Links to category
+                widget: relation
+                required: false
+                collection: categories
+                value_field: '{{slug}}'
+                search_fields: [name]
+                display_fields: [name]
+          - { name: projects_intro, label: Projects page introduction, widget: text, required: false }
+          - name: cv
+            label: CV (PDF)
+            widget: file
+            required: false
+            accept: application/pdf
+            media_folder: /public/files
+            public_folder: /files
+          - { name: email, label: Email, widget: string, type: email }
+          - { name: instagram, label: Instagram link, widget: string, type: url, required: false }
+          - { name: linkedin, label: LinkedIn link, widget: string, type: url, required: false }
+          - { name: credit_name, label: Website credit name, widget: string, required: false }
+          - { name: credit_url, label: Website credit link, widget: string, type: url, required: false }

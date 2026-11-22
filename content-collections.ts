@@ -71,6 +71,10 @@ const projects = defineCollection({
     outcome_note: z.string().optional(),
     skills: z.array(z.string()).optional(),
     link: z.object({ label: z.string(), url: z.string() }).optional(),
+    // Search and sharing. Each one falls back to the title, summary or cover image when empty.
+    seo: z
+      .object({ title: z.string().max(60).optional(), description: z.string().max(160).optional(), image: z.string().optional() })
+      .optional(),
   }),
   transform: (doc, { skip }) => {
     if (doc.status === 'Draft' && !PREVIEW) return skip('draft')

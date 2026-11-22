@@ -123,7 +123,7 @@ const Figures = ({ items, big }: { items: { figure: string; label: string }[]; b
 
 function CaseStudy() {
   const { project: p } = Route.useLoaderData()
-  useTitle(p.title)
+  useTitle(p.seo?.title ?? p.title)
   const idx = caseStudies.findIndex((x) => x.slug === p.slug)
   const prev = caseStudies[(idx - 1 + caseStudies.length) % caseStudies.length]
   const next = caseStudies[(idx + 1) % caseStudies.length]

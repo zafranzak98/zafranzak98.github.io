@@ -28,7 +28,18 @@ Original build by Liana. Redesign, content model and build checks added in 2026.
 - **Highlights.** In the homepage and About intros, text wrapped in `**double asterisks**` is shown with the light-sage highlight.
 - **Missing images** show a labelled placeholder rather than breaking the layout.
 - **Addresses.** Every page address ends in a slash (`/about/`), matching the folders GitHub Pages serves, and each page names its production address on zafranzakaria.com as canonical. Drafts and the 404 page name none. The build checks this on every page.
+- **Search and sharing.** Each project can set its own page title, search description and sharing image (`seo`). Empty fields fall back to the title, summary and cover image. Every page gets Open Graph tags for link previews.
 - **Search engines.** Preview builds (the test site) tell search engines not to index any page. The site is still public; this only keeps drafts and placeholder text out of search results. Production builds carry no such tag, and the build fails if either rule is broken.
+
+## Website editor
+
+Content is edited at `/admin` with [Sveltia CMS](https://sveltiacms.app), which saves straight to the `main` branch through GitHub. Each save starts a normal build and deploy.
+
+- **Settings.** `public/admin/config.yml` lists every field in plain English. It must match `content-collections.ts`.
+- **Sign-in.** A fine-grained GitHub token, limited to this repository with Contents read and write, entered by the site owner in the editor. It is kept in that browser only.
+- **Version.** `@sveltia/cms` is pinned to an exact version in `package.json`. The build copies it into `dist/admin` from `node_modules`, and the page loads it with an integrity hash and a content security policy that blocks code from other sites.
+- **Uploads.** Images are converted to WebP at quality 85 and at most 2400px wide, in browsers that can encode WebP. Project images go to `public/media/projects/<project>/`.
+- **Saving to `main`.** Before merging `dev` into `main`, bring in the editor's commits first: `git fetch && git checkout dev && git merge origin/main`.
 
 ## Styling
 

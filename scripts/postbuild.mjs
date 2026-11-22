@@ -1,7 +1,10 @@
-// Runs after "vite build". Three jobs:
-// 1. Give every real page its own index.html, so direct links answer "200 OK" instead of "404".
+// Runs after "vite build". Four jobs:
+// 1. Give every real page its own index.html, with its title, description and sharing tags,
+//    so direct links answer "200 OK" instead of "404".
 // 2. In production mode, remove media used only by drafts, then fail if any draft content remains.
-// 3. Check the content and report sizes against GitHub's limits.
+// 3. Add the website editor at /admin.
+// 4. Check the content and report sizes against GitHub's limits.
+import { createHash } from 'node:crypto'
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync, appendFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { execSync } from 'node:child_process'
@@ -24,7 +27,8 @@ const projects = read('content/projects')
 const categories = read('content/categories')
 const about = matter(readFileSync('content/about.md', 'utf8')).data
 const siteText = readFileSync('content/site.yml', 'utf8')
-const siteName = siteText.match(/^name: *(.+)$/m)?.[1].trim() ?? ''
+const site = matter(`---\n${siteText}\n---\n`).data
+const siteName = site.name ?? ''
 const catSlugs = new Set(categories.map((c) => c.slug))
 const live = projects.filter((p) => PREVIEW || p.status !== 'Draft')
 const drafts = projects.filter((p) => p.status === 'Draft')
@@ -48,30 +52,56 @@ if (PREVIEW && !shell.includes(NOINDEX)) writeFileSync(join(DIST, 'index.html'),
 // Every page names its production address as canonical, on the test site too, so search engines
 // only ever treat zafranzakaria.com as the real address. Drafts have no production address, so none.
 const PRODUCTION_URL = 'https://zafranzakaria.com'
-const canonical = (path) => `<link rel="canonical" href="${PRODUCTION_URL}/${path ? `${path}/` : ''}" />`
-const html = readFileSync(join(DIST, 'index.html'), 'utf8').replace(/\s*<link rel="canonical"[^>]*>/g, '')
+const address = (path) => `${PRODUCTION_URL}/${path ? `${path}/` : ''}`
+const canonical = (path) => `<link rel="canonical" href="${address(path)}" />`
+// Shared links need full image addresses: the test site's own while testing, the real one in production.
+const ORIGIN = PREVIEW ? 'https://zafranzak98.github.io' : PRODUCTION_URL
+const esc = (text) => String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const plain = (text) => text?.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim()
+const html = readFileSync(join(DIST, 'index.html'), 'utf8')
+  .replace(/\s*<link rel="canonical"[^>]*>/g, '')
+  .replace(/<title>.*?<\/title>/, `<title>${esc(site.site_title)}</title>`)
 writeFileSync(join(DIST, '404.html'), html)
+const DESCRIPTION = /<meta name="description" content="([^"]*)" \/>/
+const defaultDescription = html.match(DESCRIPTION)[1]
 const expected = new Map([['index.html', canonical('')]])
-const withHead = (path, title, isDraft) => {
-  let out = html
-  if (title) out = out.replace(/<title>.*?<\/title>/, `<title>${`${title} · ${siteName}`.replace(/&/g, '&amp;')}</title>`)
-  if (!isDraft) out = out.replace('  </head>', `    ${canonical(path)}\n  </head>`)
-  return out
+const withHead = (path, { title, description, image } = {}, isDraft = false) => {
+  const fullTitle = esc(title ? `${title} · ${siteName}` : site.site_title)
+  const text = description ? esc(description) : defaultDescription
+  const tags = [
+    `<meta property="og:type" content="website" />`,
+    `<meta property="og:site_name" content="${esc(siteName)}" />`,
+    `<meta property="og:title" content="${fullTitle}" />`,
+    `<meta property="og:description" content="${text}" />`,
+    ...(isDraft ? [] : [`<meta property="og:url" content="${address(path)}" />`, canonical(path)]),
+    ...(image ? [`<meta property="og:image" content="${ORIGIN}${encodeURI(image)}" />`, `<meta name="twitter:card" content="summary_large_image" />`] : []),
+  ]
+  return html
+    .replace(/<title>.*?<\/title>/, `<title>${fullTitle}</title>`)
+    .replace(DESCRIPTION, `<meta name="description" content="${text}" />`)
+    .replace('  </head>', `${tags.map((t) => `    ${t}\n`).join('')}  </head>`)
 }
-const page = (path, title, isDraft = false) => {
+const page = (path, meta, isDraft = false) => {
   mkdirSync(join(DIST, path), { recursive: true })
-  writeFileSync(join(DIST, path, 'index.html'), withHead(path, title, isDraft))
+  writeFileSync(join(DIST, path, 'index.html'), withHead(path, meta, isDraft))
   if (!isDraft) expected.set(join(path, 'index.html'), canonical(path))
 }
-writeFileSync(join(DIST, 'index.html'), withHead('', null, false))
-page('about', 'About')
-page('projects', 'Projects')
+writeFileSync(join(DIST, 'index.html'), withHead(''))
+page('about', { title: 'About' })
+page('projects', { title: 'Projects' })
 const usedCats = new Set(live.map((p) => p.category))
 const draftOnly = (slug) => !live.some((p) => p.category === slug && p.status !== 'Draft')
-for (const c of categories) if (usedCats.has(c.slug)) page(`projects/${c.slug}`, c.name, draftOnly(c.slug))
-for (const p of live) if (p.page_type === 'Full case study') page(`projects/${p.category}/${p.slug}`, p.title, p.status === 'Draft')
+for (const c of categories) if (usedCats.has(c.slug)) page(`projects/${c.slug}`, { title: c.name }, draftOnly(c.slug))
+// A project's search and sharing details fall back to its title, summary and cover image.
+for (const p of live) if (p.page_type === 'Full case study')
+  page(`projects/${p.category}/${p.slug}`, {
+    title: p.seo?.title || p.title,
+    description: plain(p.seo?.description || p.summary),
+    image: p.seo?.image || p.cover?.image,
+  }, p.status === 'Draft')
 
-for (const f of walk(DIST).filter((f) => f.endsWith('.html'))) {
+// The editor page at /admin is added later and checked on its own.
+for (const f of walk(DIST).filter((f) => f.endsWith('.html') && !f.startsWith(join(DIST, 'admin')))) {
   const tagged = readFileSync(f, 'utf8').includes(NOINDEX)
   if (PREVIEW && !tagged) errors.push(`Test site page is missing its noindex tag: ${relative(DIST, f)}`)
   if (!PREVIEW && tagged) errors.push(`Production page must not carry a noindex tag: ${relative(DIST, f)}`)
@@ -89,7 +119,7 @@ if (!PREVIEW) {
   // Remove folders left empty, so not even a draft's folder name is published.
   const prune = (dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) if (e.isDirectory()) prune(join(dir, e.name)); if (dir !== DIST && !readdirSync(dir).length) rmSync(dir, { recursive: true }) }
   prune(DIST)
-  const built = walk(DIST).filter((f) => /\.(html|js|css|json|txt|xml)$/.test(f)).map((f) => [f, readFileSync(f, 'utf8')])
+  const built = walk(DIST).filter((f) => /\.(html|js|css|json|txt|xml)$/.test(f) && !f.startsWith(join(DIST, 'admin'))).map((f) => [f, readFileSync(f, 'utf8')])
   for (const d of drafts) {
     for (const needle of [d.title, `/${d.slug}`, ...draftOnly].filter(Boolean)) {
       const hit = built.find(([, text]) => text.includes(needle))
@@ -99,7 +129,49 @@ if (!PREVIEW) {
   }
 }
 
-// ---- 3. sizes
+// ---- 3. the website editor (Sveltia CMS) at /admin
+// Served from this website rather than a third-party CDN, at the exact version pinned in
+// package.json (its download is checked against bun.lock). The page loads it with an integrity
+// hash, so the browser refuses a file that differs from the one built here.
+const CMS = 'node_modules/@sveltia/cms/dist'
+const ADMIN = join(DIST, 'admin')
+cpSync(CMS, ADMIN, { recursive: true, filter: (f) => !/\.(map|mjs)$/.test(f) })
+const integrity = `sha384-${createHash('sha384').update(readFileSync(join(CMS, 'sveltia-cms.js'))).digest('base64')}`
+// The editor holds a GitHub sign-in, so the page may only run code from this site and talk to
+// GitHub. Also allowed: the editor's fonts (jsDelivr), GitHub's status page and the editor's
+// version number (data only). Extra code the editor would fetch from unpkg.com is refused.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+  "font-src 'self' https://cdn.jsdelivr.net",
+  "img-src 'self' blob: data: https://*.githubusercontent.com",
+  "media-src 'self' blob: https://*.githubusercontent.com",
+  "connect-src 'self' blob: data: https://api.github.com https://*.githubusercontent.com https://www.githubstatus.com https://unpkg.com/@sveltia/cms/package.json",
+  "worker-src 'self' blob:",
+  "frame-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'none'",
+].join('; ')
+writeFileSync(join(ADMIN, 'index.html'), `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    ${NOINDEX}
+    <meta http-equiv="Content-Security-Policy" content="${CSP}" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Website editor · ${esc(siteName)}</title>
+  </head>
+  <body>
+    <script src="/admin/sveltia-cms.js" integrity="${integrity}" crossorigin="anonymous"></script>
+  </body>
+</html>
+`)
+if (!existsSync(join(ADMIN, 'config.yml'))) errors.push('The website editor is missing its settings: admin/config.yml')
+
+// ---- 4. sizes
 const MB = 1024 * 1024
 const size = (dir) => walk(dir).reduce((n, f) => n + statSync(f).size, 0)
 const siteSize = size(DIST)
