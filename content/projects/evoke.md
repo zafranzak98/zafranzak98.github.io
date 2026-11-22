@@ -44,7 +44,5 @@ skills:
   - Brand identity
   - Art direction for photography
   - Client communication
-seo:
-  description: Editor test description, to be removed.
 design: evoke
 ---
