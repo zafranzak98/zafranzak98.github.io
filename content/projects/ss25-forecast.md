@@ -10,6 +10,7 @@ order: 6
 opening_colour: Terracotta
 cover:
   image: /media/projects/ss25-forecast/test-image-cover.webp
+  alt: Beyond Binary cover, a figure in a dark coat under a pink and teal halftone filter, with the title in warped letters
 role: Trend researcher
 project_type: University project
 when: Jan–Apr 2024

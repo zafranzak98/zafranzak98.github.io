@@ -10,7 +10,7 @@ order: 1
 opening_colour: Olive
 cover:
   image: /media/projects/cancel-me-not/front-cover-ver-3.webp
-  alt: Cancel Me, Not! booklet cover
+  alt: "Cancel Me, Not! booklet cover: the title in distressed red type above a face pieced together from torn, red-tinted photographs"
 role: Lead Creator & Campaigner
 project_type: Individual project
 type_detail: Final Degree Project
@@ -40,37 +40,37 @@ research:
   extra: Cancel culture divides people, so I handled it carefully. The research gives space to different viewpoints, it does not name or shame any individual or brand, and the expert interviewees were offered the final edit to review.
 key_piece:
   image: /media/projects/cancel-me-not/full.jpg
-  alt: Booklet spreads
+  alt: "The booklet laid out: front cover, the “What is cancel culture?” spread, a spread with the word Cancelled in cut-out letters, and the “Out of Order” page"
   caption: The 44-page booklet
 supporting:
   - image: /media/projects/cancel-me-not/spread-galliano.jpg
-    alt: Booklet spread
+    alt: "Spread with an article on John Galliano and a collage portrait, Cancelled spelt around it in cut-out letters"
   - image: /media/projects/cancel-me-not/out-of-order.jpg
-    alt: Booklet spread
+    alt: "Page with the words Out of Order hand-lettered in red"
   - image: /media/projects/cancel-me-not/spread-what.jpg
-    alt: Booklet spread
+    alt: "Spread titled “What is cancel culture?”, with strips of cut-up faces beside two columns of red text"
 supporting_note: Spreads · postcards and social assets are in the gallery below
 gallery:
   - image: /media/projects/cancel-me-not/cover.jpg
-    alt: Booklet cover
+    alt: "The printed booklet's front cover, with the torn-photograph face"
   - image: /media/projects/cancel-me-not/full.jpg
-    alt: Booklet spreads laid out
+    alt: "The booklet laid out: front cover, the “What is cancel culture?” spread, a spread with the word Cancelled in cut-out letters, and the “Out of Order” page"
   - image: /media/projects/cancel-me-not/spread-galliano.jpg
-    alt: Booklet spread
+    alt: "Spread with an article on John Galliano and a collage portrait, Cancelled spelt around it in cut-out letters"
   - image: /media/projects/cancel-me-not/out-of-order.jpg
-    alt: Booklet spread
+    alt: "Page with the words Out of Order hand-lettered in red"
   - image: /media/projects/cancel-me-not/spread-what.jpg
-    alt: Booklet spread
+    alt: "Spread titled “What is cancel culture?”, with strips of cut-up faces beside two columns of red text"
   - image: /media/projects/cancel-me-not/d-eyes.jpg
-    alt: Booklet detail
+    alt: "Detail: strips of faces cut from photographs, tinted red and orange"
   - image: /media/projects/cancel-me-not/d-cancelled.jpg
-    alt: Booklet detail
+    alt: "Detail: a collage portrait with cut-out eyes and mouth pasted over the face, and Cancelled in ransom-note letters on red"
   - image: /media/projects/cancel-me-not/d-title.jpg
-    alt: Booklet title detail
+    alt: "Detail: the cover title, Cancel Me, Not!, in distressed red type"
   - image: /media/projects/cancel-me-not/d-face.jpg
-    alt: Booklet detail
+    alt: "Detail: the cover face, pieced together from torn, red-tinted photographs"
   - image: /media/projects/cancel-me-not/d-text.jpg
-    alt: Booklet text detail
+    alt: "Detail: two columns of body text printed in red"
 results:
   - figure: First-Class
     label: final grade
