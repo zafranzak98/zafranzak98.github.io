@@ -5,7 +5,7 @@ import Gallery from '#/components/gallery'
 import { Media } from '#/components/media'
 import OpeningVisual from '#/components/opening-visual'
 import { Rich } from '#/components/rich'
-import { caseStudies, colourOf, openingOf, categoryName, projectByAddress, yearOf, type Img, type Project } from '#/lib/site'
+import { caseStudies, highlightOnSage, openingOf, categoryName, projectByAddress, yearOf, type Img, type Project } from '#/lib/site'
 import { useTitle } from '#/lib/title'
 
 export const Route = createFileRoute('/projects/$projectCat/$projectId')({
@@ -181,9 +181,7 @@ function CaseStudy() {
   return (
     <main id="main" className="case">
       <div className="cs-index"><CategoryIndex /></div>
-      {/* Small text on Sage sits on the Light sage highlight for contrast. AF-Binary's opening is a
-          deliberate exception at the owner's request (22 Nov 2026): its text sits on Sage at 4.27:1. */}
-      <section className={colourOf(p) === 'Sage' && p.design !== 'about-face' ? 'cs-open on-sage' : 'cs-open'} style={{ background: o.bg, color: o.fg }}>
+      <section className={highlightOnSage(p) ? 'cs-open on-sage' : 'cs-open'} style={{ background: o.bg, color: o.fg }}>
         <div className="cs-open-grid">
           <div className="cs-open-text">
             <span className="cs-sub" style={{ color: o.sub }}>
