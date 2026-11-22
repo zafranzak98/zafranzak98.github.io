@@ -10,6 +10,9 @@ import { join, relative } from 'node:path'
 import { execSync } from 'node:child_process'
 import matter from 'gray-matter'
 import { assignColours, FOOTER, listings, tooSimilar } from '../src/lib/project-colours.js'
+import { isPhoto, variantPath, widthsFor } from '../src/lib/image-variants.js'
+import sharp from 'sharp'
+import { mediaIn, publishedMedia } from './published-media.mjs'
 
 const PREVIEW = process.env.VITE_SITE_MODE === 'preview'
 const DIST = 'dist'
@@ -17,12 +20,6 @@ const errors = []
 const warnings = []
 const read = (dir) => readdirSync(dir).filter((f) => f.endsWith('.md')).map((f) => ({ slug: f.replace(/\.md$/, ''), ...matter(readFileSync(join(dir, f), 'utf8')).data }))
 const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]))
-const mediaIn = (value, out = new Set()) => {
-  if (typeof value === 'string') { if (value.startsWith('/media/') || value.startsWith('/files/')) out.add(value) }
-  else if (Array.isArray(value)) value.forEach((v) => mediaIn(v, out))
-  else if (value && typeof value === 'object') Object.values(value).forEach((v) => mediaIn(v, out))
-  return out
-}
 
 const projects = read('content/projects')
 const categories = read('content/categories')
@@ -58,7 +55,8 @@ const canonical = (path) => `<link rel="canonical" href="${address(path)}" />`
 // Shared links need full image addresses: the test site's own while testing, the real one in production.
 const ORIGIN = PREVIEW ? 'https://zafranzak98.github.io' : PRODUCTION_URL
 const esc = (text) => String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-const plain = (text) => text?.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim()
+// Text for titles, descriptions and sharing: formatting marks (**highlight**, *bold*) removed.
+const plain = (text) => text?.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*\s](?:[^*]*[^*\s])?)\*/g, '$1').replace(/\s+/g, ' ').trim()
 const html = readFileSync(join(DIST, 'index.html'), 'utf8')
   .replace(/\s*<link rel="canonical"[^>]*>/g, '')
   .replace(/<title>.*?<\/title>/, `<title>${esc(site.site_title)}</title>`)
@@ -116,7 +114,7 @@ for (const f of walk(DIST).filter((f) => f.endsWith('.html') && !f.startsWith(jo
 // Only files the content refers to are published. Deleting a project in the editor leaves its
 // images in the repository; they stay there (and in the editor's media library) but are never
 // put on the website.
-const keep = new Set([...live.flatMap((p) => [...mediaIn(p)]), ...mediaIn(about), ...(siteText.match(/\/(media|files)\/[^\s"']+/g) ?? [])])
+const keep = publishedMedia(PREVIEW)
 for (const folder of ['media', 'files'].map((d) => join(DIST, d)).filter(existsSync))
   for (const f of walk(folder)) {
     const path = `/${relative(DIST, f).split('\\').join('/')}`
@@ -135,6 +133,21 @@ if (!PREVIEW) {
       if (hit) errors.push(`Draft "${d.slug}" was found in the production build (${relative(DIST, hit[0])}: "${needle}").`)
     }
     for (const m of draftFiles) if (existsSync(join(DIST, m))) errors.push(`Draft-only file is still in the production build: ${m}`)
+  }
+}
+
+// ---- 2b. responsive images
+// Smaller WebP copies of every published photo (see src/lib/image-variants.js). Made after the
+// step above, so only photos the website uses get copies. The originals are not changed.
+const photos = existsSync(join(DIST, 'media')) ? walk(join(DIST, 'media')).filter(isPhoto) : []
+let copies = 0
+for (const file of photos) {
+  const path = `/${relative(DIST, file).split('\\').join('/')}`
+  const { width } = await sharp(file).metadata()
+  if (!width) { errors.push(`Could not read the size of ${path}`); continue }
+  for (const w of widthsFor(width)) {
+    await sharp(file).resize({ width: w }).webp({ quality: 82, effort: 5 }).toFile(join(DIST, variantPath(path, w)))
+    copies++
   }
 }
 
@@ -230,7 +243,13 @@ try { repoSize = Number(execSync('git count-objects -v', { encoding: 'utf8' }).m
 const biggest = walk('public').map((f) => [f, statSync(f).size]).sort((a, b) => b[1] - a[1])
 for (const [f, s] of biggest) {
   if (s > 20 * MB) warnings.push(`${f} is ${(s / MB).toFixed(1)} MB. GitHub blocks files over 100 MB and warns from 50 MB.`)
+  // Large screens are sent the original, so an image over 1 MB still slows the site down there.
   else if (s > MB && /\.(jpe?g|png|webp|gif)$/i.test(f)) warnings.push(`${f} is ${(s / MB).toFixed(1)} MB. Images over 1 MB slow the site down.`)
+}
+// The smaller copies made in section 2b are what most visitors download: none should be over 1 MB.
+for (const f of walk(join(DIST, 'media')).filter((f) => /-w\d+\.webp$/.test(f))) {
+  const s = statSync(f).size
+  if (s > MB) warnings.push(`${relative(DIST, f)} (a smaller copy for visitors) is ${(s / MB).toFixed(1)} MB. Images over 1 MB slow the site down.`)
 }
 if (siteSize > 500 * MB) warnings.push(`The published website is ${(siteSize / MB).toFixed(0)} MB. GitHub Pages allows up to 1 GB.${siteSize > 800 * MB ? ' URGENT.' : ''}`)
 if (repoSize > 500 * MB) warnings.push(`The repository is ${(repoSize / MB).toFixed(0)} MB. GitHub recommends staying under 1 GB.${repoSize > 800 * MB ? ' URGENT.' : ''}`)
@@ -238,6 +257,7 @@ if (repoSize > 500 * MB) warnings.push(`The repository is ${(repoSize / MB).toFi
 const report = [
   `Mode: ${PREVIEW ? 'preview (drafts shown)' : 'production (drafts excluded)'}`,
   `Projects: ${live.length} built, ${PREVIEW ? 0 : drafts.length} draft(s) excluded`,
+  `Responsive images: ${copies} smaller copies of ${photos.length} photos`,
   `Published website: ${(siteSize / MB).toFixed(2)} MB of 1,024 MB (GitHub Pages limit)`,
   `Repository: ${(repoSize / MB).toFixed(2)} MB of 1,024 MB (GitHub recommendation)`,
   `Largest file: ${biggest[0] ? `${biggest[0][0]} (${(biggest[0][1] / MB).toFixed(2)} MB; limit 100 MB)` : 'none'}`,

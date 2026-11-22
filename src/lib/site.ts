@@ -1,5 +1,7 @@
 import { about, allCategories, allProjects, site } from '../../.content-collections/generated'
 import { assignColours } from './project-colours.js'
+import { isPhoto, variantPath, widthsFor } from './image-variants.js'
+import imageWidths from 'virtual:image-widths'
 
 export { about, site }
 export type Project = (typeof allProjects)[number]
@@ -39,6 +41,39 @@ export const openingOf = (p: Project) => OPENING[colourOf(p)]
 
 // The address a file in /public is served from. Keeps working if the site ever sits in a sub-folder.
 export const asset = (path?: string) => (path ? import.meta.env.BASE_URL.replace(/\/$/, '') + path : undefined)
+
+// The original photo's size in pixels. With a srcset the browser no longer treats the photo's
+// own pixel size as its natural size, so images whose size depends on it (the gallery, and
+// images shown at their own proportions) use this instead. Undefined outside the built site.
+export const photoSize = (path?: string) => {
+  const size = path && import.meta.env.PROD ? imageWidths[path] : undefined
+  return size ? { width: size[0], height: size[1] } : undefined
+}
+
+// A photo cropped to fill a frame of another shape (object-fit: cover) needs more pixels than the
+// frame's width: a wide photo in a tall frame is shown at the frame's height. frameRatio is the
+// frame's width / height; the sizes values grow by how much wider the photo is than the frame.
+export const croppedSizes = (sizes: string, path?: string, frameRatio?: number) => {
+  const size = photoSize(path)
+  if (!size || !frameRatio) return sizes
+  const factor = size.width / size.height / frameRatio
+  if (factor <= 1.01) return sizes
+  return sizes
+    .split(',')
+    .map((entry) => entry.trim().replace(/(\S+)$/, (value) => `calc(${value} * ${factor.toFixed(3)})`))
+    .join(', ')
+}
+
+// Everything an <img> needs to load a photo at the right size. `sizes` says how wide the image is
+// shown (for example "(max-width: 899px) 100vw, 26vw"); the browser then picks the smallest copy
+// that stays sharp on that screen. Only in the built website, where the copies exist.
+export const imageProps = (path?: string, sizes?: string) => {
+  const src = asset(path)
+  const width = path && import.meta.env.PROD && isPhoto(path) ? imageWidths[path]?.[0] : undefined
+  if (!path || !width || !sizes) return { src }
+  const srcSet = [...widthsFor(width).map((w) => `${asset(variantPath(path, w))} ${w}w`), `${src} ${width}w`].join(', ')
+  return { src, srcSet, sizes }
+}
 
 export const mailto = `mailto:${site.email}`
 export const cvUrl = asset(site.cv || undefined)

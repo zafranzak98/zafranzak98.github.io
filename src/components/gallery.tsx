@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { asset, type Img } from '#/lib/site'
+import { imageProps, photoSize, type Img } from '#/lib/site'
 import { Media } from '#/components/media'
+import { Rich } from '#/components/rich'
 
 function Chevron({ dir, enabled, onClick }: { dir: 'l' | 'r'; enabled: boolean; onClick: () => void }) {
   return (
@@ -30,11 +31,12 @@ export default function Gallery({ images = [], note }: { images?: Img[]; note?: 
           </div>
         )}
       </div>
-      {n > 0 && note && <p className="gallery-note">{note}</p>}
+      {n > 0 && note && <p className="gallery-note"><Rich text={note} /></p>}
       {n ? (
         <>
           <div className="gallery-frame">
-            <img src={asset(cur.image)} alt={cur.alt ?? ''} />
+            {/* Never wider than the photo itself, as before responsive images: a small photo is not enlarged. */}
+            <img {...imageProps(cur.image, '(max-width: 899px) 100vw, 90vw')} alt={cur.alt ?? ''} style={photoSize(cur.image) && { maxWidth: `min(100%, ${photoSize(cur.image)!.width}px)` }} />
           </div>
           {n > 1 && (
             <div className="dots" role="group" aria-label="Choose an image">

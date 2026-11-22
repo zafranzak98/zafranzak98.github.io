@@ -34,7 +34,7 @@ function About() {
         <span className="about-kicker">About</span>
         <div className="about-title-clip"><h1 className="c">About <br className="m-only" />me</h1></div>
         <figure className="about-portrait">
-          <Media img={about.portrait} ratio="4/5" label="Needed: portrait photograph" />
+          <Media img={about.portrait} ratio="4/5" label="Needed: portrait photograph" sizes="(max-width: 899px) 140px, 20vw" />
           <figcaption className="d-only"><b>{site.name}</b><span>{about.portrait_caption}</span></figcaption>
         </figure>
       </section>
@@ -43,8 +43,8 @@ function About() {
       <section aria-label="Intro" className="ix-sec">
         <div className="ix-label"><span className="lab">01</span><h2 className="c">Intro</h2></div>
         <div className="ix-body ix-body-intro">
-          <p className="about-statement"><Rich text={about.intro} /></p>
-          {about.intro_more && <p className="about-more">{about.intro_more}</p>}
+          <p className="about-statement"><Rich text={about.intro} highlight /></p>
+          {about.intro_more && <p className="about-more"><Rich text={about.intro_more} /></p>}
           {about.languages?.length ? (
             <p className="about-languages"><b>Languages</b><br />{about.languages.map((l, i) => <span key={l}>{i > 0 && <><br className="d-only" /><span className="m-only"> · </span></>}{l}</span>)}</p>
           ) : null}
@@ -57,7 +57,7 @@ function About() {
             <div key={i} className="ix-row">
               <span className="lab">{String(i + 1).padStart(2, '0')}</span>
               <b className="c ix-row-title">{s.title}</b>
-              <span className="ix-row-note">{s.text}</span>
+              <span className="ix-row-note"><Rich text={s.text} /></span>
             </div>
           ))}
         </Section>
@@ -74,8 +74,8 @@ function About() {
               {e.result && (
                 <div className="edu-row edu-last">
                   <span className="edu-key">Result</span>
-                  <span className="edu-val"><Rich text={`**${e.result}**`} /></span>
-                  {e.note && <p className="edu-note">{e.note}</p>}
+                  <span className="edu-val"><Rich text={`**${e.result}**`} highlight /></span>
+                  {e.note && <p className="edu-note"><Rich text={e.note} /></p>}
                 </div>
               )}
             </div>
@@ -92,7 +92,7 @@ function About() {
               <span className="ix-row-note">
                 {x.organisation && <b className="w600 terra">{x.organisation}</b>}
                 {x.organisation && x.note && <br />}
-                {x.note}
+                <Rich text={x.note} />
               </span>
             </div>
           ))}

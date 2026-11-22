@@ -33,13 +33,14 @@ media_libraries:
     config:
       max_file_size: 26214400
       slugify_filename: true
-      # Photos are converted to WebP and scaled down to 2400px wide when uploaded,
-      # so a phone photo or an export at full size never slows the website down.
+      # Photos are converted to WebP and scaled down to fit within 2400 x 2400 pixels when
+      # uploaded, so a phone photo or a tall export at full size never slows the website down.
       transformations:
         raster_image:
           format: webp
           quality: 85
           width: 2400
+          height: 2400
 
 # Web addresses use plain letters, numbers and hyphens only.
 slug:
@@ -103,7 +104,7 @@ collections:
         label: Summary
         widget: text
         maxlength: 220
-        hint: One or two sentences shown in project lists and at the top of the page.
+        hint: 'One or two sentences shown in project lists and at the top of the page. Wrap words in *single asterisks* to make them bold.'
 
       # ---- Homepage and order
       - name: featured
@@ -139,7 +140,7 @@ collections:
         fields: &image
           - { name: image, label: Image, widget: image, required: false }
           - { name: alt, label: Image description, widget: string, required: false, hint: Describe the image for people who cannot see it. }
-          - { name: caption, label: Caption, widget: string, required: false }
+          - { name: caption, label: Caption, widget: string, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
       - name: cover_before
         label: Before image
         widget: object
@@ -160,9 +161,9 @@ collections:
       - { name: tools, label: Tools, widget: list, required: false, hint: One per line. }
 
       # ---- The story
-      - { name: objective, label: Objective, widget: text, required: false, hint: 'Wrap words in **double asterisks** to highlight them.' }
-      - { name: what_i_did, label: What I did, widget: text, required: false, hint: 'Wrap words in **double asterisks** to highlight them.' }
-      - { name: what_team_did, label: What the team delivered, widget: text, required: false, hint: For team projects. }
+      - { name: objective, label: Objective, widget: text, required: false, hint: 'Wrap words in **double asterisks** to highlight them, or *single asterisks* to make them bold.' }
+      - { name: what_i_did, label: What I did, widget: text, required: false, hint: 'Wrap words in **double asterisks** to highlight them, or *single asterisks* to make them bold.' }
+      - { name: what_team_did, label: What the team delivered, widget: text, required: false, hint: 'For team projects. Wrap words in **double asterisks** to highlight them, or *single asterisks* to make them bold.' }
       - name: research
         label: Research
         widget: object
@@ -175,9 +176,9 @@ collections:
             max: 4
             fields: &figure
               - { name: figure, label: Figure, widget: string, maxlength: 12, hint: 'The number or short value only, for example "50+", "20%" or "First-Class". Put any words in Label.' }
-              - { name: label, label: Label, widget: string }
-          - { name: text, label: What you found, widget: text, required: false }
-          - { name: extra, label: More detail, widget: text, required: false }
+              - { name: label, label: Label, widget: string, hint: 'Wrap words in *single asterisks* to make them bold.' }
+          - { name: text, label: What you found, widget: text, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
+          - { name: extra, label: More detail, widget: text, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
           - { name: moodboard, label: Moodboard, widget: object, required: false, fields: *image }
 
       # ---- The work
@@ -189,7 +190,7 @@ collections:
         max: 3
         collapsed: true
         fields: *image
-      - { name: supporting_note, label: Supporting images note, widget: string, required: false }
+      - { name: supporting_note, label: Supporting images note, widget: string, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
       - name: film
         label: Film
         widget: object
@@ -205,7 +206,7 @@ collections:
         fields:
           - { name: image, label: Image, widget: image, required: false }
           - { name: alt, label: Image description, widget: string, required: false }
-          - { name: text, label: Note, widget: text, required: false }
+          - { name: text, label: Note, widget: text, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
       - name: gallery
         label: Gallery
         widget: list
@@ -213,12 +214,12 @@ collections:
         collapsed: true
         hint: Drag to reorder.
         fields: *image
-      - { name: gallery_note, label: Gallery note, widget: string, required: false }
+      - { name: gallery_note, label: Gallery note, widget: string, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
 
       # ---- Results
-      - { name: results_label, label: Results heading, widget: string, required: false }
+      - { name: results_label, label: Results heading, widget: string, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
       - { name: results, label: Results, widget: list, required: false, max: 4, fields: *figure }
-      - { name: outcome_note, label: Outcome note, widget: text, required: false }
+      - { name: outcome_note, label: Outcome note, widget: text, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
       - { name: skills, label: Skills shown, widget: list, required: false, hint: One per line. }
       - name: link
         label: External link
@@ -256,7 +257,7 @@ collections:
     sortable_fields: [name, order]
     fields:
       - { name: name, label: Name, widget: string, maxlength: 40 }
-      - { name: intro, label: Introduction, widget: text, required: false }
+      - { name: intro, label: Introduction, widget: text, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
       - { name: order, label: Order, widget: number, value_type: int, required: false, hint: Lower numbers come first. }
 
   - name: pages
@@ -269,8 +270,8 @@ collections:
         media_folder: /public/media/about
         public_folder: /media/about
         fields:
-          - { name: intro, label: Introduction, widget: text, hint: 'Wrap words in **double asterisks** to highlight them.' }
-          - { name: intro_more, label: More about you, widget: text, required: false }
+          - { name: intro, label: Introduction, widget: text, hint: 'Wrap words in **double asterisks** to highlight them, or *single asterisks* to make them bold.' }
+          - { name: intro_more, label: More about you, widget: text, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
           - { name: languages, label: Languages, widget: list, required: false }
           - name: portrait
             label: Portrait
@@ -287,7 +288,7 @@ collections:
             summary: '{{fields.title}}'
             fields:
               - { name: title, label: Skill, widget: string }
-              - { name: text, label: Description, widget: text, required: false }
+              - { name: text, label: Description, widget: text, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
           - name: education
             label: Education
             widget: list
@@ -299,7 +300,7 @@ collections:
               - { name: institution, label: Institution, widget: string, required: false }
               - { name: years, label: Years, widget: string, required: false }
               - { name: result, label: Result, widget: string, required: false }
-              - { name: note, label: Note, widget: text, required: false }
+              - { name: note, label: Note, widget: text, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
           - name: experience
             label: Experience
             widget: list
@@ -309,7 +310,7 @@ collections:
               - { name: years, label: Years, widget: string }
               - { name: role, label: Role, widget: string }
               - { name: organisation, label: Organisation, widget: string, required: false }
-              - { name: note, label: Note, widget: string, required: false }
+              - { name: note, label: Note, widget: string, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
 
       - name: site
         label: Site settings
@@ -318,7 +319,7 @@ collections:
         fields:
           - { name: site_title, label: Website title, widget: string, hint: Shown in the browser tab on the homepage. }
           - { name: name, label: Your name, widget: string }
-          - { name: home_intro, label: Homepage introduction, widget: text, hint: 'Wrap words in **double asterisks** to highlight them.' }
+          - { name: home_intro, label: Homepage introduction, widget: text, hint: 'Wrap words in **double asterisks** to highlight them, or *single asterisks* to make them bold.' }
           - name: areas_of_focus
             label: Areas of focus
             widget: list
@@ -333,7 +334,7 @@ collections:
                 value_field: '{{slug}}'
                 search_fields: [name]
                 display_fields: [name]
-          - { name: projects_intro, label: Projects page introduction, widget: text, required: false }
+          - { name: projects_intro, label: Projects page introduction, widget: text, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
           - name: cv
             label: CV (PDF)
             widget: file

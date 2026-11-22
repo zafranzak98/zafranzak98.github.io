@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Rich } from '#/components/rich'
-import { asset, projects, site, yearOf } from '#/lib/site'
+import { croppedSizes, imageProps, projects, site, yearOf } from '#/lib/site'
 import { useTitle } from '#/lib/title'
 
 export const Route = createFileRoute('/')({ component: Home })
@@ -14,7 +14,7 @@ function Home() {
   const preview = featured.find((p) => p.slug === hover && p.cover?.image)
   return (
     <main id="main" className="home">
-      <p className="home-intro"><Rich text={site.home_intro} /></p>
+      <p className="home-intro"><Rich text={site.home_intro} highlight /></p>
       <section aria-label="Areas of focus" className="home-focus">
         <h2 className="lab">Areas of Focus</h2>
         <ul>
@@ -57,7 +57,7 @@ function Home() {
       <div className="home-preview" aria-hidden="true">
         {preview && (
           <figure>
-            <img src={asset(preview.cover?.image)} alt="" />
+            <img {...imageProps(preview.cover?.image, croppedSizes('17vw', preview.cover?.image, 4 / 5))} alt="" />
             <figcaption><span>{preview.title}</span><span className="terra">View case study</span></figcaption>
           </figure>
         )}

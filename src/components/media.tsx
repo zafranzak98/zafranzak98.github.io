@@ -1,13 +1,21 @@
 import type { CSSProperties } from 'react'
-import { asset, type Img } from '#/lib/site'
+import { croppedSizes, imageProps, photoSize, type Img } from '#/lib/site'
+import { Rich } from '#/components/rich'
 
-type Props = { img?: Img; ratio?: string; label?: string }
+// sizes: how wide the image is shown, so the browser can choose the right-sized copy.
+type Props = { img?: Img; ratio?: string; label?: string; sizes?: string }
 
 // Until an image is uploaded, a hairline frame holds its place so layouts can be judged without it.
-export function Media({ img, ratio = '4/3', label }: Props) {
-  const style = { aspectRatio: ratio }
+export function Media({ img, ratio = '4/3', label, sizes = '(max-width: 899px) 100vw, 75vw' }: Props) {
+  // 'auto' shows the photo at its own proportions: use the original's, so a smaller copy's
+  // rounding never changes the height by a fraction of a pixel.
+  const size = ratio === 'auto' ? photoSize(img?.image) : undefined
+  const style = { aspectRatio: size ? `${size.width} / ${size.height}` : ratio }
   if (img?.image) {
-    return <img className="media" src={asset(img.image)} alt={img.alt ?? ''} style={style} loading="lazy" decoding="async" />
+    // The frame's proportions (for example '4/5'), so a photo cropped to fill it is still sharp.
+    const [fw, fh] = ratio.split('/').map(Number)
+    const frame = fh ? fw / fh : undefined
+    return <img className="media" {...imageProps(img.image, croppedSizes(sizes, img.image, frame))} alt={img.alt ?? ''} style={style} loading="lazy" decoding="async" />
   }
   return (
     <div className="ph" style={style}>
@@ -19,13 +27,14 @@ export function Media({ img, ratio = '4/3', label }: Props) {
 }
 
 // Phone frame used by the About-Face Beauty case study. width is any CSS length.
-export function Phone({ img, width, caption }: { img?: Img; width: string; caption?: string }) {
+export function Phone({ img, width, caption, sizes = '(max-width: 899px) 250px, 15vw' }: { img?: Img; width: string; caption?: string; sizes?: string }) {
   return (
     <figure className="phone" style={{ '--w': width } as CSSProperties}>
       <div className="phone-body">
         <div className="phone-screen">
+          {/* The screen is about 0.46 times as wide as it is tall; photos are cropped to fill it. */}
           {img?.image ? (
-            <img src={asset(img.image)} alt={img.alt ?? ''} loading="lazy" decoding="async" />
+            <img {...imageProps(img.image, croppedSizes(sizes, img.image, 0.46))} alt={img.alt ?? ''} loading="lazy" decoding="async" />
           ) : (
             <span>
               <b>Placeholder</b>
@@ -35,7 +44,7 @@ export function Phone({ img, width, caption }: { img?: Img; width: string; capti
           )}
         </div>
       </div>
-      {caption && <figcaption>{caption}</figcaption>}
+      {caption && <figcaption><Rich text={caption} /></figcaption>}
     </figure>
   )
 }
