@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 import type { CSSProperties } from 'react'
 import OpeningVisual from '#/components/opening-visual'
 import { allOrder, bandOrder } from '#/lib/project-colours.js'
-import { categoryName, colourOf, openingOf, yearOf, type Project } from '#/lib/site'
+import { categoryName, colourOf, highlightOnSage, openingOf, yearOf, type Project } from '#/lib/site'
 import { Rich } from '#/components/rich'
 
 // One project in the Projects lookbook: a full-width band in the project's own opening colour,
@@ -13,7 +13,7 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
   const o = openingOf(p)
   const hasPage = p.page_type === 'Full case study'
   const colour = colourOf(p)
-  const className = `band band-${p.design ?? 'standard'}${colour === 'Off-white' ? ' band-rule' : ''}${colour === 'Sage' ? ' on-sage' : ''}`
+  const className = `band band-${p.design ?? 'standard'}${colour === 'Off-white' ? ' band-rule' : ''}${highlightOnSage(p) ? ' on-sage' : ''}`
   const style: CSSProperties = { background: o.bg, color: o.fg }
   const content = (
     <>
