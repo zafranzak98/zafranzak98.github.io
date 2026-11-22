@@ -246,7 +246,7 @@ function CaseStudy() {
         {p.skills?.length ? (
           <div className="skills">
             <span className="lab">Skills shown</span>
-            <p>{p.skills.join(' / ')}</p>
+            <p>{p.skills.map((skill, i) => <Fragment key={skill}>{i > 0 && ' / '}<span>{skill}</span></Fragment>)}</p>
           </div>
         ) : null}
         {p.link && <a href={p.link.url} target="_blank" rel="noreferrer" className="text-link ext-link">{p.link.label} ↗</a>}
