@@ -14,20 +14,20 @@ cover:
 role: Lead Creator & Campaigner
 project_type: Individual project
 type_detail: Final Degree Project
-when: Jan – Jun 2025
+when: Jan–Jun 2025
 year: 2025
 deliverables:
   - 44-page booklet
-  - Postcards
-  - 54 Social assets including Reels
-  - Short Film
+  - postcards
+  - 54 social assets including Reels
+  - short film
 tools:
   - Adobe InDesign
   - Adobe Photoshop
   - Adobe Illustrator
   - Adobe Premiere Pro
 objective: Explore cancel culture in fashion through primary research, then turn the findings into an editorial publication and a social campaign.
-what_i_did: Led **end-to-end project delivery**, including **research and interviews**, **copywriting**, **booklet** and **postcard design**, **social media strategy** and **production of 54 content assets**, **alongside filming** and **editing a short film**.
+what_i_did: All of it, from start to finish. I ran the research and interviews, wrote the copy, designed the booklet and postcards, planned the social media and made all **54 content assets**, then filmed and edited the short film.
 research:
   stats:
     - figure: '8'
@@ -37,7 +37,7 @@ research:
     - figure: '4'
       label: focus group participants
   text: '[The key insight from the research, in one or two sentences.]'
-  extra: Approached a sensitive and polarising topic with care, ensuring balanced representation of different viewpoints, avoiding the naming or shaming of individuals or brands, and offering expert interviewees the opportunity to review the final edit.
+  extra: Cancel culture divides people, so I handled it carefully. The research gives space to different viewpoints, it does not name or shame any individual or brand, and the expert interviewees were offered the final edit to review.
 key_piece:
   image: /media/projects/cancel-me-not/full.jpg
   alt: Booklet spreads

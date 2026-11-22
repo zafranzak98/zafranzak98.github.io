@@ -1,5 +1,5 @@
 ---
 name: Editorial
-intro: Long-form storytelling, publications and editorial content.
+intro: Publications built on my own research, in print and on social.
 order: 1
 ---

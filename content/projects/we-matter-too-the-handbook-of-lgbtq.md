@@ -3,19 +3,19 @@ title: 'We Matter Too: The Handbook of LGBTQ+'
 status: Published
 page_type: Full case study
 category: editorial
-summary: Researched LGBTQ+ influence on the fashion industry, exploring trends, gender norms and inclusivity. Translated findings into an editorial zine highlighting influential figures and cultural milestones.
+summary: How LGBTQ+ communities have influenced fashion, through trends, gender norms and inclusivity. The research became a zine on the people and moments that mattered.
 featured: false
 opening_colour: Off-white
 role: Researcher & Creative Director
 project_type: University project
-type_detail: Fashion Research, Editorial Design & Zine Publication
-when: May - July 2022
+type_detail: research and editorial zine
+when: May–Jul 2022
 year: 2022
 deliverables:
   - Fashion research
-  - Editorial content
-  - Zine publication
-  - Layout design
+  - editorial content
+  - zine
+  - layout design
 tools:
   - Adobe Photoshop
   - Canva

@@ -1,5 +1,5 @@
 ---
 name: Brand Communications
-intro: Campaigns, content and experiences that put a brand in front of people.
+intro: Campaigns, posters, AR filters and events, made to get a brand or a cause in front of people.
 order: 3
 ---

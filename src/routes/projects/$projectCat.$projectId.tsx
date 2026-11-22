@@ -151,8 +151,18 @@ function CaseStudy() {
   ].filter(([, v]) => v)
   const r = p.research
 
+  // Sections with nothing in them are left out, so a new project never shows empty headings.
+  const filled: Record<string, boolean> = {
+    overview: Boolean(p.objective || p.what_i_did || p.what_team_did),
+    research: Boolean(r?.stats?.length || r?.text || r?.extra || r?.moodboard),
+    work: Boolean(p.key_piece || p.supporting?.length || p.supporting_note || p.context || p.film || p.gallery?.some((g) => g.image) || p.gallery_note),
+    outcomes: Boolean(p.results?.length || p.outcome_note || p.skills?.length || p.link),
+  }
+  const shown = SECTIONS.filter(([id]) => filled[id])
+  const num = (id: string) => String(shown.findIndex(([s]) => s === id) + 1).padStart(2, '0')
+
   // Highlights the section currently on screen in the sticky section nav.
-  const [active, setActive] = useState<string>('overview')
+  const [active, setActive] = useState<string>(shown[0]?.[0] ?? '')
   useEffect(() => {
     const els = SECTIONS.map(([id]) => document.getElementById(id)).filter(Boolean) as HTMLElement[]
     const io = new IntersectionObserver(
@@ -185,8 +195,8 @@ function CaseStudy() {
         <div className="facts-rest">{facts.slice(1).map(([k, v]) => <div key={k}><span className="lab">{k}</span><span className="fact-val">{v}</span></div>)}</div>
       </section>
 
-      <nav aria-label="On this page" className="secnav c">
-        {SECTIONS.map(([id, t, short], i) => (
+      {shown.length > 1 && <nav aria-label="On this page" className="secnav c">
+        {shown.map(([id, t, short], i) => (
           <Fragment key={id}>
             {i > 0 && <span className="cat-index-sep" aria-hidden="true">/</span>}
             <a href={`#${id}`} className={active === id ? 'on' : ''} aria-current={active === id ? 'true' : undefined}>
@@ -194,30 +204,30 @@ function CaseStudy() {
             </a>
           </Fragment>
         ))}
-      </nav>
+      </nav>}
       <div className="cs-gap" />
 
-      <Sec id="overview" n="01" title="Overview">
+      {filled.overview && <Sec id="overview" n={num('overview')} title="Overview">
         {p.objective && <p className="lead"><Rich text={p.objective} highlight /></p>}
         <div className={p.what_team_did ? 'did did-two' : 'did'}>
           {p.what_i_did && <div><span className="lab">What I did</span><p><Rich text={p.what_i_did} highlight /></p></div>}
           {p.what_team_did && <div><span className="lab">What the team did</span><p><Rich text={p.what_team_did} highlight /></p></div>}
         </div>
-      </Sec>
+      </Sec>}
 
-      <Sec id="research" n="02" title="Research & thinking">
+      {filled.research && <Sec id="research" n={num('research')} title="Research & thinking">
         {r?.stats?.length ? <Figures items={r.stats} /> : null}
         {r?.text && <p className="lead"><Rich text={r.text} /></p>}
         {r?.extra && <p className="body-text"><Rich text={r.extra} /></p>}
         {r?.moodboard && <div className="mood"><Media img={r.moodboard} ratio="21/9" label="moodboard" sizes="(max-width: 899px) 100vw, 67vw" /></div>}
-      </Sec>
+      </Sec>}
 
-      <Sec id="work" n="03" title="The work" wide>
+      {filled.work && <Sec id="work" n={num('work')} title="The work" wide>
         <Work p={p} />
         <Gallery key={p.slug} images={p.gallery} note={p.gallery_note} />
-      </Sec>
+      </Sec>}
 
-      <Sec id="outcomes" n="04" title="Outcomes">
+      {filled.outcomes && <Sec id="outcomes" n={num('outcomes')} title="Outcomes">
         {p.results_label && <span className="lab"><Rich text={p.results_label} /></span>}
         {p.results?.length ? <Figures items={p.results} big /> : null}
         {p.outcome_note && <p className="body-text outcome-note"><Rich text={p.outcome_note} /></p>}
@@ -228,7 +238,7 @@ function CaseStudy() {
           </div>
         ) : null}
         {p.link && <a href={p.link.url} target="_blank" rel="noreferrer" className="text-link ext-link">{p.link.label} ↗</a>}
-      </Sec>
+      </Sec>}
 
       {siblings.length > 0 && (
         <nav aria-label={`Also in ${categoryName(p.category)}`} className="also">

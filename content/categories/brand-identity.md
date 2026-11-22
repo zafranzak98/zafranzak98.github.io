@@ -1,5 +1,5 @@
 ---
 name: Brand Identity
-intro: How a brand looks, sounds and presents itself.
+intro: Reworking how a business looks, from its visual identity to its photography.
 order: 4
 ---

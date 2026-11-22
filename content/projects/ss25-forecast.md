@@ -1,5 +1,5 @@
 ---
-title: Beyond Binary - S/S25 Trend Research
+title: 'Beyond Binary: S/S25 Trend Research'
 url: beyondbinary
 status: Published
 page_type: Full case study
@@ -12,7 +12,7 @@ cover:
   image: /media/projects/ss25-forecast/test-image-cover.webp
 role: Trend researcher
 project_type: University project
-when: Jan - Apr 2024
+when: Jan–Apr 2024
 year: 2024
 film:
   url: https://www.youtube.com/watch?v=myOnlugSQbc
