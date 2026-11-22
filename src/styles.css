@@ -203,6 +203,8 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
   .ix-body > :first-child, .cs-body > :first-child,
   .figures:first-child > div > * { text-box: trim-start cap alphabetic; }
 }
+/* AF-Binary: its single result figure sits a little below the heading's top line, at the owner's request. */
+@media (min-width: 900px) { .case-about-face #outcomes .figures-big:first-child { margin-top: 0.875rem; } }
 @media (max-width: 899px) {
   .ix-sec, .cs-sec { display: block; }
   .ix-label, .cs-label { margin: 0 0 1.25rem; }
