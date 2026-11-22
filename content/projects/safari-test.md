@@ -7,7 +7,7 @@ summary: Test
 featured: false
 opening_colour: Olive
 cover:
-  image: /media/projects/safari-test/img_0438.webp
+  image: /media/projects/safari-test/img_0636.webp
 role: Test
 project_type: Team project (member)
 when: '2026'
