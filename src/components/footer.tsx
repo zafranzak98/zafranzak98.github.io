@@ -28,14 +28,15 @@ export default function Footer() {
           <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo(0, 0) }}>Back to top ↑</a>
         </div>
       </div>
-      {site.credit_name && (
-        <div className="footer-credit">
+      <div className="footer-credit">
+        <p>© {new Date().getFullYear()} Zafran Zakaria. All rights reserved.</p>
+        {site.credit_name && (
           <p>
             website by{' '}
             <a href={site.credit_url} target="_blank" rel="noreferrer" className="credit-link">{site.credit_name}</a>
           </p>
-        </div>
-      )}
+        )}
+      </div>
     </footer>
   )
 }

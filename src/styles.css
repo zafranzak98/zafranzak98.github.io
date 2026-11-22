@@ -128,7 +128,7 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .footer-bottom { display: flex; justify-content: space-between; border-top: 1px solid var(--sage); padding-top: 1rem; font-size: var(--t-meta); color: var(--lsage); }
 .footer-bottom nav { display: flex; gap: 1.5rem; }
 .footer-bottom a:hover { color: var(--off); }
-.footer-credit { background: var(--lsage); padding: 1.25rem; display: flex; justify-content: flex-end; }
+.footer-credit { background: var(--lsage); padding: 1.25rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1.5rem; }
 .footer-credit p { margin: 0; font-size: var(--t-meta); color: var(--olive); }
 .credit-link { color: var(--olive); font-weight: 700; text-decoration: underline; }
 .credit-link:hover { color: var(--terra); }
