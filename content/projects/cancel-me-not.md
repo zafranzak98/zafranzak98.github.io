@@ -73,7 +73,7 @@ gallery:
     alt: Booklet text detail
 results:
   - figure: First-Class
-    label: '*final grade*'
+    label: final grade
 outcome_note: A LinkedIn article grew out of the research.
 skills:
   - Audience research
