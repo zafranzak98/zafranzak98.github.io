@@ -112,21 +112,29 @@ for (const f of walk(DIST).filter((f) => f.endsWith('.html') && !f.startsWith(jo
     errors.push(`Wrong canonical address on ${relative(DIST, f)}: ${found.join(' ') || 'none'}${want ? ` (expected ${want})` : ''}`)
 }
 
-// ---- 2. drafts: hidden from the production website (the repository itself is public)
+// ---- 2. uploads nothing uses, and drafts hidden from the production website
+// Only files the content refers to are published. Deleting a project in the editor leaves its
+// images in the repository; they stay there (and in the editor's media library) but are never
+// put on the website.
+const keep = new Set([...live.flatMap((p) => [...mediaIn(p)]), ...mediaIn(about), ...(siteText.match(/\/(media|files)\/[^\s"']+/g) ?? [])])
+for (const folder of ['media', 'files'].map((d) => join(DIST, d)).filter(existsSync))
+  for (const f of walk(folder)) {
+    const path = `/${relative(DIST, f).split('\\').join('/')}`
+    if (!keep.has(path)) { rmSync(f); console.log(`Not published (no content uses it): ${path}`) }
+  }
+// Remove folders left empty, so not even the folder name of a draft or deleted project is published.
+const prune = (dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) if (e.isDirectory()) prune(join(dir, e.name)); if (dir !== DIST && !readdirSync(dir).length) rmSync(dir, { recursive: true }) }
+const draftFiles = PREVIEW ? [] : [...new Set(drafts.flatMap((p) => [...mediaIn(p)]))].filter((m) => !keep.has(m))
+for (const m of draftFiles) rmSync(join(DIST, m), { force: true })
+prune(DIST)
 if (!PREVIEW) {
-  const keep = new Set([...live.flatMap((p) => [...mediaIn(p)]), ...mediaIn(about), ...(siteText.match(/\/(media|files)\/[^\s"']+/g) ?? [])])
-  const draftOnly = [...new Set(drafts.flatMap((p) => [...mediaIn(p)]))].filter((m) => !keep.has(m))
-  for (const m of draftOnly) rmSync(join(DIST, m), { force: true })
-  // Remove folders left empty, so not even a draft's folder name is published.
-  const prune = (dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) if (e.isDirectory()) prune(join(dir, e.name)); if (dir !== DIST && !readdirSync(dir).length) rmSync(dir, { recursive: true }) }
-  prune(DIST)
   const built = walk(DIST).filter((f) => /\.(html|js|css|json|txt|xml)$/.test(f) && !f.startsWith(join(DIST, 'admin'))).map((f) => [f, readFileSync(f, 'utf8')])
   for (const d of drafts) {
-    for (const needle of [d.title, `/${d.slug}`, ...draftOnly].filter(Boolean)) {
+    for (const needle of [d.title, `/${d.slug}`, ...draftFiles].filter(Boolean)) {
       const hit = built.find(([, text]) => text.includes(needle))
       if (hit) errors.push(`Draft "${d.slug}" was found in the production build (${relative(DIST, hit[0])}: "${needle}").`)
     }
-    for (const m of draftOnly) if (existsSync(join(DIST, m))) errors.push(`Draft-only file is still in the production build: ${m}`)
+    for (const m of draftFiles) if (existsSync(join(DIST, m))) errors.push(`Draft-only file is still in the production build: ${m}`)
   }
 }
 
