@@ -21,6 +21,9 @@ export default function OpeningVisual({ p, inBand = false }: { p: Project; inBan
     case 'about-face':
       // The cover artwork keeps its own proportions (no crop).
       return <Media img={p.cover} ratio={p.cover?.image ? 'auto' : '3/4'} label="AR filter on a face" sizes={sizes} />
+    case 'fc-yeah':
+      // The mouth artwork is a cut-out drawing, so it is shown whole rather than cropped.
+      return <Media img={p.cover} ratio={p.cover?.image ? 'auto' : '3/4'} label="strongest image" sizes={sizes} />
     case 'bersih':
       return <Media img={p.cover} ratio="4/5" label="poster" sizes={sizes} />
     default:
