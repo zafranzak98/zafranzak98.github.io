@@ -1,5 +1,5 @@
 ---
 name: Trend Research
-intro: Forecasting and cultural insight that informs creative work.
+intro: Where fashion and culture are heading, shown through forecasts and film.
 order: 2
 ---
