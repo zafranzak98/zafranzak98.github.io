@@ -36,7 +36,7 @@ Original build by Liana. Redesign, content model and build checks added in 2026.
 Content is edited at `/admin` with [Sveltia CMS](https://sveltiacms.app), which saves straight to the `main` branch through GitHub. Each save starts a normal build and deploy.
 
 - **Settings.** `public/admin/config.yml` lists every field in plain English. It must match `content-collections.ts`.
-- **Sign-in.** A fine-grained GitHub token, limited to this repository with Contents read and write, entered by the site owner in the editor. It is kept in that browser only.
+- **Sign-in.** "Sign in with GitHub", through the [Sveltia CMS Authenticator](https://github.com/sveltia/sveltia-cms-auth) on the site owner's own Cloudflare account (`sveltia-cms-auth.zafranzak98.workers.dev`, free plan). It uses a GitHub App installed on this repository only, with Contents read and write. Sign-ins expire after 8 hours and renew automatically. The Worker only answers sign-ins from `zafranzak98.github.io` and `zafranzakaria.com` (`ALLOWED_DOMAINS`).
 - **Version.** `@sveltia/cms` is pinned to an exact version in `package.json`. The build copies it into `dist/admin` from `node_modules`, and the page loads it with an integrity hash and a content security policy that blocks code from other sites.
 - **Uploads.** Images are converted to WebP at quality 85 and at most 2400px wide, in browsers that can encode WebP. Project images go to `public/media/projects/<project>/`.
 - **Saving to `main`.** Before merging `dev` into `main`, bring in the editor's commits first: `git fetch && git checkout dev && git merge origin/main`.

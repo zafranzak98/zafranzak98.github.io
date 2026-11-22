@@ -139,7 +139,7 @@ const CMS_VERSION = JSON.parse(readFileSync('node_modules/@sveltia/cms/package.j
 cpSync(CMS, ADMIN, { recursive: true, filter: (f) => !/\.(map|mjs)$/.test(f) })
 const integrity = `sha384-${createHash('sha384').update(readFileSync(join(CMS, 'sveltia-cms.js'))).digest('base64')}`
 // The editor holds a GitHub sign-in, so the page may only run code from this site and talk to
-// GitHub. Also allowed, as data only: the editor's fonts (jsDelivr), GitHub's status page, and
+// GitHub and the sign-in helper (Sveltia CMS Authenticator on Cloudflare), which renews it. Also allowed, as data only: the editor's fonts (jsDelivr), GitHub's status page, and
 // the editor's version number and interface wording for its pinned version (unpkg.com).
 // Extra code the editor would fetch from unpkg.com is refused.
 const CSP = [
@@ -149,7 +149,7 @@ const CSP = [
   "font-src 'self' https://cdn.jsdelivr.net",
   "img-src 'self' blob: data: https://*.githubusercontent.com",
   "media-src 'self' blob: https://*.githubusercontent.com",
-  `connect-src 'self' blob: data: https://api.github.com https://*.githubusercontent.com https://www.githubstatus.com https://unpkg.com/@sveltia/cms/package.json https://unpkg.com/@sveltia/cms@${CMS_VERSION}/locales/`,
+  `connect-src 'self' blob: data: https://api.github.com https://*.githubusercontent.com https://sveltia-cms-auth.zafranzak98.workers.dev https://www.githubstatus.com https://unpkg.com/@sveltia/cms/package.json https://unpkg.com/@sveltia/cms@${CMS_VERSION}/locales/`,
   "worker-src 'self' blob:",
   "frame-src 'self' blob:",
   "object-src 'none'",

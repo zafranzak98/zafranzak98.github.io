@@ -6,8 +6,12 @@ backend:
   name: github
   repo: zafranzak98/zafranzak98.github.io
   branch: main
-  # Sign in with a fine-grained personal access token only. No OAuth server needed.
-  auth_methods: [token]
+  # "Sign in with GitHub" through the Sveltia CMS Authenticator on Zafran's own Cloudflare
+  # account. It uses a GitHub App installed on this repository only (Contents read and write).
+  # Sign-ins last 8 hours and renew themselves; signing in again is needed after about six
+  # months without use. The token method stays off.
+  base_url: https://sveltia-cms-auth.zafranzak98.workers.dev
+  auth_methods: [oauth]
   commit_messages:
     create: 'Website editor: add {{collection}} "{{slug}}"'
     update: 'Website editor: update {{collection}} "{{slug}}"'
