@@ -132,7 +132,6 @@ collections:
         label: Cover image
         widget: object
         required: false
-        collapsed: auto
         fields: &image
           - { name: image, label: Image, widget: image, required: false }
           - { name: alt, label: Image description, widget: string, required: false, hint: Describe the image for people who cannot see it. }
@@ -141,7 +140,6 @@ collections:
         label: Before image
         widget: object
         required: false
-        collapsed: true
         hint: For rebrands only. Shown beside the cover as the "before".
         fields: *image
 
@@ -165,7 +163,6 @@ collections:
         label: Research
         widget: object
         required: false
-        collapsed: auto
         fields:
           - name: stats
             label: Research figures
@@ -177,10 +174,10 @@ collections:
               - { name: label, label: Label, widget: string }
           - { name: text, label: What you found, widget: text, required: false }
           - { name: extra, label: More detail, widget: text, required: false }
-          - { name: moodboard, label: Moodboard, widget: object, required: false, collapsed: true, fields: *image }
+          - { name: moodboard, label: Moodboard, widget: object, required: false, fields: *image }
 
       # ---- The work
-      - { name: key_piece, label: Key piece, widget: object, required: false, collapsed: auto, hint: The main image of the work., fields: *image }
+      - { name: key_piece, label: Key piece, widget: object, required: false, hint: The main image of the work., fields: *image }
       - name: supporting
         label: Supporting images
         widget: list
@@ -193,7 +190,6 @@ collections:
         label: Film
         widget: object
         required: false
-        collapsed: true
         fields:
           - { name: url, label: Video link, widget: string, required: false, hint: A YouTube or Vimeo link. }
           - { name: caption, label: Caption, widget: string, required: false }
@@ -201,7 +197,6 @@ collections:
         label: In context
         widget: object
         required: false
-        collapsed: true
         hint: An image of the work in use, with a short note.
         fields:
           - { name: image, label: Image, widget: image, required: false }
@@ -225,7 +220,6 @@ collections:
         label: External link
         widget: object
         required: false
-        collapsed: true
         fields:
           - { name: label, label: Link text, widget: string }
           - { name: url, label: Web address, widget: string, type: url }
@@ -235,7 +229,6 @@ collections:
         label: Search and sharing (optional)
         widget: object
         required: false
-        collapsed: true
         hint: Leave empty to use the title, summary and cover image automatically.
         fields:
           - { name: title, label: Page title in search results, widget: string, required: false, maxlength: 60, hint: Defaults to the project title. }
