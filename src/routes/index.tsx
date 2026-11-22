@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Rich } from '#/components/rich'
-import { asset, projects, site, yearOf } from '#/lib/site'
+import { imageProps, projects, site, yearOf } from '#/lib/site'
 import { useTitle } from '#/lib/title'
 
 export const Route = createFileRoute('/')({ component: Home })
@@ -57,7 +57,7 @@ function Home() {
       <div className="home-preview" aria-hidden="true">
         {preview && (
           <figure>
-            <img src={asset(preview.cover?.image)} alt="" />
+            <img {...imageProps(preview.cover?.image, '17vw')} alt="" />
             <figcaption><span>{preview.title}</span><span className="terra">View case study</span></figcaption>
           </figure>
         )}

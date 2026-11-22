@@ -27,6 +27,13 @@ const SECTIONS: [string, string, string?][] = [
 
 const caption = (img?: Img) => img?.caption && <p className="cap">{img.caption}</p>
 
+// How wide supporting images are shown: one, two or three across (two across on a phone).
+const GRID_SIZES: Record<number, string> = {
+  1: '(max-width: 899px) 100vw, 30vw',
+  2: '(max-width: 899px) 50vw, 45vw',
+  3: '(max-width: 899px) 50vw, 30vw',
+}
+
 // ---- The work: same section on every project, laid out as approved for each one.
 function Work({ p }: { p: Project }) {
   const sup = p.supporting ?? []
@@ -35,7 +42,7 @@ function Work({ p }: { p: Project }) {
       <div className={`work-grid cols-${sup.length}${framed ? ' work-grid-framed' : ''}`}>
         {sup.map((s, i) => (
           <figure key={i}>
-            <Media img={s} ratio="4/5" />
+            <Media img={s} ratio="4/5" sizes={GRID_SIZES[sup.length] ?? GRID_SIZES[3]} />
             {caption(s)}
           </figure>
         ))}
@@ -43,7 +50,7 @@ function Work({ p }: { p: Project }) {
     )
   const key = p.key_piece && (
     <figure className="work-key">
-      <Media img={p.key_piece} ratio="16/9" />
+      <Media img={p.key_piece} ratio="16/9" sizes="(max-width: 899px) 100vw, 90vw" />
       {caption(p.key_piece)}
     </figure>
   )
@@ -52,7 +59,7 @@ function Work({ p }: { p: Project }) {
     case 'about-face':
       return (
         <>
-          <div className="phones">{sup.map((s, i) => <Phone key={i} img={s} width="max(150px, 14vw)" caption={s.caption} />)}</div>
+          <div className="phones">{sup.map((s, i) => <Phone key={i} img={s} width="max(150px, 14vw)" caption={s.caption} sizes="(max-width: 899px) 150px, 14vw" />)}</div>
           {note}
         </>
       )
@@ -63,7 +70,7 @@ function Work({ p }: { p: Project }) {
           {grid()}
           {p.context && (
             <div className="work-context">
-              <Media img={p.context} ratio="9/16" />
+              <Media img={p.context} ratio="9/16" sizes="(max-width: 899px) 33vw, 30vw" />
               <p>{p.context.text}</p>
             </div>
           )}
@@ -202,7 +209,7 @@ function CaseStudy() {
         {r?.stats?.length ? <Figures items={r.stats} /> : null}
         {r?.text && <p className="lead">{r.text}</p>}
         {r?.extra && <p className="body-text">{r.extra}</p>}
-        {r?.moodboard && <div className="mood"><Media img={r.moodboard} ratio="21/9" label="moodboard" /></div>}
+        {r?.moodboard && <div className="mood"><Media img={r.moodboard} ratio="21/9" label="moodboard" sizes="(max-width: 899px) 100vw, 67vw" /></div>}
       </Sec>
 
       <Sec id="work" n="03" title="The work" wide>

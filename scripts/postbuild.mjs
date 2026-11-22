@@ -10,6 +10,8 @@ import { join, relative } from 'node:path'
 import { execSync } from 'node:child_process'
 import matter from 'gray-matter'
 import { assignColours, FOOTER, listings, tooSimilar } from '../src/lib/project-colours.js'
+import { isPhoto, variantPath, widthsFor } from '../src/lib/image-variants.js'
+import sharp from 'sharp'
 
 const PREVIEW = process.env.VITE_SITE_MODE === 'preview'
 const DIST = 'dist'
@@ -138,6 +140,21 @@ if (!PREVIEW) {
   }
 }
 
+// ---- 2b. responsive images
+// Smaller WebP copies of every published photo (see src/lib/image-variants.js). Made after the
+// step above, so only photos the website uses get copies. The originals are not changed.
+const photos = existsSync(join(DIST, 'media')) ? walk(join(DIST, 'media')).filter(isPhoto) : []
+let copies = 0
+for (const file of photos) {
+  const path = `/${relative(DIST, file).split('\\').join('/')}`
+  const { width } = await sharp(file).metadata()
+  if (!width) { errors.push(`Could not read the size of ${path}`); continue }
+  for (const w of widthsFor(width)) {
+    await sharp(file).resize({ width: w }).webp({ quality: 82, effort: 5 }).toFile(join(DIST, variantPath(path, w)))
+    copies++
+  }
+}
+
 // ---- 3. the website editor (Sveltia CMS) at /admin
 // Served from this website rather than a third-party CDN, at the exact version pinned in
 // package.json (its download is checked against bun.lock). The page loads it with an integrity
@@ -230,7 +247,8 @@ try { repoSize = Number(execSync('git count-objects -v', { encoding: 'utf8' }).m
 const biggest = walk('public').map((f) => [f, statSync(f).size]).sort((a, b) => b[1] - a[1])
 for (const [f, s] of biggest) {
   if (s > 20 * MB) warnings.push(`${f} is ${(s / MB).toFixed(1)} MB. GitHub blocks files over 100 MB and warns from 50 MB.`)
-  else if (s > MB && /\.(jpe?g|png|webp|gif)$/i.test(f)) warnings.push(`${f} is ${(s / MB).toFixed(1)} MB. Images over 1 MB slow the site down.`)
+  // Visitors download the smaller copies, so a large original only makes the repository grow.
+  else if (s > 5 * MB && /\.(jpe?g|png|webp|gif)$/i.test(f)) warnings.push(`${f} is ${(s / MB).toFixed(1)} MB. Visitors get smaller copies, but originals this large make the repository grow quickly.`)
 }
 if (siteSize > 500 * MB) warnings.push(`The published website is ${(siteSize / MB).toFixed(0)} MB. GitHub Pages allows up to 1 GB.${siteSize > 800 * MB ? ' URGENT.' : ''}`)
 if (repoSize > 500 * MB) warnings.push(`The repository is ${(repoSize / MB).toFixed(0)} MB. GitHub recommends staying under 1 GB.${repoSize > 800 * MB ? ' URGENT.' : ''}`)
@@ -238,6 +256,7 @@ if (repoSize > 500 * MB) warnings.push(`The repository is ${(repoSize / MB).toFi
 const report = [
   `Mode: ${PREVIEW ? 'preview (drafts shown)' : 'production (drafts excluded)'}`,
   `Projects: ${live.length} built, ${PREVIEW ? 0 : drafts.length} draft(s) excluded`,
+  `Responsive images: ${copies} smaller copies of ${photos.length} photos`,
   `Published website: ${(siteSize / MB).toFixed(2)} MB of 1,024 MB (GitHub Pages limit)`,
   `Repository: ${(repoSize / MB).toFixed(2)} MB of 1,024 MB (GitHub recommendation)`,
   `Largest file: ${biggest[0] ? `${biggest[0][0]} (${(biggest[0][1] / MB).toFixed(2)} MB; limit 100 MB)` : 'none'}`,

@@ -1,5 +1,7 @@
 import { about, allCategories, allProjects, site } from '../../.content-collections/generated'
 import { assignColours } from './project-colours.js'
+import { isPhoto, variantPath, widthsFor } from './image-variants.js'
+import imageWidths from 'virtual:image-widths'
 
 export { about, site }
 export type Project = (typeof allProjects)[number]
@@ -39,6 +41,17 @@ export const openingOf = (p: Project) => OPENING[colourOf(p)]
 
 // The address a file in /public is served from. Keeps working if the site ever sits in a sub-folder.
 export const asset = (path?: string) => (path ? import.meta.env.BASE_URL.replace(/\/$/, '') + path : undefined)
+
+// Everything an <img> needs to load a photo at the right size. `sizes` says how wide the image is
+// shown (for example "(max-width: 899px) 100vw, 26vw"); the browser then picks the smallest copy
+// that stays sharp on that screen. Only in the built website, where the copies exist.
+export const imageProps = (path?: string, sizes?: string) => {
+  const src = asset(path)
+  const width = path && import.meta.env.PROD && isPhoto(path) ? imageWidths[path] : undefined
+  if (!path || !width || !sizes) return { src }
+  const srcSet = [...widthsFor(width).map((w) => `${asset(variantPath(path, w))} ${w}w`), `${src} ${width}w`].join(', ')
+  return { src, srcSet, sizes }
+}
 
 export const mailto = `mailto:${site.email}`
 export const cvUrl = asset(site.cv || undefined)

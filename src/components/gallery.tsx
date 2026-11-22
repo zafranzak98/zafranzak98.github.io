@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { asset, type Img } from '#/lib/site'
+import { imageProps, type Img } from '#/lib/site'
 import { Media } from '#/components/media'
 
 function Chevron({ dir, enabled, onClick }: { dir: 'l' | 'r'; enabled: boolean; onClick: () => void }) {
@@ -34,7 +34,7 @@ export default function Gallery({ images = [], note }: { images?: Img[]; note?: 
       {n ? (
         <>
           <div className="gallery-frame">
-            <img src={asset(cur.image)} alt={cur.alt ?? ''} />
+            <img {...imageProps(cur.image, '(max-width: 899px) 100vw, 90vw')} alt={cur.alt ?? ''} />
           </div>
           {n > 1 && (
             <div className="dots" role="group" aria-label="Choose an image">

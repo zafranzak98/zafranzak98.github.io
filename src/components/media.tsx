@@ -1,13 +1,14 @@
 import type { CSSProperties } from 'react'
-import { asset, type Img } from '#/lib/site'
+import { imageProps, type Img } from '#/lib/site'
 
-type Props = { img?: Img; ratio?: string; label?: string }
+// sizes: how wide the image is shown, so the browser can choose the right-sized copy.
+type Props = { img?: Img; ratio?: string; label?: string; sizes?: string }
 
 // Until an image is uploaded, a hairline frame holds its place so layouts can be judged without it.
-export function Media({ img, ratio = '4/3', label }: Props) {
+export function Media({ img, ratio = '4/3', label, sizes = '(max-width: 899px) 100vw, 75vw' }: Props) {
   const style = { aspectRatio: ratio }
   if (img?.image) {
-    return <img className="media" src={asset(img.image)} alt={img.alt ?? ''} style={style} loading="lazy" decoding="async" />
+    return <img className="media" {...imageProps(img.image, sizes)} alt={img.alt ?? ''} style={style} loading="lazy" decoding="async" />
   }
   return (
     <div className="ph" style={style}>
@@ -19,13 +20,13 @@ export function Media({ img, ratio = '4/3', label }: Props) {
 }
 
 // Phone frame used by the About-Face Beauty case study. width is any CSS length.
-export function Phone({ img, width, caption }: { img?: Img; width: string; caption?: string }) {
+export function Phone({ img, width, caption, sizes = '(max-width: 899px) 250px, 15vw' }: { img?: Img; width: string; caption?: string; sizes?: string }) {
   return (
     <figure className="phone" style={{ '--w': width } as CSSProperties}>
       <div className="phone-body">
         <div className="phone-screen">
           {img?.image ? (
-            <img src={asset(img.image)} alt={img.alt ?? ''} loading="lazy" decoding="async" />
+            <img {...imageProps(img.image, sizes)} alt={img.alt ?? ''} loading="lazy" decoding="async" />
           ) : (
             <span>
               <b>Placeholder</b>
