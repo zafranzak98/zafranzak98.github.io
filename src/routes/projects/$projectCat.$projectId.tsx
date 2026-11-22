@@ -5,7 +5,7 @@ import Gallery from '#/components/gallery'
 import { Media, Phone } from '#/components/media'
 import OpeningVisual from '#/components/opening-visual'
 import { Rich } from '#/components/rich'
-import { caseStudies, openingOf, categoryName, projectByAddress, yearOf, type Img, type Project } from '#/lib/site'
+import { caseStudies, colourOf, openingOf, categoryName, projectByAddress, yearOf, type Img, type Project } from '#/lib/site'
 import { useTitle } from '#/lib/title'
 
 export const Route = createFileRoute('/projects/$projectCat/$projectId')({
@@ -91,15 +91,27 @@ function embedUrl(url: string) {
   if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`
 }
 
+// YouTube and Vimeo films load only when the visitor presses play, so nothing is fetched from
+// those sites before then. Once playing, the provider may collect information or store data.
 function Film({ p }: { p: Project }) {
+  const [playing, setPlaying] = useState(false)
   if (!p.film) return null
   const url = p.film.url
   const embed = url && embedUrl(url)
+  const title = p.film.caption ?? `${p.title} film`
   return (
     <figure className="film">
       {url ? (
         embed ? (
-          <iframe src={embed} title={p.film.caption ?? `${p.title} film`} allow="fullscreen; picture-in-picture" loading="lazy" />
+          playing ? (
+            <iframe src={`${embed}${embed.includes('?') ? '&' : '?'}autoplay=1`} title={title} allow="autoplay; fullscreen; picture-in-picture" ref={(f) => f?.focus()} />
+          ) : (
+            <button type="button" className="film-ph film-start" onClick={() => setPlaying(true)}>
+              <span className="play" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor" /></svg></span>
+              <span className="film-ph-label">Play {title}</span>
+              <span className="film-note">Plays from {embed.includes('vimeo') ? 'Vimeo' : 'YouTube'}, which may collect information or store data once it starts.</span>
+            </button>
+          )
         ) : (
           <video src={url} controls preload="metadata" />
         )
@@ -176,7 +188,7 @@ function CaseStudy() {
   return (
     <main id="main" className="case">
       <div className="cs-index"><CategoryIndex /></div>
-      <section className="cs-open" style={{ background: o.bg, color: o.fg }}>
+      <section className={colourOf(p) === 'Sage' ? 'cs-open on-sage' : 'cs-open'} style={{ background: o.bg, color: o.fg }}>
         <div className="cs-open-grid">
           <div className="cs-open-text">
             <span className="cs-sub" style={{ color: o.sub }}>
@@ -184,7 +196,7 @@ function CaseStudy() {
               {p.status === 'Draft' && <span className="draft-badge">Draft</span>}
             </span>
             <h1 className="c cs-title">{p.title}</h1>
-            <p className="cs-line"><Rich text={p.summary} /></p>
+            <p className="cs-line"><span><Rich text={p.summary} /></span></p>
           </div>
           <div className="cs-open-visual"><OpeningVisual p={p} /></div>
         </div>

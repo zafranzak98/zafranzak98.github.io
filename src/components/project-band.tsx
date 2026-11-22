@@ -13,7 +13,7 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
   const o = openingOf(p)
   const hasPage = p.page_type === 'Full case study'
   const colour = colourOf(p)
-  const className = `band band-${p.design ?? 'standard'}${colour === 'Off-white' ? ' band-rule' : ''}`
+  const className = `band band-${p.design ?? 'standard'}${colour === 'Off-white' ? ' band-rule' : ''}${colour === 'Sage' ? ' on-sage' : ''}`
   const style: CSSProperties = { background: o.bg, color: o.fg }
   const content = (
     <>
@@ -24,7 +24,7 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
         </span>
         <span>My role: {p.role}{hasPage && <> <span className="band-arrow" aria-hidden="true">→</span></>}</span>
       </div>
-      <p className="band-line"><Rich text={p.summary} /></p>
+      <p className="band-line"><span><Rich text={p.summary} /></span></p>
       <div className="band-visual"><OpeningVisual p={p} inBand /></div>
       <b className="c band-title">{p.title}</b>
     </>
