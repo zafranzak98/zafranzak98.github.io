@@ -37,9 +37,10 @@ jobs:
       pull-requests: read
       deployments: read # read-only: finds the version the website was last published from
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false # GitHub's key is not left on the build machine after checkout
       - name: Allow content changes and merged pull requests only
         env:
           GH_TOKEN: ${{ github.token }}
@@ -86,4 +87,86 @@ jobs:
           #    default false); otherwise the run stops and lists them. The checks above always run first.
           if [ "$EVENT" = "workflow_dispatch" ]; then
             unapproved=""; details=""
-            for c
+            for c in $(git rev-list --reverse "$BASE..$SHA"); do
+              f=$(git diff-tree --no-commit-id --name-only -r -m --first-parent "$c" | grep -vE "$CONTENT" || true)
+              [ -z "$f" ] && continue
+              approved "$c" && continue
+              unapproved="$unapproved $c"
+              details="$details- $c: $(printf '%s' "$f" | tr '\n' ' ')"$'\n'
+            done
+            if [ -z "$unapproved" ]; then echo "Started by hand; every code change came through a merged pull request: allowed."; exit 0; fi
+            if [ "${CONFIRM:-false}" = "true" ]; then
+              { echo "### Published by hand with confirmation"; echo "Code changes that did not come through a merged pull request:"; printf '%s' "$details"; } >> "$GITHUB_STEP_SUMMARY"
+              for c in $unapproved; do echo "::warning::Published by hand with confirmation, including a code change without a pull request: $c"; done
+              echo "Started by hand with the confirmation box ticked: allowed."; exit 0
+            fi
+            { echo "### Not published: confirmation needed"; echo "Code changes that did not come through a merged pull request:"; printf '%s' "$details"; echo "To publish them anyway, run the workflow again and tick \"Publish code without a pull request\"."; } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Not published: code changes without a merged pull request, and the confirmation box was not ticked:$unapproved"
+            exit 1
+          fi
+          # 3. The published version itself or an earlier one (a re-run or rollback): allowed.
+          if git merge-base --is-ancestor "$SHA" "$BASE"; then echo "Already published or an earlier version: allowed."; exit 0; fi
+          # 4. Since the live version, only content changed overall (including mistakes that were reverted): allowed.
+          net=$(git diff --name-only "$BASE" "$SHA" | grep -vE "$CONTENT" || true)
+          if [ -z "$net" ]; then echo "Only content changed since the live version: allowed."; exit 0; fi
+          # 5. Otherwise every commit since the live version that changes files outside content must come from
+          #    a pull request merged into main.
+          bad=""
+          for c in $(git rev-list --reverse "$BASE..$SHA"); do
+            files=$(git diff-tree --no-commit-id --name-only -r -m --first-parent "$c" | grep -vE "$CONTENT" || true)
+            [ -z "$files" ] && continue
+            approved "$c" || bad="$bad $c"
+          done
+          [ -z "$bad" ] && { echo "All code changes since the live version came through merged pull requests: allowed."; exit 0; }
+          stop "code changes without a merged pull request since the live version:$bad"
+
+  build:
+    needs: guard
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false # GitHub's key is not left on the build machine after checkout
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - name: Production build and checks (drafts must be excluded)
+        run: bun run build
+      - name: Preview build for the test site (drafts shown)
+        id: preview
+        run: rm -rf dist .content-collections && bun run build:preview
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: dist
+          include-hidden-files: true # keeps .nojekyll, so the published files stay exactly as before
+      - name: Email a warning if a size limit is getting close
+        if: steps.preview.outputs.warnings != ''
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          WARNINGS: ${{ steps.preview.outputs.warnings }}
+        with:
+          script: |
+            const title = 'Website size warning'
+            const open = await github.rest.issues.listForRepo({ ...context.repo, state: 'open' })
+            const body = process.env.WARNINGS + '\n\nFrom build ' + context.runId + '.'
+            const existing = open.data.find(i => i.title === title)
+            if (existing) await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body })
+            else await github.rest.issues.create({ ...context.repo, title, body })
+
+  deploy:
+    needs: [guard, build]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
