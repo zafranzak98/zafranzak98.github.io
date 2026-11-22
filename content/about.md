@@ -1,10 +1,11 @@
 ---
 intro: A Malaysian graduate in Harrogate with a **First-Class Honours degree** in **Fashion Management and Communication**, and a start in a **luxury fashion house in Kuala Lumpur**.
-intro_more: "[A paragraph in your own voice: what you care about in fashion and culture, and the roles you are looking for.]"
+intro_more: '[A paragraph in your own voice: what you care about in fashion and culture, and the roles you are looking for.]'
 languages:
   - English
   - Bahasa Malaysia
 portrait:
+  image: /media/about/dsc_2325.webp
   alt: Portrait of Zafran Zakaria
 portrait_caption: Harrogate, North Yorkshire
 skills:
@@ -22,7 +23,7 @@ education:
     result: First-Class Honours
     note: Lorem ipsum dolor, sit amet consectetur adipisicing elit. Consequuntur dicta voluptate libero, explicabo quas fugit facilis repudiandae itaque maiores excepturi velit sunt assumenda perspiciatis facere nobis, vitae natus? Ducimus, neque.
 experience:
-  - years: "2026"
+  - years: '2026'
     role: Project Coordinator
     organisation: Building Across Borders pilot
     note: Freelance · Ali Rosli Consulting Ltd
@@ -30,11 +31,11 @@ experience:
     role: Senior Ambassador
     organisation: Sheffield Hallam University
     note: Student Recruitment, Events & Marketing
-  - years: "2024"
+  - years: '2024'
     role: Marketing Intern
     organisation: ZBD Talent
     note: Internship
-  - years: "2022"
+  - years: '2022'
     role: Freelance Graphic Designer
     organisation: BERSIH Malaysia
     note: Election awareness campaign posters
