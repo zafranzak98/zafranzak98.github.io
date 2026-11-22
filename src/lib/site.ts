@@ -1,5 +1,5 @@
 import { about, allCategories, allProjects, site } from '../../.content-collections/generated'
-import { assignColours } from './project-colours.js'
+import { assignColours, colourWarnings } from './project-colours.js'
 import { isPhoto, variantPath, widthsFor } from './image-variants.js'
 import imageWidths from 'virtual:image-widths'
 
@@ -39,6 +39,10 @@ export const OPENING: Record<Project['opening_colour'], { bg: string; fg: string
 const colours = assignColours(projects)
 export const colourOf = (p: Project) => colours.get(p.slug) ?? p.opening_colour
 export const openingOf = (p: Project) => OPENING[colourOf(p)]
+
+// Test site only: plain notes on clashes caused by colours fixed in the editor, shown on the bands.
+const colourNotes = import.meta.env.VITE_SITE_MODE === 'preview' ? colourWarnings(projects, colours, categoryName) : []
+export const colourNotesOf = (p: Project) => colourNotes.filter((n) => n.slugs.includes(p.slug)).map((n) => n.text)
 
 // The address a file in /public is served from. Keeps working if the site ever sits in a sub-folder.
 export const asset = (path?: string) => (path ? import.meta.env.BASE_URL.replace(/\/$/, '') + path : undefined)

@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 import type { CSSProperties } from 'react'
 import OpeningVisual from '#/components/opening-visual'
 import { allOrder, bandOrder } from '#/lib/project-colours.js'
-import { categoryName, colourOf, openingOf, yearOf, type Project } from '#/lib/site'
+import { categoryName, colourNotesOf, colourOf, openingOf, yearOf, type Project } from '#/lib/site'
 import { Rich } from '#/components/rich'
 
 // One project in the Projects lookbook: a full-width band in the project's own opening colour,
@@ -24,6 +24,7 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
         </span>
         <span>My role: {p.role}{hasPage && <> <span className="band-arrow" aria-hidden="true">→</span></>}</span>
       </div>
+      {colourNotesOf(p).map((note) => <p key={note} className="colour-note">Test site only: {note}</p>)}
       <p className="band-line"><span><Rich text={p.summary} /></span></p>
       <div className="band-visual"><OpeningVisual p={p} inBand /></div>
       <b className="c band-title">{p.title}</b>

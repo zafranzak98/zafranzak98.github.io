@@ -62,11 +62,16 @@ export const listings = (projects) => {
 
 // How much each kind of imperfection costs. A colour repeated within one category page outweighs
 // a project leaving its preferred colour; a repeat close together on the All page counts least.
-const COST = { categoryRepeat: 100, notPreferred: 10, nearbyRepeatOnAll: 1 }
+// A clash involving a fixed colour is allowed but avoided wherever automatic projects can move.
+const COST = { fixedClash: 1000, categoryRepeat: 100, notPreferred: 10, nearbyRepeatOnAll: 1 }
 
-// Returns a Map of slug -> colour. Neighbours never share the same or a too-similar colour (a hard
-// rule). Among the arrangements that satisfy it, the one with the lowest COST is chosen.
-// Throws with a plain explanation if no arrangement satisfies the hard rule.
+// A project set to "Always use my Opening colour" in the editor keeps it on every page, even when
+// it clashes. Clashes involving it are reported by colourWarnings, never fixed by changing it.
+export const isFixed = (p) => p.colour_choice === 'Fixed'
+
+// Returns a Map of slug -> colour. Automatic neighbours never share the same or a too-similar colour
+// (a hard rule); fixed colours never change. Among the arrangements that satisfy this, the one with
+// the lowest COST is chosen. Throws with a plain explanation if no arrangement satisfies the hard rule.
 export function assignColours(projects) {
   const lists = listings(projects)
   const order = lists[0].items
@@ -88,7 +93,8 @@ export function assignColours(projects) {
   for (let i = 0; i + 2 < order.length; i++) addPair(order[i].slug, order[i + 2].slug, COST.nearbyRepeatOnAll)
   const lastInList = new Set(lists.map(({ items }) => items[items.length - 1]?.slug).filter(Boolean))
   const preferredOf = (p) => (PALETTE.includes(p.opening_colour) ? p.opening_colour : 'Olive')
-  const choices = (p) => [preferredOf(p), ...FALLBACKS[preferredOf(p)]]
+  const choices = (p) => (isFixed(p) ? [preferredOf(p)] : [preferredOf(p), ...FALLBACKS[preferredOf(p)]])
+  const fixed = new Set(order.filter(isFixed).map((p) => p.slug))
 
   // Depth-first search with pruning: try each project's preferred colour first, skip any colour
   // that breaks the neighbour rule, and abandon a branch once it costs more than the best found.
@@ -105,9 +111,14 @@ export function assignColours(projects) {
     }
     const p = order[i]
     for (const colour of choices(p)) {
-      if ([...neighbours.get(p.slug)].some((n) => assigned.has(n) && tooSimilar(assigned.get(n), colour))) continue
-      if (lastInList.has(p.slug) && colour === FOOTER) continue
       let extra = colour === preferredOf(p) ? 0 : COST.notPreferred
+      const clashes = [...neighbours.get(p.slug)].filter((n) => assigned.has(n) && tooSimilar(assigned.get(n), colour))
+      if (clashes.some((n) => !fixed.has(n) && !fixed.has(p.slug))) continue
+      extra += clashes.length * COST.fixedClash
+      if (lastInList.has(p.slug) && colour === FOOTER) {
+        if (!fixed.has(p.slug)) continue
+        extra += COST.fixedClash
+      }
       for (const [other, c] of pairs.get(p.slug)) if (assigned.get(other) === colour) extra += c
       assigned.set(p.slug, colour)
       place(i + 1, cost + extra)
@@ -123,4 +134,24 @@ export function assignColours(projects) {
     )
   }
   return best
+}
+
+// Plain warnings for clashes that fixed colours cause: neighbours that will read as one band, and a
+// last project that merges into the footer. nameOf turns a category slug into its name.
+export function colourWarnings(projects, colours, nameOf = (slug) => slug) {
+  const warnings = []
+  const title = (p) => p.title ?? p.slug
+  const describe = (p) => `${title(p)} (${isFixed(p) ? 'your fixed ' : ''}${colours.get(p.slug)})`
+  for (const [i, { items }] of listings(projects).entries()) {
+    const page = i === 0 ? 'the All projects page' : `the ${nameOf(items[0].category)} page`
+    for (let k = 1; k < items.length; k++) {
+      const [a, b] = [items[k - 1], items[k]]
+      if ((isFixed(a) || isFixed(b)) && tooSimilar(colours.get(a.slug), colours.get(b.slug)))
+        warnings.push({ slugs: [a.slug, b.slug], text: `${describe(a)} sits next to ${describe(b)} on ${page}. They will read as one band. To fix: change one Opening colour, or set one back to Automatic.` })
+    }
+    const last = items[items.length - 1]
+    if (last && isFixed(last) && colours.get(last.slug) === FOOTER)
+      warnings.push({ slugs: [last.slug], text: `${title(last)} (your fixed ${FOOTER}) is the last project on ${page}, directly above the ${FOOTER} footer, so the two will merge. To fix: choose another Opening colour, or set it back to Automatic.` })
+  }
+  return warnings
 }

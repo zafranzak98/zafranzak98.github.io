@@ -139,6 +139,15 @@ collections:
         options: [Olive, Sage, Light sage, Off-white, Terracotta]
         default: Olive
         hint: The project's preferred colour, for its band on the Projects pages and the opening of its case study. If it would match or look too close to a neighbouring project, the website automatically shows the nearest distinct colour from the palette instead, the same on every page.
+      - name: colour_choice
+        label: Colour
+        widget: select
+        options:
+          - { label: Automatic, value: Automatic }
+          - { label: Always use my Opening colour, value: Fixed }
+        default: Automatic
+        required: false
+        hint: Automatic keeps neighbouring projects distinct and may show a nearby colour instead. "Always use my Opening colour" shows your colour on every page and never replaces it; if it then matches a neighbour, or puts Olive directly above the footer, the test site shows a note on the band and the build report says how to fix it. Change back to Automatic at any time.
       - name: cover
         label: Cover image
         widget: object

@@ -43,6 +43,8 @@ const projects = defineCollection({
     design: z.enum(DESIGNS).optional(),
     summary: z.string().min(1).max(220),
     opening_colour: z.enum(OPENING_COLOURS),
+    // 'Fixed' = always use the Opening colour, even if it clashes with a neighbour (warned, never changed).
+    colour_choice: z.enum(['Automatic', 'Fixed']).optional(),
     cover: image.optional(),
     cover_before: image.optional(),
     role: z.string().min(1).max(60),

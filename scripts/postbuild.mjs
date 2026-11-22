@@ -9,7 +9,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statS
 import { join, relative } from 'node:path'
 import { execSync } from 'node:child_process'
 import matter from 'gray-matter'
-import { assignColours, FOOTER, listings, tooSimilar } from '../src/lib/project-colours.js'
+import { assignColours, colourWarnings, FOOTER, isFixed, listings, tooSimilar } from '../src/lib/project-colours.js'
 import { isPhoto, variantPath, widthsFor } from '../src/lib/image-variants.js'
 import sharp from 'sharp'
 import { ADDRESS_PATTERN, addressOf, overrideOf, pagePath } from '../src/lib/project-urls.js'
@@ -20,6 +20,8 @@ const PREVIEW = process.env.VITE_SITE_MODE === 'preview'
 const DIST = 'dist'
 const errors = []
 const warnings = []
+// Colour notes: shown in the build report, not emailed (the warning email is about site size).
+const colourNotes = []
 const read = (dir) => readdirSync(dir).filter((f) => f.endsWith('.md')).map((f) => ({ slug: f.replace(/\.md$/, ''), ...matter(readFileSync(join(dir, f), 'utf8')).data }))
 const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]))
 
@@ -258,18 +260,23 @@ if (!existsSync(join(ADMIN, 'config.yml'))) errors.push('The website editor is m
 
 // ---- project colours
 // The same assignment the website uses. Fails the build, leaving the published site as it was,
-// if no arrangement keeps neighbouring projects distinct, and double-checks every listing.
+// if no arrangement keeps automatic neighbours distinct, and double-checks every listing. A clash
+// caused by a colour fixed in the editor is the owner's choice: it is reported, never an error.
 try {
   const colours = assignColours(live)
   for (const { name, items } of listings(live))
     for (let i = 1; i < items.length; i++) {
-      const [a, b] = [colours.get(items[i - 1].slug), colours.get(items[i].slug)]
-      if (tooSimilar(a, b)) errors.push(`Project colours: "${items[i - 1].slug}" (${a}) and "${items[i].slug}" (${b}) are neighbours on ${name}.`)
+      const [pa, pb] = [items[i - 1], items[i]]
+      const [a, b] = [colours.get(pa.slug), colours.get(pb.slug)]
+      if (tooSimilar(a, b) && !isFixed(pa) && !isFixed(pb)) errors.push(`Project colours: "${pa.slug}" (${a}) and "${pb.slug}" (${b}) are neighbours on ${name}.`)
     }
   for (const { name, items } of listings(live)) {
     const last = items[items.length - 1]
-    if (last && colours.get(last.slug) === FOOTER) errors.push(`Project colours: "${last.slug}" is the last project on ${name} and would be ${FOOTER}, the same as the footer.`)
+    if (last && colours.get(last.slug) === FOOTER && !isFixed(last)) errors.push(`Project colours: "${last.slug}" is the last project on ${name} and would be ${FOOTER}, the same as the footer.`)
   }
+  const catName = (slug) => categories.find((c) => c.slug === slug)?.name ?? slug
+  for (const w of colourWarnings(live, colours, catName)) colourNotes.push(w.text)
+  for (const p of live.filter(isFixed)) if (colours.get(p.slug) !== p.opening_colour) errors.push(`Project colours: "${p.slug}" is set to always use ${p.opening_colour} but was shown as ${colours.get(p.slug)}.`)
   const changed = live.filter((p) => colours.get(p.slug) !== p.opening_colour)
   console.log(`Project colours: ${live.map((p) => `${p.slug} ${colours.get(p.slug)}`).join(', ')}`)
   for (const p of changed) console.log(`  ${p.slug}: preferred ${p.opening_colour}, shown as ${colours.get(p.slug)} (keeps neighbours distinct, avoids the footer colour on the last project of a page, and avoids a repeat on its category page)`)
@@ -305,6 +312,7 @@ const report = [
   `Repository: ${(repoSize / MB).toFixed(2)} MB of 1,024 MB (GitHub recommendation)`,
   `Largest file: ${biggest[0] ? `${biggest[0][0]} (${(biggest[0][1] / MB).toFixed(2)} MB; limit 100 MB)` : 'none'}`,
   ...warnings.map((w) => `WARNING: ${w}`),
+  ...colourNotes.map((n) => `COLOUR NOTE: ${n}`),
   ...errors.map((e) => `ERROR: ${e}`),
 ]
 console.log('\n' + report.join('\n') + '\n')
