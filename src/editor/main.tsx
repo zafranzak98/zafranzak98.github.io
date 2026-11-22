@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client'
-import { createContext, useContext, useMemo, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Puck, createUsePuck, type Data } from '@puckeditor/core'
 import '@puckeditor/core/no-external.css'
 import '@fontsource-variable/instrument-sans/wdth.css'
@@ -34,6 +34,19 @@ function startingLayout(p: Project): { data: Data; restored: boolean } {
   return { data: (savedLayoutFor(p) ?? standardCaseLayout()) as Data, restored: false }
 }
 
+// Puck leaves a few of its own controls unnamed; name them for screen readers as they appear.
+function labelPuckControls() {
+  const fix = () => {
+    document.getElementById('preview-frame')?.setAttribute('title', 'Page preview')
+    document.querySelector('[class*="ViewportControls-zoomSelect"]')?.setAttribute('aria-label', 'Zoom')
+    document.querySelectorAll('[class*="_Loader_"][aria-label]').forEach((e) => e.setAttribute('role', 'status'))
+  }
+  fix()
+  const watch = new MutationObserver(fix)
+  watch.observe(document.body, { childList: true, subtree: true })
+  return () => watch.disconnect()
+}
+
 function EditorApp() {
   const params = new URLSearchParams(location.search)
   const p = caseStudies.find((x) => x.slug === params.get('project')) ?? caseStudies.find((x) => x.design === 'about-face') ?? caseStudies[0]
@@ -42,14 +55,23 @@ function EditorApp() {
   const [token, setToken] = useState<string | null>(() => session.get('design-editor:token'))
   const [notice, setNotice] = useState<string>(start.restored ? 'Your unsaved changes from last time are back. Use Undo, or "Discard unsaved changes", to drop them.' : '')
   const saveTimer = useRef<number>(undefined)
+  // The page as published, in the form the editor reports it; matching it means nothing is unsaved.
+  const clean = useRef<string | null>(start.restored ? null : '')
 
   // Keep unsaved work in this browser, a moment after each change.
   const onChange = (data: Data) => {
     window.clearTimeout(saveTimer.current)
-    saveTimer.current = window.setTimeout(() => writeLocal(localKey(p.slug, 'unsaved'), data), 400)
+    const json = JSON.stringify(data)
+    if (clean.current === '') clean.current = json
+    saveTimer.current = window.setTimeout(() => {
+      if (json === clean.current) removeLocal(localKey(p.slug, 'unsaved'))
+      else writeLocal(localKey(p.slug, 'unsaved'), data)
+    }, 400)
   }
 
-  const actions = useMemo(() => ({ p, token, setToken, setNotice }), [p, token])
+  useEffect(labelPuckControls, [])
+
+  const actions = useMemo(() => ({ p, token, setToken, setNotice, markClean: () => { clean.current = '' } }), [p, token])
   return (
     <SessionContext.Provider value={actions}>
       <Puck
@@ -69,18 +91,20 @@ function EditorApp() {
   )
 }
 
-type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string) => void }
+type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string) => void; markClean: () => void }
 
 const SessionContext = createContext<Session | null>(null)
 const OVERRIDES = { headerActions: () => <Actions /> }
 
 function Actions() {
-  const { p, token, setToken, setNotice } = useContext(SessionContext)!
+  const { p, token, setToken, setNotice, markClean } = useContext(SessionContext)!
   const data = usePuck((s) => s.appState.data)
   const dispatch = usePuck((s) => s.dispatch)
   const [busy, setBusy] = useState('')
   const [panel, setPanel] = useState<'' | 'publish' | 'history' | 'reset'>('')
   const [versions, setVersions] = useState<Version[]>([])
+  const [more, setMore] = useState(false)
+  const choose = (action: () => void) => () => { setMore(false); action() }
   const warnings = layoutWarnings(data.content as never)
 
   const run = async (label: string, task: () => Promise<string>) => {
@@ -119,7 +143,9 @@ function Actions() {
   const openHistory = () => run('Loading history', async () => {
     setPanel('history')
     if (DEMO) { setVersions(readLocal<Version[]>(localKey(p.slug, 'versions'), [])); return '' }
-    setVersions((await github.history(needToken(), p.slug)).map((v: { sha: string; date: string; message: string }) => ({ id: v.sha, date: v.date, message: v.message })))
+    const t = needToken()
+    const [draft, published] = await Promise.all([github.latestDraft(t, p.slug), github.history(t, p.slug)])
+    setVersions([...(draft ? [draft] : []), ...published].map((v: { sha: string; date: string; message: string }) => ({ id: v.sha, date: v.date, message: v.message })))
     return ''
   })
 
@@ -139,6 +165,7 @@ function Actions() {
 
   const discardUnsaved = () => {
     removeLocal(localKey(p.slug, 'unsaved'))
+    markClean()
     dispatch({ type: 'setData', data: (savedLayoutFor(p) ?? standardCaseLayout()) as Data })
     setNotice('Unsaved changes discarded. The page is as last published.')
   }
@@ -147,9 +174,12 @@ function Actions() {
     <div className="editor-actions">
       {warnings.length > 0 && <span className="editor-flag" title={warnings.join(' ')}>{warnings.length} check{warnings.length > 1 ? 's' : ''} to look at</span>}
       {DEMO ? <span className="editor-flag">Demo: saves in this browser only</span> : !token && <button type="button" onClick={signIn} disabled={!!busy}>Sign in with GitHub</button>}
-      <button type="button" onClick={discardUnsaved} disabled={!!busy}>Discard unsaved changes</button>
-      <button type="button" onClick={openHistory} disabled={!!busy}>Versions</button>
-      <button type="button" onClick={() => setPanel('reset')} disabled={!!busy}>Standard layout</button>
+      <button type="button" className="editor-more-toggle" aria-expanded={more} onClick={() => setMore(!more)}>More</button>
+      <div className={more ? 'editor-more open' : 'editor-more'}>
+        <button type="button" onClick={choose(openHistory)} disabled={!!busy}>Versions</button>
+        <button type="button" onClick={choose(() => setPanel('reset'))} disabled={!!busy}>Standard layout</button>
+        <button type="button" onClick={choose(discardUnsaved)} disabled={!!busy}>Discard unsaved changes</button>
+      </div>
       <button type="button" onClick={saveDraft} disabled={!!busy}>Save draft</button>
       <button type="button" className="editor-primary" onClick={() => setPanel('publish')} disabled={!!busy}>Publish</button>
       {busy && <span className="editor-flag" role="status">{busy}…</span>}
@@ -186,8 +216,14 @@ function Actions() {
 }
 
 function Panel({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    ref.current?.querySelector('button')?.focus()
+    return () => opener?.focus()
+  }, [])
   return (
-    <div className="editor-panel" role="dialog" aria-label={title}>
+    <div ref={ref} className="editor-panel" role="dialog" aria-label={title} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
       <h2>{title}</h2>
       {children}
       <button type="button" onClick={onClose}>Cancel</button>

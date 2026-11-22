@@ -63,8 +63,7 @@ async function ensureDrafts(token: string) {
   await api(token, '/git/refs', { method: 'POST', body: JSON.stringify({ ref: `refs/heads/${DRAFTS}`, sha: main.object.sha }) })
 }
 
-// Writes the layout. `sha` is the version this edit started from; if someone else saved in the
-// meantime GitHub refuses (409), so nothing is overwritten unseen.
+// Writes the layout over the branch's current copy; every save stays in the branch history.
 export async function writeLayout(token: string, slug: string, layout: unknown, branch: string, message: string) {
   if (branch === DRAFTS) await ensureDrafts(token)
   const current = await readLayout(token, slug, branch)
@@ -78,6 +77,13 @@ export async function writeLayout(token: string, slug: string, layout: unknown, 
 export async function history(token: string, slug: string) {
   const commits = (await api(token, `/commits?sha=${MAIN}&path=${encodeURIComponent(layoutPath(slug))}&per_page=30`)) ?? []
   return commits.map((c: { sha: string; commit: { message: string; author: { date: string } } }) => ({ sha: c.sha, date: c.commit.author.date, message: c.commit.message }))
+}
+
+// The latest saved draft, if one was saved after the drafts branch was made.
+export async function latestDraft(token: string, slug: string) {
+  const [last] = (await api(token, `/commits?sha=${DRAFTS}&path=${encodeURIComponent(layoutPath(slug))}&per_page=1`)) ?? []
+  if (!last?.commit.message.startsWith('Design editor: draft')) return null
+  return { sha: last.sha as string, date: last.commit.author.date as string, message: 'Latest draft' }
 }
 
 // Going back to the standard layout removes the saved file; its history stays in the repository.

@@ -60,6 +60,7 @@ function block(label: string, Render: (props: any) => React.ReactNode, extra: Re
 
 const photos = Object.keys(imageWidths).sort()
 const ratioOptions = [{ label: 'Its own shape', value: 'auto' }, { label: 'Square', value: '1/1' }, { label: 'Portrait 4:5', value: '4/5' }, { label: 'Portrait 3:4', value: '3/4' }, { label: 'Tall 9:16', value: '9/16' }, { label: 'Landscape 16:9', value: '16/9' }, { label: 'Wide 21:9', value: '21/9' }]
+const SIZES = [['Small', 'small'], ['Medium', 'medium'], ['Large', 'large'], ['Extra large', 'xlarge']].map(([label, value]) => ({ label, value }))
 const percent = (label: string) => ({ type: 'number' as const, label, min: 0, max: 100, step: 5 })
 
 export function editorConfig(p: Project): Config {
@@ -112,7 +113,14 @@ export function editorConfig(p: Project): Config {
           align: { type: 'radio', label: 'Line up items', options: [{ label: 'Top', value: 'start' }, { label: 'Middle', value: 'center' }, { label: 'Bottom', value: 'end' }] },
           cells: { type: 'slot', allow: ['Cell'] },
         } as never,
-        defaultProps: { gap: 'normal', align: 'start', cells: [] } as never,
+        defaultProps: {
+          gap: 'normal',
+          align: 'start',
+          cells: [
+            { type: 'Cell', props: { start: 1, span: 6, content: [] } },
+            { type: 'Cell', props: { start: 7, span: 6, content: [] } },
+          ],
+        } as never,
       }),
       Cell: block('Grid cell', CellBlock, {
         fields: {
@@ -124,8 +132,8 @@ export function editorConfig(p: Project): Config {
       }),
       Spacer: block('Spacer', SpacerBlock, {
         fields: {
-          height: { type: 'select', label: 'Height', options: ['small', 'medium', 'large', 'xlarge'].map((v) => ({ label: v, value: v })) },
-          heightPhone: { type: 'select', label: 'Height on phones', options: [{ label: 'Same', value: '' }, ...['small', 'medium', 'large', 'xlarge'].map((v) => ({ label: v, value: v }))] },
+          height: { type: 'select', label: 'Height', options: SIZES },
+          heightPhone: { type: 'select', label: 'Height on phones', options: [{ label: 'Same', value: '' }, ...SIZES] },
         } as never,
         defaultProps: { height: 'medium' } as never,
       }),

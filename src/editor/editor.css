@@ -1,10 +1,15 @@
 /* The design editor's own controls, in the site's palette. The canvas shows the real site styles. */
 body.design-editor { background: #fff; }
-.editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; font-size: 14px; }
-.editor-actions > button, .editor-panel button { padding: 0.375rem 0.75rem; border: 1px solid var(--olive); border-radius: 4px; background: var(--off); color: var(--olive); font: inherit; font-weight: 600; cursor: pointer; }
-.editor-actions > button:disabled { opacity: 0.5; cursor: default; }
+.editor-actions { position: relative; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; font-size: 14px; }
+.editor-actions button, .editor-panel button { padding: 0.375rem 0.75rem; border: 1px solid var(--olive); border-radius: 4px; background: var(--off); color: var(--olive); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.editor-actions button:disabled { opacity: 0.5; cursor: default; }
 .editor-actions .editor-primary, .editor-panel .editor-primary { background: var(--olive); color: var(--off); }
-.editor-flag { padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--lsage); color: var(--olive); font-size: 13px; }
+/* Puck's header title gives way to the buttons on tablets (Puck is pinned, so its class names are stable). */
+[aria-controls^='puck-drawer-category'] > div { color: #555; }
+[class*='PuckHeader-title'] { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.editor-more { display: none; position: absolute; z-index: 1000; top: calc(100% + 0.5rem); right: 0; flex-direction: column; align-items: stretch; gap: 0.375rem; padding: 0.5rem; border: 1px solid var(--olive); border-radius: 6px; background: var(--off); }
+.editor-more.open { display: flex; }
+.editor-flag { padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--lsage); color: var(--olive); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16rem; min-width: 2.5rem; flex-shrink: 1; }
 .editor-panel { position: fixed; z-index: 1000; top: 4.5rem; right: 1rem; width: min(26rem, calc(100vw - 2rem)); max-height: 70vh; overflow: auto; padding: 1.25rem; border: 1px solid var(--olive); border-radius: 6px; background: var(--off); color: var(--olive); font-size: 15px; line-height: 1.5; }
 .editor-panel h2 { margin: 0 0 0.75rem; font-size: 18px; }
 .editor-panel p { margin: 0 0 0.75rem; }
@@ -17,3 +22,4 @@ body.design-editor { background: #fff; }
 /* Warnings drawn on a block in the canvas while editing; never on the website. */
 .editor-warning { position: relative; z-index: 5; margin: 0 var(--m); padding: 0.5rem 0.75rem; background: var(--terra); color: var(--off); font-size: var(--t-meta); line-height: 1.4; }
 .editor-warning p { margin: 0; }
+@media (max-width: 1023px) { .editor-flag { max-width: 7rem; } }
