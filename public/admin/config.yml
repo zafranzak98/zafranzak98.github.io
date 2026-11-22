@@ -33,13 +33,14 @@ media_libraries:
     config:
       max_file_size: 26214400
       slugify_filename: true
-      # Photos are converted to WebP and scaled down to 2400px wide when uploaded,
-      # so a phone photo or an export at full size never slows the website down.
+      # Photos are converted to WebP and scaled down to fit within 2400 x 2400 pixels when
+      # uploaded, so a phone photo or a tall export at full size never slows the website down.
       transformations:
         raster_image:
           format: webp
           quality: 85
           width: 2400
+          height: 2400
 
 # Web addresses use plain letters, numbers and hyphens only.
 slug:

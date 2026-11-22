@@ -243,8 +243,13 @@ try { repoSize = Number(execSync('git count-objects -v', { encoding: 'utf8' }).m
 const biggest = walk('public').map((f) => [f, statSync(f).size]).sort((a, b) => b[1] - a[1])
 for (const [f, s] of biggest) {
   if (s > 20 * MB) warnings.push(`${f} is ${(s / MB).toFixed(1)} MB. GitHub blocks files over 100 MB and warns from 50 MB.`)
-  // Visitors download the smaller copies, so a large original only makes the repository grow.
-  else if (s > 5 * MB && /\.(jpe?g|png|webp|gif)$/i.test(f)) warnings.push(`${f} is ${(s / MB).toFixed(1)} MB. Visitors get smaller copies, but originals this large make the repository grow quickly.`)
+  // Large screens are sent the original, so an image over 1 MB still slows the site down there.
+  else if (s > MB && /\.(jpe?g|png|webp|gif)$/i.test(f)) warnings.push(`${f} is ${(s / MB).toFixed(1)} MB. Images over 1 MB slow the site down.`)
+}
+// The smaller copies made in section 2b are what most visitors download: none should be over 1 MB.
+for (const f of walk(join(DIST, 'media')).filter((f) => /-w\d+\.webp$/.test(f))) {
+  const s = statSync(f).size
+  if (s > MB) warnings.push(`${relative(DIST, f)} (a smaller copy for visitors) is ${(s / MB).toFixed(1)} MB. Images over 1 MB slow the site down.`)
 }
 if (siteSize > 500 * MB) warnings.push(`The published website is ${(siteSize / MB).toFixed(0)} MB. GitHub Pages allows up to 1 GB.${siteSize > 800 * MB ? ' URGENT.' : ''}`)
 if (repoSize > 500 * MB) warnings.push(`The repository is ${(repoSize / MB).toFixed(0)} MB. GitHub recommends staying under 1 GB.${repoSize > 800 * MB ? ' URGENT.' : ''}`)
