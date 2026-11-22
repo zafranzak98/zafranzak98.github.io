@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import type { CSSProperties } from 'react'
 import OpeningVisual from '#/components/opening-visual'
-import { bandOrder } from '#/lib/project-colours.js'
+import { allOrder, bandOrder } from '#/lib/project-colours.js'
 import { categoryName, colourOf, openingOf, yearOf, type Project } from '#/lib/site'
 import { Rich } from '#/components/rich'
 
@@ -37,8 +37,9 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
   )
 }
 
-// Case studies first, then projects listed without a page, numbered in one sequence.
-export function ProjectBands({ items }: { items: Project[] }) {
-  const ordered = bandOrder(items)
+// Case studies first, then projects listed without a page, numbered in one sequence. The All
+// projects page (all) lists each group newest first; category pages keep the Order number.
+export function ProjectBands({ items, all = false }: { items: Project[]; all?: boolean }) {
+  const ordered = all ? allOrder(items) : bandOrder(items)
   return <section className="bands">{ordered.map((p, i) => <ProjectBand key={p.slug} p={p} number={i + 1} />)}</section>
 }

@@ -44,11 +44,20 @@ export const bandOrder = (projects) => {
   return [...sorted.filter(hasPage), ...sorted.filter((p) => !hasPage(p))]
 }
 
-// Every list a project appears in: All projects, then each category in the same order.
+// The All projects page: newest year first, ties broken by Order (then title). Case studies still
+// come before projects listed without a page; each group is in date order. Projects without a year
+// go to the end of their group. Category pages keep bandOrder above.
+const byNewest = (a, b) => (b.year ?? -Infinity) - (a.year ?? -Infinity) || byOrder(a, b)
+export const allOrder = (projects) => {
+  const sorted = [...projects].sort(byNewest)
+  return [...sorted.filter(hasPage), ...sorted.filter((p) => !hasPage(p))]
+}
+
+// Every list a project appears in: All projects (date order), then each category page (bandOrder).
 export const listings = (projects) => {
-  const all = bandOrder(projects)
-  const categories = [...new Set(all.map((p) => p.category))]
-  return [{ name: 'All projects', items: all }, ...categories.map((c) => ({ name: `category "${c}"`, items: all.filter((p) => p.category === c) }))]
+  const categoryOrder = bandOrder(projects)
+  const categories = [...new Set(categoryOrder.map((p) => p.category))]
+  return [{ name: 'All projects', items: allOrder(projects) }, ...categories.map((c) => ({ name: `category "${c}"`, items: categoryOrder.filter((p) => p.category === c) }))]
 }
 
 // How much each kind of imperfection costs. A colour repeated within one category page outweighs
