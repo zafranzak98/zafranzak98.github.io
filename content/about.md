@@ -1,6 +1,6 @@
 ---
 intro: A Malaysian graduate in Harrogate with a **First-Class Honours degree** in **Fashion Management and Communication**, and a start in a **luxury fashion house in Kuala Lumpur**.
-intro_more: '[A paragraph in your own voice: what you care about in fashion and culture, and the roles you are looking for.]'
+intro_more: '[A paragraph in your own voice: what you care about in fashion and culture, and the roles you are looking for.] EDITORTEST'
 languages:
   - English
   - Bahasa Malaysia
