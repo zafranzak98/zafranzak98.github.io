@@ -83,3 +83,10 @@ Day-to-day work happens on the `dev` branch and is merged into `main` when it is
 `.github/workflows/deploy.yml` runs on every push to `main`. It runs the production build as a check, then publishes the preview build to GitHub Pages. If a size warning appears, it opens or updates a "Website size warning" issue, which GitHub emails to the repository owner. A failed build publishes nothing, so the site stays as it was.
 
 Every page also gets its own `index.html` at build time, so direct links and refreshes return a normal page rather than GitHub's 404.
+
+## Project web addresses
+
+- A project's **file name** in `content/projects` is its permanent internal ID. Images, colours and the editor use it, and it never changes.
+- Its **web address** (the last part of its page URL) is the editor's **Web address** field when filled in, otherwise it is made from the current title (`src/lib/project-urls.js`). Renaming a project changes its address; filling in Web address fixes it; emptying the field returns to the title.
+- **Old addresses keep working.** Each build reads the save history (`scripts/redirects.mjs`) and writes a small redirect page at every address a project has had, including old categories, pointing straight to the current address. The full list is published at `/redirects.json`. The build stops if the history is incomplete (a shallow copy), if two projects would share an address, or if an override is not lowercase letters, numbers and single hyphens.
+- **Limitations of redirects on GitHub Pages.** GitHub Pages cannot send real HTTP 301 redirects. The redirect pages use an instant meta refresh, a script, a canonical link to the new address and a plain link. Browsers follow them at once; search engines treat an instant refresh much like a permanent redirect, but more slowly and with less certainty than a 301, and the old address can stay in search results for a while. Since every page names zafranzakaria.com as canonical, this matters only after launch. Deleting a project removes its page; its old addresses then stop working, as before.
