@@ -46,7 +46,7 @@ for (const p of projects) {
 const byAddress = new Map()
 for (const p of projects) byAddress.set(addressOf(p), [...(byAddress.get(addressOf(p)) ?? []), p])
 for (const [address, list] of byAddress)
-  if (address && list.length > 1) errors.push(`Web address "${address}" is used by ${list.map((p) => `"${p.title}"`).join(' and ')}. Change one title, or fill in a different Web address for one of them.`)
+  if (address && list.length > 1) errors.push(`Web address "${address}" is used by ${list.map((p) => `"${p.title}" (file ${p.slug}.md)`).join(' and ')}. Change one title, or fill in a different Web address for one of them.`)
 for (const m of mediaIn(about)) if (!existsSync(join('public', m))) errors.push(`About: file not found: ${m}`)
 for (const m of siteText.match(/\/(media|files)\/[^\s"']+/g) ?? []) if (!existsSync(join('public', m))) errors.push(`Site settings: file not found: ${m}`)
 
