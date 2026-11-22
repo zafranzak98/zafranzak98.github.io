@@ -11,7 +11,8 @@ import { categoryName, colourOf, openingOf, yearOf, type Project } from '#/lib/s
 export default function ProjectBand({ p, number }: { p: Project; number: number }) {
   const o = openingOf(p)
   const hasPage = p.page_type === 'Full case study'
-  const className = `band band-${p.design ?? 'standard'}${colourOf(p) === 'Off-white' ? ' band-rule' : ''}`
+  const colour = colourOf(p)
+  const className = `band band-${p.design ?? 'standard'}${colour === 'Off-white' ? ' band-rule' : ''}${colour === 'Olive' ? ' band-olive' : ''}`
   const style: CSSProperties = { background: o.bg, color: o.fg }
   const content = (
     <>
@@ -23,7 +24,7 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
         <span>My role: {p.role}{hasPage && <> <span className="band-arrow" aria-hidden="true">→</span></>}</span>
       </div>
       <p className="band-line">{p.summary}</p>
-      <div className="band-visual"><OpeningVisual p={p} phoneWidth="max(110px, 9.4vw)" /></div>
+      <div className="band-visual"><OpeningVisual p={p} inBand /></div>
       <b className="c band-title">{p.title}</b>
     </>
   )

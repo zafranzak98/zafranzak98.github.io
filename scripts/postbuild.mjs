@@ -194,7 +194,7 @@ try {
     }
   const changed = live.filter((p) => colours.get(p.slug) !== p.opening_colour)
   console.log(`Project colours: ${live.map((p) => `${p.slug} ${colours.get(p.slug)}`).join(', ')}`)
-  for (const p of changed) console.log(`  ${p.slug}: ${p.opening_colour} would clash with a neighbour, shown as ${colours.get(p.slug)}`)
+  for (const p of changed) console.log(`  ${p.slug}: preferred ${p.opening_colour}, shown as ${colours.get(p.slug)} (keeps neighbours distinct and avoids a repeat on its category page)`)
 } catch (e) {
   errors.push(e.message)
 }

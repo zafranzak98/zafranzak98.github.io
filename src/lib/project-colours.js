@@ -1,9 +1,10 @@
 // Project colours, worked out once for the whole site.
 //
 // Each project's Opening colour (chosen in the editor) is its preferred colour. A project keeps
-// it unless that would put it next to the same or a too-similar colour anywhere it is listed:
-// the All projects page or its category page. Then it takes the nearest distinct colour from
-// the approved palette. The result is one colour per project, used for its band on every page
+// it unless that would put it next to the same or a too-similar colour anywhere it is listed
+// (the All projects page or its category page), or would repeat a colour already used on its
+// category page when a distinct alternative exists. Then it takes the nearest suitable colour
+// from the approved palette. The result is one colour per project, used for its band on every page
 // and for its case study opening. The website and the build check (scripts/postbuild.mjs) both
 // use this file, so they always agree.
 //
@@ -46,40 +47,65 @@ export const listings = (projects) => {
   return [{ name: 'All projects', items: all }, ...categories.map((c) => ({ name: `category "${c}"`, items: all.filter((p) => p.category === c) }))]
 }
 
-// Returns a Map of slug -> colour. Throws with a plain explanation if no arrangement works.
+// How much each kind of imperfection costs. A colour repeated within one category page outweighs
+// a project leaving its preferred colour; a repeat close together on the All page counts least.
+const COST = { categoryRepeat: 100, notPreferred: 10, nearbyRepeatOnAll: 1 }
+
+// Returns a Map of slug -> colour. Neighbours never share the same or a too-similar colour (a hard
+// rule). Among the arrangements that satisfy it, the one with the lowest COST is chosen.
+// Throws with a plain explanation if no arrangement satisfies the hard rule.
 export function assignColours(projects) {
   const lists = listings(projects)
   const order = lists[0].items
+  const index = new Map(order.map((p, i) => [p.slug, i]))
   const neighbours = new Map(order.map((p) => [p.slug, new Set()]))
   for (const { items } of lists)
     for (let i = 1; i < items.length; i++) {
       neighbours.get(items[i].slug).add(items[i - 1].slug)
       neighbours.get(items[i - 1].slug).add(items[i].slug)
     }
-  const choices = (p) => {
-    const preferred = PALETTE.includes(p.opening_colour) ? p.opening_colour : 'Olive'
-    return [preferred, ...FALLBACKS[preferred]]
+  // Pairs of projects that count as a repeat if they share a colour, with the cost of doing so.
+  const pairs = new Map(order.map((p) => [p.slug, []]))
+  const addPair = (a, b, cost) => {
+    const [early, late] = index.get(a) < index.get(b) ? [a, b] : [b, a]
+    pairs.get(late).push([early, cost])
   }
+  for (const { items } of lists.slice(1))
+    for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) addPair(items[i].slug, items[j].slug, COST.categoryRepeat)
+  for (let i = 0; i + 2 < order.length; i++) addPair(order[i].slug, order[i + 2].slug, COST.nearbyRepeatOnAll)
+  const preferredOf = (p) => (PALETTE.includes(p.opening_colour) ? p.opening_colour : 'Olive')
+  const choices = (p) => [preferredOf(p), ...FALLBACKS[preferredOf(p)]]
+
+  // Depth-first search with pruning: try each project's preferred colour first, skip any colour
+  // that breaks the neighbour rule, and abandon a branch once it costs more than the best found.
   const assigned = new Map()
-  // Depth-first: each project tries its preferred colour first, so substitutions only happen
-  // where a clash forces them, and an earlier project gives way only if nothing else works.
-  const place = (i) => {
-    if (i === order.length) return true
+  let best = null
+  let bestCost = Infinity
+  let budget = 500000
+  const place = (i, cost) => {
+    if (cost >= bestCost || budget-- <= 0) return
+    if (i === order.length) {
+      best = new Map(assigned)
+      bestCost = cost
+      return
+    }
     const p = order[i]
     for (const colour of choices(p)) {
       if ([...neighbours.get(p.slug)].some((n) => assigned.has(n) && tooSimilar(assigned.get(n), colour))) continue
+      let extra = colour === preferredOf(p) ? 0 : COST.notPreferred
+      for (const [other, c] of pairs.get(p.slug)) if (assigned.get(other) === colour) extra += c
       assigned.set(p.slug, colour)
-      if (place(i + 1)) return true
+      place(i + 1, cost + extra)
       assigned.delete(p.slug)
     }
-    return false
   }
-  if (!place(0)) {
+  place(0, 0)
+  if (!best) {
     const busiest = [...neighbours].sort((a, b) => b[1].size - a[1].size)[0]
     throw new Error(
       `Project colours: no arrangement of the five approved colours keeps every pair of neighbouring projects distinct. ` +
         `"${busiest[0]}" sits next to ${[...busiest[1]].map((s) => `"${s}"`).join(', ')}. Change the project order or opening colours.`,
     )
   }
-  return assigned
+  return best
 }
