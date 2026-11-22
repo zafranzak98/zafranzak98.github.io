@@ -504,6 +504,9 @@ h3.free-heading { font-size: var(--h3); }
    overrides of that one block, so they take precedence over its usual spacing and colour. */
 .d-bg { background: var(--d-bg) !important; }
 .d-fg { color: var(--d-fg) !important; }
+/* A chosen text colour also applies to the block's own labels and meta lines, so they stay
+   readable on a chosen background. Highlights keep their own colours. */
+.d-fg .cs-sub, .d-fg .lab, .d-fg .fact-val, .d-fg .cap { color: inherit !important; }
 .d-pt { padding-top: var(--d-pt) !important; }
 .d-pb { padding-bottom: var(--d-pb) !important; }
 .d-shift { position: relative; left: var(--d-x, 0); top: var(--d-y, 0); }

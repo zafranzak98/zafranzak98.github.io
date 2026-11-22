@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client'
-import { useMemo, useRef, useState } from 'react'
+import { createContext, useContext, useMemo, useRef, useState } from 'react'
 import { Puck, createUsePuck, type Data } from '@puckeditor/core'
 import '@puckeditor/core/no-external.css'
 import '@fontsource-variable/instrument-sans/wdth.css'
@@ -25,6 +25,8 @@ const localKey = (slug: string, kind: string) => `design-editor:${slug}:${kind}`
 type Version = { id: string; date: string; message: string; layout?: Data }
 const readLocal = <T,>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(key) ?? '') as T } catch { return fallback } }
 const writeLocal = (key: string, value: unknown) => { try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* storage full or blocked: work continues */ } }
+const removeLocal = (key: string) => { try { localStorage.removeItem(key) } catch { /* nothing to remove */ } }
+const session = { get: (k: string) => { try { return sessionStorage.getItem(k) } catch { return null } }, set: (k: string, v: string) => { try { sessionStorage.setItem(k, v) } catch { /* sign-in lasts until the page closes */ } } }
 
 function startingLayout(p: Project): { data: Data; restored: boolean } {
   const unsaved = readLocal<Data | null>(localKey(p.slug, 'unsaved'), null)
@@ -37,7 +39,7 @@ function EditorApp() {
   const p = caseStudies.find((x) => x.slug === params.get('project')) ?? caseStudies.find((x) => x.design === 'about-face') ?? caseStudies[0]
   const config = useMemo(() => editorConfig(p), [p])
   const [start] = useState(() => startingLayout(p))
-  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem('design-editor:token'))
+  const [token, setToken] = useState<string | null>(() => session.get('design-editor:token'))
   const [notice, setNotice] = useState<string>(start.restored ? 'Your unsaved changes from last time are back. Use Undo, or "Discard unsaved changes", to drop them.' : '')
   const saveTimer = useRef<number>(undefined)
 
@@ -47,9 +49,9 @@ function EditorApp() {
     saveTimer.current = window.setTimeout(() => writeLocal(localKey(p.slug, 'unsaved'), data), 400)
   }
 
-  const session = { p, token, setToken, setNotice }
+  const actions = useMemo(() => ({ p, token, setToken, setNotice }), [p, token])
   return (
-    <>
+    <SessionContext.Provider value={actions}>
       <Puck
         config={config}
         data={start.data}
@@ -60,16 +62,20 @@ function EditorApp() {
           { width: 1024, label: 'Tablet', icon: 'Tablet' },
           { width: 1440, label: 'Desktop', icon: 'Monitor' },
         ]}
-        overrides={{ headerActions: () => <Actions {...session} /> }}
+        overrides={OVERRIDES}
       />
       {notice && <div className="editor-notice" role="status"><p>{notice}</p><button type="button" onClick={() => setNotice('')}>Close</button></div>}
-    </>
+    </SessionContext.Provider>
   )
 }
 
 type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string) => void }
 
-function Actions({ p, token, setToken, setNotice }: Session) {
+const SessionContext = createContext<Session | null>(null)
+const OVERRIDES = { headerActions: () => <Actions /> }
+
+function Actions() {
+  const { p, token, setToken, setNotice } = useContext(SessionContext)!
   const data = usePuck((s) => s.appState.data)
   const dispatch = usePuck((s) => s.dispatch)
   const [busy, setBusy] = useState('')
@@ -86,7 +92,7 @@ function Actions({ p, token, setToken, setNotice }: Session) {
 
   const signIn = () => run('Sign-in', async () => {
     const t = await github.signIn()
-    sessionStorage.setItem('design-editor:token', t)
+    session.set('design-editor:token', t)
     setToken(t)
     return 'Signed in. Drafts and publishing now save to the website.'
   })
@@ -102,11 +108,11 @@ function Actions({ p, token, setToken, setNotice }: Session) {
     if (DEMO) {
       const list = readLocal<Version[]>(localKey(p.slug, 'versions'), [])
       writeLocal(localKey(p.slug, 'versions'), [{ id: String(Date.now()), date: new Date().toISOString(), message: 'Published (demo)', layout: data }, ...list].slice(0, 30))
-      localStorage.removeItem(localKey(p.slug, 'unsaved'))
+      removeLocal(localKey(p.slug, 'unsaved'))
       return 'Published in this demo only. In the real editor this saves the page and the test site updates in about a minute, after the usual checks.'
     }
     await github.writeLayout(needToken(), p.slug, data, github.MAIN, `Design editor: publish layout for ${p.slug}`)
-    localStorage.removeItem(localKey(p.slug, 'unsaved'))
+    removeLocal(localKey(p.slug, 'unsaved'))
     return 'Published. The test site updates in about a minute, after the usual checks. If a check fails, the site stays as it was and you get the usual email.'
   })
 
@@ -132,7 +138,7 @@ function Actions({ p, token, setToken, setNotice }: Session) {
   }
 
   const discardUnsaved = () => {
-    localStorage.removeItem(localKey(p.slug, 'unsaved'))
+    removeLocal(localKey(p.slug, 'unsaved'))
     dispatch({ type: 'setData', data: (savedLayoutFor(p) ?? standardCaseLayout()) as Data })
     setNotice('Unsaved changes discarded. The page is as last published.')
   }
