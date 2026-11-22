@@ -3,7 +3,8 @@
 //    so direct links answer "200 OK" instead of "404".
 // 2. In production mode, remove media used only by drafts, then fail if any draft content remains.
 // 3. Add the website editor at /admin.
-// 4. Check the content and report sizes against GitHub's limits.
+// 4. Keep the previous build's scripts for a day, so pages a browser saved before a deploy still load.
+// 5. Check the content and report sizes against GitHub's limits.
 import { createHash } from 'node:crypto'
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync, appendFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -303,6 +304,32 @@ try {
 // ---- 4. sizes
 const MB = 1024 * 1024
 const size = (dir) => walk(dir).reduce((n, f) => n + statSync(f).size, 0)
+// GitHub Pages lets browsers keep a page's HTML for 10 minutes, and that HTML names the scripts
+// of the build it came from. Each build therefore also publishes the scripts of the builds before
+// it (for a day), listed with the date they first appeared in assets-manifest.json.
+const KEEP_ASSETS_FOR = 24 * 60 * 60 * 1000
+const manifest = { files: {} }
+const now = Date.now()
+for (const name of readdirSync(join(DIST, 'assets'))) manifest.files[name] = new Date(now).toISOString()
+if (process.env.GITHUB_ACTIONS) {
+  try {
+    const previous = await fetch(`${ORIGIN}/assets-manifest.json`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : { files: {} }))
+    let kept = 0
+    for (const [name, since] of Object.entries(previous.files ?? {})) {
+      if (manifest.files[name] || !/^[\w.-]+$/.test(name) || now - Date.parse(since) > KEEP_ASSETS_FOR) continue
+      const res = await fetch(`${ORIGIN}/assets/${name}`)
+      if (!res.ok) continue
+      writeFileSync(join(DIST, 'assets', name), Buffer.from(await res.arrayBuffer()))
+      manifest.files[name] = since
+      kept++
+    }
+    console.log(`Kept ${kept} script and style files from earlier builds.`)
+  } catch (e) {
+    warnings.push(`Could not keep the previous build's scripts (${e.message}). Pages saved in a browser in the last 10 minutes may need a refresh.`)
+  }
+}
+writeFileSync(join(DIST, 'assets-manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
+
 const siteSize = size(DIST)
 let repoSize = 0
 try { repoSize = Number(execSync('git count-objects -v', { encoding: 'utf8' }).match(/size-pack: (\d+)/)?.[1] ?? 0) * 1024 } catch {}

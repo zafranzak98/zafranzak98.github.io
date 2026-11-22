@@ -55,14 +55,14 @@ function EditorApp() {
   const [token, setToken] = useState<string | null>(() => session.get('design-editor:token'))
   const [notice, setNotice] = useState<string>(start.restored ? 'Your unsaved changes from last time are back. Use Undo, or "Discard unsaved changes", to drop them.' : '')
   const saveTimer = useRef<number>(undefined)
-  // The page as published, in the form the editor reports it; matching it means nothing is unsaved.
+  // The page as published, in the form the editor holds it; matching it means nothing is unsaved.
+  // '' means "take the next state the editor shows as the published one".
   const clean = useRef<string | null>(start.restored ? null : '')
 
   // Keep unsaved work in this browser, a moment after each change.
   const onChange = (data: Data) => {
     window.clearTimeout(saveTimer.current)
     const json = JSON.stringify(data)
-    if (clean.current === '') clean.current = json
     saveTimer.current = window.setTimeout(() => {
       if (json === clean.current) removeLocal(localKey(p.slug, 'unsaved'))
       else writeLocal(localKey(p.slug, 'unsaved'), data)
@@ -71,7 +71,7 @@ function EditorApp() {
 
   useEffect(labelPuckControls, [])
 
-  const actions = useMemo(() => ({ p, token, setToken, setNotice, markClean: () => { clean.current = '' } }), [p, token])
+  const actions = useMemo(() => ({ p, token, setToken, setNotice, markClean: () => { clean.current = '' }, clean }), [p, token])
   return (
     <SessionContext.Provider value={actions}>
       <Puck
@@ -91,14 +91,15 @@ function EditorApp() {
   )
 }
 
-type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string) => void; markClean: () => void }
+type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string) => void; markClean: () => void; clean: { current: string | null } }
 
 const SessionContext = createContext<Session | null>(null)
 const OVERRIDES = { headerActions: () => <Actions /> }
 
 function Actions() {
-  const { p, token, setToken, setNotice, markClean } = useContext(SessionContext)!
+  const { p, token, setToken, setNotice, markClean, clean } = useContext(SessionContext)!
   const data = usePuck((s) => s.appState.data)
+  useEffect(() => { if (clean.current === '') clean.current = JSON.stringify(data) }, [data, clean])
   const dispatch = usePuck((s) => s.dispatch)
   const [busy, setBusy] = useState('')
   const [panel, setPanel] = useState<'' | 'publish' | 'history' | 'reset'>('')
@@ -133,10 +134,14 @@ function Actions() {
       const list = readLocal<Version[]>(localKey(p.slug, 'versions'), [])
       writeLocal(localKey(p.slug, 'versions'), [{ id: String(Date.now()), date: new Date().toISOString(), message: 'Published (demo)', layout: data }, ...list].slice(0, 30))
       removeLocal(localKey(p.slug, 'unsaved'))
+      clean.current = JSON.stringify(data)
       return 'Published in this demo only. In the real editor this saves the page and the test site updates in about a minute, after the usual checks.'
     }
-    await github.writeLayout(needToken(), p.slug, data, github.MAIN, `Design editor: publish layout for ${p.slug}`)
+    const standard = JSON.stringify(data.content) === JSON.stringify(standardCaseLayout().content)
+    if (standard) await github.removeLayout(needToken(), p.slug, `Design editor: back to the standard layout for ${p.slug}`)
+    else await github.writeLayout(needToken(), p.slug, data, github.MAIN, `Design editor: publish layout for ${p.slug}`)
     removeLocal(localKey(p.slug, 'unsaved'))
+    clean.current = JSON.stringify(data)
     return 'Published. The test site updates in about a minute, after the usual checks. If a check fails, the site stays as it was and you get the usual email.'
   })
 
@@ -198,17 +203,17 @@ function Actions() {
         </Panel>
       )}
       {panel === 'history' && (
-        <Panel title="Published versions" onClose={() => setPanel('')}>
+        <Panel title="Versions" onClose={() => setPanel('')}>
           {versions.length ? (
             <ul className="editor-versions">
               {versions.map((v) => (
                 <li key={v.id}>
-                  <span>{new Date(v.date).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                  <span>{v.message === 'Latest draft' ? 'Draft' : 'Published'}, {new Date(v.date).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                   <button type="button" onClick={() => loadVersion(v)}>Load into editor</button>
                 </li>
               ))}
             </ul>
-          ) : <p>No published versions yet: the page uses the standard layout.</p>}
+          ) : <p>No saved versions yet: the page uses the standard layout.</p>}
         </Panel>
       )}
     </div>
