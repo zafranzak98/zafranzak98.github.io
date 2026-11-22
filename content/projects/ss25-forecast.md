@@ -6,7 +6,7 @@ category: trend-research
 summary: A Spring/Summer 2025 forecast built around inclusivity and self-expression.
 featured: false
 order: 6
-opening_colour: Terracotta
+opening_colour: Olive
 role: '[Your role]'
 project_type: University project
 when: '[Year]'

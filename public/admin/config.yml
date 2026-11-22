@@ -129,7 +129,7 @@ collections:
       - name: opening_colour
         label: Opening colour
         widget: select
-        options: [Olive, Sage, Light sage, Off-white, Terracotta, Ink]
+        options: [Olive, Sage, Light sage, Off-white, Terracotta]
         default: Olive
         hint: Background colour of the project's opening section and of its band on the Projects page. Choose a colour clearly different from the projects just before and after it in the list.
       - name: cover

@@ -12,7 +12,8 @@ const image = z.object({
 })
 const figure = z.object({ figure: z.string(), label: z.string() })
 
-export const OPENING_COLOURS = ['Olive', 'Sage', 'Light sage', 'Off-white', 'Terracotta', 'Ink'] as const
+// The five approved palette colours. No others.
+export const OPENING_COLOURS = ['Olive', 'Sage', 'Light sage', 'Off-white', 'Terracotta'] as const
 export const PROJECT_TYPES = [
   'Individual project',
   'Team project (lead)',

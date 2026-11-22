@@ -18,14 +18,16 @@ export const projectBySlug = (slug: string) => caseStudies.find((p) => p.slug ==
 export const categoryName = (slug: string) => categoryBySlug(slug)?.name ?? slug
 export const yearOf = (p: Project) => (p.year ? String(p.year) : p.when)
 
-// Opening colours: background, text and the small category line, all from the approved palette.
+// Opening colours, used for a project's band on the Projects pages and its case study opening.
+// Text and secondary text are chosen per background for contrast (WCAG AA, measured):
+// Olive 8.57 / 6.43, Off-white 8.57 / 5.94, Light sage 6.43 / 6.43, Terracotta 5.94 / 5.94.
+// Sage tops out at 4.27 with olive, the strongest text colour in the palette on it.
 export const OPENING: Record<Project['opening_colour'], { bg: string; fg: string; sub: string }> = {
-  Olive: { bg: 'var(--olive)', fg: 'var(--off)', sub: 'var(--sage)' },
+  Olive: { bg: 'var(--olive)', fg: 'var(--off)', sub: 'var(--lsage)' },
   Sage: { bg: 'var(--sage)', fg: 'var(--olive)', sub: 'var(--olive)' },
-  'Light sage': { bg: 'var(--lsage)', fg: 'var(--olive)', sub: 'var(--terra)' },
+  'Light sage': { bg: 'var(--lsage)', fg: 'var(--olive)', sub: 'var(--olive)' },
   'Off-white': { bg: 'var(--off)', fg: 'var(--olive)', sub: 'var(--terra)' },
-  Terracotta: { bg: 'var(--terra)', fg: 'var(--off)', sub: 'var(--lsage)' },
-  Ink: { bg: 'var(--ink)', fg: 'var(--off)', sub: 'var(--sage)' },
+  Terracotta: { bg: 'var(--terra)', fg: 'var(--off)', sub: 'var(--off)' },
 }
 
 // The address a file in /public is served from. Keeps working if the site ever sits in a sub-folder.

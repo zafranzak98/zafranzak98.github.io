@@ -8,7 +8,7 @@ homepage_label: AR filters, collaboration proposal
 order: 4
 design: about-face
 summary: Three Instagram AR makeup filters for a speculative brand collaboration proposal.
-opening_colour: Ink
+opening_colour: Terracotta
 cover:
   alt: AR filter on a face
 role: "[Your role]"
