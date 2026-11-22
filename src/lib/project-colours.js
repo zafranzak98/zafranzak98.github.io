@@ -19,6 +19,10 @@ const SIMILAR = [
   ['Sage', 'Light sage'],
   ['Olive', 'Terracotta'],
 ]
+// The footer's colour. Whichever project is last on a Projects page (All or a category) sits
+// directly above the footer, so it never takes this colour. Projects anywhere else keep it.
+export const FOOTER = 'Olive'
+
 export const tooSimilar = (a, b) => a === b || SIMILAR.some(([x, y]) => (a === x && b === y) || (a === y && b === x))
 
 // When the preferred colour cannot be used, the nearest alternatives in order. Sage comes last
@@ -73,6 +77,7 @@ export function assignColours(projects) {
   for (const { items } of lists.slice(1))
     for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) addPair(items[i].slug, items[j].slug, COST.categoryRepeat)
   for (let i = 0; i + 2 < order.length; i++) addPair(order[i].slug, order[i + 2].slug, COST.nearbyRepeatOnAll)
+  const lastInList = new Set(lists.map(({ items }) => items[items.length - 1]?.slug).filter(Boolean))
   const preferredOf = (p) => (PALETTE.includes(p.opening_colour) ? p.opening_colour : 'Olive')
   const choices = (p) => [preferredOf(p), ...FALLBACKS[preferredOf(p)]]
 
@@ -92,6 +97,7 @@ export function assignColours(projects) {
     const p = order[i]
     for (const colour of choices(p)) {
       if ([...neighbours.get(p.slug)].some((n) => assigned.has(n) && tooSimilar(assigned.get(n), colour))) continue
+      if (lastInList.has(p.slug) && colour === FOOTER) continue
       let extra = colour === preferredOf(p) ? 0 : COST.notPreferred
       for (const [other, c] of pairs.get(p.slug)) if (assigned.get(other) === colour) extra += c
       assigned.set(p.slug, colour)

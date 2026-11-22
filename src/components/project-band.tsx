@@ -12,7 +12,7 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
   const o = openingOf(p)
   const hasPage = p.page_type === 'Full case study'
   const colour = colourOf(p)
-  const className = `band band-${p.design ?? 'standard'}${colour === 'Off-white' ? ' band-rule' : ''}${colour === 'Olive' ? ' band-olive' : ''}`
+  const className = `band band-${p.design ?? 'standard'}${colour === 'Off-white' ? ' band-rule' : ''}`
   const style: CSSProperties = { background: o.bg, color: o.fg }
   const content = (
     <>

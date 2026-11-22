@@ -9,7 +9,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statS
 import { join, relative } from 'node:path'
 import { execSync } from 'node:child_process'
 import matter from 'gray-matter'
-import { assignColours, listings, tooSimilar } from '../src/lib/project-colours.js'
+import { assignColours, FOOTER, listings, tooSimilar } from '../src/lib/project-colours.js'
 
 const PREVIEW = process.env.VITE_SITE_MODE === 'preview'
 const DIST = 'dist'
@@ -192,9 +192,13 @@ try {
       const [a, b] = [colours.get(items[i - 1].slug), colours.get(items[i].slug)]
       if (tooSimilar(a, b)) errors.push(`Project colours: "${items[i - 1].slug}" (${a}) and "${items[i].slug}" (${b}) are neighbours on ${name}.`)
     }
+  for (const { name, items } of listings(live)) {
+    const last = items[items.length - 1]
+    if (last && colours.get(last.slug) === FOOTER) errors.push(`Project colours: "${last.slug}" is the last project on ${name} and would be ${FOOTER}, the same as the footer.`)
+  }
   const changed = live.filter((p) => colours.get(p.slug) !== p.opening_colour)
   console.log(`Project colours: ${live.map((p) => `${p.slug} ${colours.get(p.slug)}`).join(', ')}`)
-  for (const p of changed) console.log(`  ${p.slug}: preferred ${p.opening_colour}, shown as ${colours.get(p.slug)} (keeps neighbours distinct and avoids a repeat on its category page)`)
+  for (const p of changed) console.log(`  ${p.slug}: preferred ${p.opening_colour}, shown as ${colours.get(p.slug)} (keeps neighbours distinct, avoids the footer colour on the last project of a page, and avoids a repeat on its category page)`)
 } catch (e) {
   errors.push(e.message)
 }
