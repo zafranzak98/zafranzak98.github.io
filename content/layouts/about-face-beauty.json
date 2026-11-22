@@ -54,10 +54,7 @@
     {
       "type": "Outcomes",
       "props": {
-        "id": "Outcomes-standard",
-        "design": {
-          "background": "Terracotta"
-        }
+        "id": "Outcomes-standard"
       }
     },
     {
