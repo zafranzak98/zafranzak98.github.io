@@ -1,13 +1,13 @@
 ---
-title: SS25 Forecast
+title: Beyond Binary - S/S25 Trend Research
 status: Published
 page_type: Listed only
 category: trend-research
+summary: A Spring/Summer 2025 forecast built around inclusivity and self-expression.
 featured: false
 order: 6
-summary: A Spring/Summer 2025 forecast built around inclusivity and self-expression.
 opening_colour: Olive
-role: "[Your role]"
+role: '[Your role]'
 project_type: University project
-when: "[Year]"
+when: '[Year]'
 ---
