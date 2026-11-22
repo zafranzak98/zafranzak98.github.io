@@ -1,6 +1,4 @@
-import type { CSSProperties } from 'react'
 import { croppedSizes, imageProps, photoSize, type Img } from '#/lib/site'
-import { Rich } from '#/components/rich'
 
 // sizes: how wide the image is shown, so the browser can choose the right-sized copy.
 type Props = { img?: Img; ratio?: string; label?: string; sizes?: string }
@@ -23,28 +21,5 @@ export function Media({ img, ratio = '4/3', label, sizes = '(max-width: 899px) 1
         <b>Placeholder</b> · {label ?? img?.alt ?? 'image'}
       </span>
     </div>
-  )
-}
-
-// Phone frame used by the About-Face Beauty case study. width is any CSS length.
-export function Phone({ img, width, caption, sizes = '(max-width: 899px) 250px, 15vw' }: { img?: Img; width: string; caption?: string; sizes?: string }) {
-  return (
-    <figure className="phone" style={{ '--w': width } as CSSProperties}>
-      <div className="phone-body">
-        <div className="phone-screen">
-          {/* The screen is about 0.46 times as wide as it is tall; photos are cropped to fill it. */}
-          {img?.image ? (
-            <img {...imageProps(img.image, croppedSizes(sizes, img.image, 0.46))} alt={img.alt ?? ''} loading="lazy" decoding="async" />
-          ) : (
-            <span>
-              <b>Placeholder</b>
-              <br />
-              {img?.alt ?? 'AR filter on a face'}
-            </span>
-          )}
-        </div>
-      </div>
-      {caption && <figcaption><Rich text={caption} /></figcaption>}
-    </figure>
   )
 }

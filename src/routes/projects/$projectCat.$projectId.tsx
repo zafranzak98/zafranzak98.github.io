@@ -2,7 +2,7 @@ import { Link, createFileRoute, notFound } from '@tanstack/react-router'
 import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import CategoryIndex from '#/components/category-index'
 import Gallery from '#/components/gallery'
-import { Media, Phone } from '#/components/media'
+import { Media } from '#/components/media'
 import OpeningVisual from '#/components/opening-visual'
 import { Rich } from '#/components/rich'
 import { caseStudies, colourOf, openingOf, categoryName, projectByAddress, yearOf, type Img, type Project } from '#/lib/site'
@@ -56,13 +56,6 @@ function Work({ p }: { p: Project }) {
   )
   const note = p.supporting_note && <p className="cap"><Rich text={p.supporting_note} /></p>
   switch (p.design) {
-    case 'about-face':
-      return (
-        <>
-          <div className="phones">{sup.map((s, i) => <Phone key={i} img={s} width="max(150px, 14vw)" caption={s.caption} sizes="(max-width: 899px) 150px, 14vw" />)}</div>
-          {note}
-        </>
-      )
     case 'bersih':
       return (
         <>
@@ -188,7 +181,9 @@ function CaseStudy() {
   return (
     <main id="main" className="case">
       <div className="cs-index"><CategoryIndex /></div>
-      <section className={colourOf(p) === 'Sage' ? 'cs-open on-sage' : 'cs-open'} style={{ background: o.bg, color: o.fg }}>
+      {/* Small text on Sage sits on the Light sage highlight for contrast. AF-Binary's opening is a
+          deliberate exception at the owner's request (22 Nov 2026): its text sits on Sage at 4.27:1. */}
+      <section className={colourOf(p) === 'Sage' && p.design !== 'about-face' ? 'cs-open on-sage' : 'cs-open'} style={{ background: o.bg, color: o.fg }}>
         <div className="cs-open-grid">
           <div className="cs-open-text">
             <span className="cs-sub" style={{ color: o.sub }}>
