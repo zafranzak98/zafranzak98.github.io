@@ -23,6 +23,7 @@
   --t-body: 1rem;         /* paragraphs and lists */
   --t-lead: 1.125rem;     /* intros, leads, opening lines */
   --t-statement: 1.5rem;  /* home intro, About statement, footer email */
+  --w-body: 500;          /* body copy: paragraphs, summaries, captions, supporting details */
   --measure: 42rem;       /* longest comfortable line of running text */
   --section: 5.5rem;      /* space between sections, and before the footer */
   /* Receding navigation. Links stay muted but readable (WCAG 1.4.3, measured on --off):
@@ -58,6 +59,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 a { color: inherit; text-decoration: none; transition: color .2s, opacity .2s; }
+/* Body copy is set in Medium. Interface text (navigation, labels, footer, placeholders) keeps
+   the regular weight it inherits from body; headings and display type set their own. */
+p, figcaption, .fact-val, .edu-val, .ix-row-note, .about-languages, .about-caption, .work-meta { font-weight: var(--w-body); }
+footer p { font-weight: inherit; }
 /* Liana's approach: links answer with a colour shift rather than boxes or underlines. */
 main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .page { overflow-x: clip; }
@@ -426,7 +431,7 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
   .secnav { padding: 0.75rem 1.5rem; font-size: 1.0625rem; white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
   .secnav a { color: var(--recede-small); }
   .cs-gap { height: 2.5rem; }
-  .cs-body > .lead + .lead, .figures + .lead { font-size: var(--t-body); font-weight: 400; line-height: 1.55; }
+  .cs-body > .lead + .lead, .figures + .lead { font-size: var(--t-body); font-weight: var(--w-body); line-height: 1.55; }
   .did, .did-two { grid-template-columns: minmax(0, 1fr); gap: 1.25rem; margin-top: 1.5rem; }
   .did-two > div + div { border-left: 0; margin-left: 0; padding-left: 0; border-top: 1px solid var(--olive); padding-top: 1.125rem; }
   .did p { margin-top: 0.5rem; }
