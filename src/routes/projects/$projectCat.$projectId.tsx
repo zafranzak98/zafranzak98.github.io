@@ -5,7 +5,7 @@ import Gallery from '#/components/gallery'
 import { Media, Phone } from '#/components/media'
 import OpeningVisual from '#/components/opening-visual'
 import { Rich } from '#/components/rich'
-import { OPENING, caseStudies, categoryName, projectBySlug, yearOf, type Img, type Project } from '#/lib/site'
+import { caseStudies, openingOf, categoryName, projectBySlug, yearOf, type Img, type Project } from '#/lib/site'
 import { useTitle } from '#/lib/title'
 
 export const Route = createFileRoute('/projects/$projectCat/$projectId')({
@@ -128,7 +128,7 @@ function CaseStudy() {
   const prev = caseStudies[(idx - 1 + caseStudies.length) % caseStudies.length]
   const next = caseStudies[(idx + 1) % caseStudies.length]
   const siblings = caseStudies.filter((x) => x.category === p.category && x.slug !== p.slug)
-  const o = OPENING[p.opening_colour]
+  const o = openingOf(p)
   const type = [p.project_type, p.type_detail].filter(Boolean).join(' · ')
   const facts = [
     ['My role', p.role],

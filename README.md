@@ -45,7 +45,8 @@ Content is edited at `/admin` with [Sveltia CMS](https://sveltiacms.app), which 
 
 Everything is in `src/styles.css`, without a framework. The tokens at the top set the system:
 
-- **Colour** is the five approved colours only: Off-white `#EEF1ED`, Olive `#484527`, Sage `#A3B18A`, Light Sage `#CDD5BE` and Terracotta `#9A3F24`. No other colours, tints, transparency, gradients or shadows. A project's Opening colour (one of the five) colours its band on the Projects pages and its case study opening; neighbouring bands must not share a similar colour, and text colours per background are set in `OPENING` in `src/lib/site.ts`.
+- **Colour** is the five approved colours only: Off-white `#EEF1ED`, Olive `#484527`, Sage `#A3B18A`, Light Sage `#CDD5BE` and Terracotta `#9A3F24`. No other colours, tints, transparency, gradients or shadows. A project's Opening colour is its preferred colour. `src/lib/project-colours.js` gives every project one final colour, used for its band and its case study opening, keeping the preference unless it would sit next to the same or a too-similar colour on the All page or its category page (Off-white/Light Sage, Sage/Light Sage, Olive/Terracotta). The build runs the same check and fails with a plain message if no arrangement works. Text colours per background are set in `OPENING` in `src/lib/site.ts`.
+- **Project titles** on the Projects pages are all one size (`--d1`); long titles wrap clear of the project visual and the band grows to fit.
 - **Layout and display type** scale with the window (`--m` margins, `--d1`/`--d2` titles, `--h2`/`--h3` headings), so a page keeps its composition from a laptop to a large monitor.
 - **Text** uses five sizes, `--t-meta`, `--t-small`, `--t-body`, `--t-lead` and `--t-statement`, in rem. One rem is 18px on a 1440px window and 16px on phones.
 - **Spacing** between sections and before the footer comes from `--section`.

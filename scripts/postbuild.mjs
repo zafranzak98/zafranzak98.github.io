@@ -9,6 +9,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statS
 import { join, relative } from 'node:path'
 import { execSync } from 'node:child_process'
 import matter from 'gray-matter'
+import { assignColours, listings, tooSimilar } from '../src/lib/project-colours.js'
 
 const PREVIEW = process.env.VITE_SITE_MODE === 'preview'
 const DIST = 'dist'
@@ -172,6 +173,23 @@ writeFileSync(join(ADMIN, 'index.html'), `<!doctype html>
 </html>
 `)
 if (!existsSync(join(ADMIN, 'config.yml'))) errors.push('The website editor is missing its settings: admin/config.yml')
+
+// ---- project colours
+// The same assignment the website uses. Fails the build, leaving the published site as it was,
+// if no arrangement keeps neighbouring projects distinct, and double-checks every listing.
+try {
+  const colours = assignColours(live)
+  for (const { name, items } of listings(live))
+    for (let i = 1; i < items.length; i++) {
+      const [a, b] = [colours.get(items[i - 1].slug), colours.get(items[i].slug)]
+      if (tooSimilar(a, b)) errors.push(`Project colours: "${items[i - 1].slug}" (${a}) and "${items[i].slug}" (${b}) are neighbours on ${name}.`)
+    }
+  const changed = live.filter((p) => colours.get(p.slug) !== p.opening_colour)
+  console.log(`Project colours: ${live.map((p) => `${p.slug} ${colours.get(p.slug)}`).join(', ')}`)
+  for (const p of changed) console.log(`  ${p.slug}: ${p.opening_colour} would clash with a neighbour, shown as ${colours.get(p.slug)}`)
+} catch (e) {
+  errors.push(e.message)
+}
 
 // ---- 4. sizes
 const MB = 1024 * 1024

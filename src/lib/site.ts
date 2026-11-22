@@ -1,4 +1,5 @@
 import { about, allCategories, allProjects, site } from '../../.content-collections/generated'
+import { assignColours } from './project-colours.js'
 
 export { about, site }
 export type Project = (typeof allProjects)[number]
@@ -29,6 +30,12 @@ export const OPENING: Record<Project['opening_colour'], { bg: string; fg: string
   'Off-white': { bg: 'var(--off)', fg: 'var(--olive)', sub: 'var(--terra)' },
   Terracotta: { bg: 'var(--terra)', fg: 'var(--off)', sub: 'var(--off)' },
 }
+
+// Each project's final colour: its Opening colour unless that would clash with a neighbouring
+// project on the All or category pages (see project-colours.js). Same colour on every page.
+const colours = assignColours(projects)
+export const colourOf = (p: Project) => colours.get(p.slug) ?? p.opening_colour
+export const openingOf = (p: Project) => OPENING[colourOf(p)]
 
 // The address a file in /public is served from. Keeps working if the site ever sits in a sub-folder.
 export const asset = (path?: string) => (path ? import.meta.env.BASE_URL.replace(/\/$/, '') + path : undefined)
