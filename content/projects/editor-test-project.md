@@ -1,6 +1,6 @@
 ---
 title: Editor Test Project
-status: Draft
+status: Published
 page_type: Full case study
 category: editorial
 summary: A temporary project to test the website editor.
