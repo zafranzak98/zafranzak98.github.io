@@ -42,12 +42,20 @@ export const openingOf = (p: Project) => OPENING[colourOf(p)]
 // The address a file in /public is served from. Keeps working if the site ever sits in a sub-folder.
 export const asset = (path?: string) => (path ? import.meta.env.BASE_URL.replace(/\/$/, '') + path : undefined)
 
+// The original photo's size in pixels. With a srcset the browser no longer treats the photo's
+// own pixel size as its natural size, so images whose size depends on it (the gallery, and
+// images shown at their own proportions) use this instead. Undefined outside the built site.
+export const photoSize = (path?: string) => {
+  const size = path && import.meta.env.PROD ? imageWidths[path] : undefined
+  return size ? { width: size[0], height: size[1] } : undefined
+}
+
 // Everything an <img> needs to load a photo at the right size. `sizes` says how wide the image is
 // shown (for example "(max-width: 899px) 100vw, 26vw"); the browser then picks the smallest copy
 // that stays sharp on that screen. Only in the built website, where the copies exist.
 export const imageProps = (path?: string, sizes?: string) => {
   const src = asset(path)
-  const width = path && import.meta.env.PROD && isPhoto(path) ? imageWidths[path] : undefined
+  const width = path && import.meta.env.PROD && isPhoto(path) ? imageWidths[path]?.[0] : undefined
   if (!path || !width || !sizes) return { src }
   const srcSet = [...widthsFor(width).map((w) => `${asset(variantPath(path, w))} ${w}w`), `${src} ${width}w`].join(', ')
   return { src, srcSet, sizes }

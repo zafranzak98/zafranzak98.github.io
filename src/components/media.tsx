@@ -1,12 +1,15 @@
 import type { CSSProperties } from 'react'
-import { imageProps, type Img } from '#/lib/site'
+import { imageProps, photoSize, type Img } from '#/lib/site'
 
 // sizes: how wide the image is shown, so the browser can choose the right-sized copy.
 type Props = { img?: Img; ratio?: string; label?: string; sizes?: string }
 
 // Until an image is uploaded, a hairline frame holds its place so layouts can be judged without it.
 export function Media({ img, ratio = '4/3', label, sizes = '(max-width: 899px) 100vw, 75vw' }: Props) {
-  const style = { aspectRatio: ratio }
+  // 'auto' shows the photo at its own proportions: use the original's, so a smaller copy's
+  // rounding never changes the height by a fraction of a pixel.
+  const size = ratio === 'auto' ? photoSize(img?.image) : undefined
+  const style = { aspectRatio: size ? `${size.width} / ${size.height}` : ratio }
   if (img?.image) {
     return <img className="media" {...imageProps(img.image, sizes)} alt={img.alt ?? ''} style={style} loading="lazy" decoding="async" />
   }

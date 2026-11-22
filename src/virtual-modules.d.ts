@@ -1,5 +1,5 @@
-// Made by the image-widths plugin in vite.config.ts: the width in pixels of each photo in public/media.
+// Made by the image-widths plugin in vite.config.ts: [width, height] in pixels of each published photo.
 declare module 'virtual:image-widths' {
-  const widths: Record<string, number>
+  const widths: Record<string, [number, number]>
   export default widths
 }

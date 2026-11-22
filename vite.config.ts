@@ -8,7 +8,7 @@ import sharp from 'sharp'
 import { isPhoto } from './src/lib/image-variants.js'
 import { publishedMedia } from './scripts/published-media.mjs'
 
-// Responsive images: the width of every published photo, so each image on a page can list the
+// Responsive images: the width and height of every published photo, so each image on a page can list the
 // smaller copies the build makes of it (see src/lib/image-variants.js). Only photos the published
 // content uses are listed, so in production a draft's file names never reach the website's code.
 function imageWidths(): Plugin {
@@ -21,12 +21,12 @@ function imageWidths(): Plugin {
     async load(resolved) {
       if (resolved !== `\0${id}`) return
       const published = publishedMedia(process.env.VITE_SITE_MODE === 'preview')
-      const widths: Record<string, number> = {}
+      const widths: Record<string, [number, number]> = {}
       for (const file of walk('public/media').filter(isPhoto)) {
         const path = `/${relative('public', file).split('\\').join('/')}`
         if (!published.has(path)) continue
-        const { width } = await sharp(file).metadata()
-        if (width) widths[path] = width
+        const { width, height } = await sharp(file).metadata()
+        if (width && height) widths[path] = [width, height]
       }
       return `export default ${JSON.stringify(widths)}`
     },

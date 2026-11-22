@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { imageProps, type Img } from '#/lib/site'
+import { imageProps, photoSize, type Img } from '#/lib/site'
 import { Media } from '#/components/media'
 
 function Chevron({ dir, enabled, onClick }: { dir: 'l' | 'r'; enabled: boolean; onClick: () => void }) {
@@ -34,7 +34,8 @@ export default function Gallery({ images = [], note }: { images?: Img[]; note?: 
       {n ? (
         <>
           <div className="gallery-frame">
-            <img {...imageProps(cur.image, '(max-width: 899px) 100vw, 90vw')} alt={cur.alt ?? ''} />
+            {/* Never wider than the photo itself, as before responsive images: a small photo is not enlarged. */}
+            <img {...imageProps(cur.image, '(max-width: 899px) 100vw, 90vw')} alt={cur.alt ?? ''} style={photoSize(cur.image) && { maxWidth: `min(100%, ${photoSize(cur.image)!.width}px)` }} />
           </div>
           {n > 1 && (
             <div className="dots" role="group" aria-label="Choose an image">
