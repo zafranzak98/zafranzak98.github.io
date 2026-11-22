@@ -27,7 +27,7 @@ tools:
   - Adobe Illustrator
   - Adobe Premiere Pro
 objective: Explore cancel culture in fashion through primary research, then turn the findings into an editorial publication and a social campaign.
-what_i_did: Led **end-to-end project delivery**, including research and interviews, copywriting, booklet and postcard design, social media strategy and production of 54 content assets, alongside filming and editing a short film.
+what_i_did: Led **end-to-end project delivery**, including **research and interviews**, **copywriting**, **booklet** and **postcard design**, **social media strategy** and **production of 54 content assets**, **alongside filming** and **editing a short film**.
 research:
   stats:
     - figure: '8'
