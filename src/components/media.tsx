@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { imageProps, photoSize, type Img } from '#/lib/site'
+import { croppedSizes, imageProps, photoSize, type Img } from '#/lib/site'
 import { Rich } from '#/components/rich'
 
 // sizes: how wide the image is shown, so the browser can choose the right-sized copy.
@@ -12,7 +12,10 @@ export function Media({ img, ratio = '4/3', label, sizes = '(max-width: 899px) 1
   const size = ratio === 'auto' ? photoSize(img?.image) : undefined
   const style = { aspectRatio: size ? `${size.width} / ${size.height}` : ratio }
   if (img?.image) {
-    return <img className="media" {...imageProps(img.image, sizes)} alt={img.alt ?? ''} style={style} loading="lazy" decoding="async" />
+    // The frame's proportions (for example '4/5'), so a photo cropped to fill it is still sharp.
+    const [fw, fh] = ratio.split('/').map(Number)
+    const frame = fh ? fw / fh : undefined
+    return <img className="media" {...imageProps(img.image, croppedSizes(sizes, img.image, frame))} alt={img.alt ?? ''} style={style} loading="lazy" decoding="async" />
   }
   return (
     <div className="ph" style={style}>
@@ -29,8 +32,9 @@ export function Phone({ img, width, caption, sizes = '(max-width: 899px) 250px, 
     <figure className="phone" style={{ '--w': width } as CSSProperties}>
       <div className="phone-body">
         <div className="phone-screen">
+          {/* The screen is about 0.46 times as wide as it is tall; photos are cropped to fill it. */}
           {img?.image ? (
-            <img {...imageProps(img.image, sizes)} alt={img.alt ?? ''} loading="lazy" decoding="async" />
+            <img {...imageProps(img.image, croppedSizes(sizes, img.image, 0.46))} alt={img.alt ?? ''} loading="lazy" decoding="async" />
           ) : (
             <span>
               <b>Placeholder</b>
