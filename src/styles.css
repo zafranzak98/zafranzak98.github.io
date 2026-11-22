@@ -293,22 +293,16 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .band-top { position: relative; z-index: 3; display: flex; justify-content: space-between; gap: 1.5rem; font-size: var(--t-meta); }
 .band-top b { font-weight: 600; }
 .band-arrow { display: inline-block; transition: transform .25s; }
-.band:hover .band-arrow, .band:focus-visible .band-arrow { transform: translateX(0.3125rem); }
+a.band:hover .band-arrow, a.band:focus-visible .band-arrow { transform: translateX(0.3125rem); }
 .band-line { position: relative; z-index: 3; max-width: 21.25rem; margin: 5.5rem 0 0; font-size: var(--t-body); line-height: 1.5; }
 .band-visual { position: absolute; z-index: 2; top: 5.4vw; right: calc(var(--m) + 6%); width: 15vw; transition: transform .4s; }
-.band:hover .band-visual { transform: translateY(-0.375rem); }
+a.band:hover .band-visual { transform: translateY(-0.375rem); }
 .band-evoke .band-visual { width: 24.5vw; }
 .band-about-face .band-visual { width: auto; right: calc(var(--m) + 10%); }
 /* --title is set per project in vw, so long titles still fit on one line. */
 .band-title { position: absolute; z-index: 1; left: calc(var(--m) - .05em); bottom: -0.12em; font-size: calc(var(--title) * 1vw); line-height: .8; letter-spacing: -0.02em; white-space: nowrap; }
-.listed { margin: 0 var(--m) var(--section); border-top: 1px solid var(--terra); }
-/* When the last band shares the page colour, a rule closes it off before the listed projects. */
+/* When the last band shares the page colour, a rule closes it off before the footer. */
 .band-rule:last-child { border-bottom: 1px solid var(--terra); }
-.bands + .listed { margin-top: 3rem; border-top: 0; }
-.listed-item { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); align-items: baseline; padding: 1.5rem 0; border-bottom: 1px solid var(--terra); }
-.listed-item .lab { grid-column: 1 / span 3; }
-.listed-item b { grid-column: 4 / span 4; font-size: var(--h2); line-height: .9; }
-.listed-item p { grid-column: 9 / span 4; margin: 0; font-size: var(--t-small); line-height: 1.5; }
 /* The footer shares the olive band colour, so the last band never runs straight into it. */
 .listing > .bands:last-child { margin-bottom: var(--section); }
 @media (max-width: 899px) {
@@ -326,12 +320,8 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
   .band-visual { position: relative; top: auto; right: auto; width: 62%; margin: 1.75rem 0 0 auto; }
   .band-evoke .band-visual { width: 80%; }
   .band-about-face .band-visual { width: auto; right: auto; margin-right: 12%; }
-  .band:hover .band-visual { transform: none; }
+  a.band:hover .band-visual { transform: none; }
   .band-title { position: relative; left: auto; bottom: auto; display: block; margin: 1.75rem 0 -0.1em -3px; font-size: 3.625rem; line-height: .84; white-space: normal; }
-  .listed, .bands + .listed { margin: 2rem 1.5rem var(--section); }
-  .listed-item { display: block; padding: 1.5rem 0; }
-  .listed-item b { display: block; margin-top: 0.375rem; font-size: 2.25rem; }
-  .listed-item p { margin-top: 0.5rem; }
 }
 
 /* ---------- case study ---------- */

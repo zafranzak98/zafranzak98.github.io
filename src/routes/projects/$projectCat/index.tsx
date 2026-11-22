@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import CategoryIndex from '#/components/category-index'
-import ProjectBand, { ListedProjects } from '#/components/project-band'
+import { ProjectBands } from '#/components/project-band'
 import { categoryBySlug, projectsIn } from '#/lib/site'
 import { useTitle } from '#/lib/title'
 
@@ -17,7 +17,6 @@ export const Route = createFileRoute('/projects/$projectCat/')({
 function CategoryPage() {
   const { category, list } = Route.useLoaderData()
   useTitle(category.name)
-  const full = list.filter((p) => p.page_type === 'Full case study')
   return (
     <main id="main" className="listing listing-cat">
       <section className="listing-head">
@@ -26,8 +25,7 @@ function CategoryPage() {
         {category.intro && <p className="listing-intro">{category.intro}</p>}
         <CategoryIndex />
       </section>
-      <section className="bands">{full.map((p, i) => <ProjectBand key={p.slug} p={p} number={i + 1} />)}</section>
-      <ListedProjects items={list.filter((p) => p.page_type !== 'Full case study')} startAt={full.length + 1} />
+      <ProjectBands items={list} />
     </main>
   )
 }
