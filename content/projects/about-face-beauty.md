@@ -1,5 +1,5 @@
 ---
-title: About-Face Beauty
+title: AF-Binary
 status: Published
 page_type: Full case study
 category: brand-communications
