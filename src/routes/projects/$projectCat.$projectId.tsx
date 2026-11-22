@@ -179,7 +179,7 @@ function CaseStudy() {
   }, [p.slug])
 
   return (
-    <main id="main" className="case">
+    <main id="main" className={`case case-${p.design ?? 'standard'}`}>
       <div className="cs-index"><CategoryIndex /></div>
       {/* Small text on Sage sits on the Light sage highlight for contrast. AF-Binary's opening is a
           deliberate exception at the owner's request (22 Nov 2026): its text sits on Sage at 4.27:1. */}
