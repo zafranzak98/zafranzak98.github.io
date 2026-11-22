@@ -12,6 +12,8 @@ import matter from 'gray-matter'
 import { assignColours, FOOTER, listings, tooSimilar } from '../src/lib/project-colours.js'
 import { isPhoto, variantPath, widthsFor } from '../src/lib/image-variants.js'
 import sharp from 'sharp'
+import { ADDRESS_PATTERN, addressOf, overrideOf, pagePath } from '../src/lib/project-urls.js'
+import { historyIsShallow, redirectRegistry } from './redirects.mjs'
 import { mediaIn, publishedMedia } from './published-media.mjs'
 
 const PREVIEW = process.env.VITE_SITE_MODE === 'preview'
@@ -33,10 +35,18 @@ const drafts = projects.filter((p) => p.status === 'Draft')
 
 // ---- content checks
 for (const p of projects) {
-  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(p.slug)) errors.push(`Project "${p.slug}": the web address may only use lowercase letters, numbers and hyphens.`)
+  if (!ADDRESS_PATTERN.test(p.slug)) errors.push(`Project "${p.slug}": the file name may only use lowercase letters, numbers and hyphens.`)
+  if (overrideOf(p) && !ADDRESS_PATTERN.test(overrideOf(p))) errors.push(`Project "${p.title}": the Web address "${overrideOf(p)}" may only use lowercase letters, numbers and single hyphens, for example bersihmalaysia.`)
+  else if (!addressOf(p)) errors.push(`Project "${p.slug}": its title has no letters or numbers to make a web address from. Fill in the Web address field.`)
   if (!catSlugs.has(p.category)) errors.push(`Project "${p.slug}": category "${p.category}" does not exist in Categories.`)
   for (const m of mediaIn(p)) if (!existsSync(join('public', m))) errors.push(`Project "${p.slug}": file not found: ${m}`)
 }
+// Two projects can never share a web address, whatever their category or status, so a draft
+// cannot later take a published project's address.
+const byAddress = new Map()
+for (const p of projects) byAddress.set(addressOf(p), [...(byAddress.get(addressOf(p)) ?? []), p])
+for (const [address, list] of byAddress)
+  if (address && list.length > 1) errors.push(`Web address "${address}" is used by ${list.map((p) => `"${p.title}" (file ${p.slug}.md)`).join(' and ')}. Change one title, or fill in a different Web address for one of them.`)
 for (const m of mediaIn(about)) if (!existsSync(join('public', m))) errors.push(`About: file not found: ${m}`)
 for (const m of siteText.match(/\/(media|files)\/[^\s"']+/g) ?? []) if (!existsSync(join('public', m))) errors.push(`Site settings: file not found: ${m}`)
 
@@ -80,7 +90,9 @@ const withHead = (path, { title, description, image } = {}, isDraft = false) => 
     .replace(DESCRIPTION, `<meta name="description" content="${text}" />`)
     .replace('  </head>', `${tags.map((t) => `    ${t}\n`).join('')}  </head>`)
 }
+const published = new Set(['']) // every page path written below
 const page = (path, meta, isDraft = false) => {
+  published.add(path)
   mkdirSync(join(DIST, path), { recursive: true })
   writeFileSync(join(DIST, path, 'index.html'), withHead(path, meta, isDraft))
   if (!isDraft) expected.set(join(path, 'index.html'), canonical(path))
@@ -93,11 +105,42 @@ const draftOnly = (slug) => !live.some((p) => p.category === slug && p.status !=
 for (const c of categories) if (usedCats.has(c.slug)) page(`projects/${c.slug}`, { title: c.name }, draftOnly(c.slug))
 // A project's search and sharing details fall back to its title, summary and cover image.
 for (const p of live) if (p.page_type === 'Full case study')
-  page(`projects/${p.category}/${p.slug}`, {
+  page(pagePath(p.category, addressOf(p)), {
     title: p.seo?.title || p.title,
     description: plain(p.seo?.description || p.summary),
     image: p.seo?.image || p.cover?.image,
   }, p.status === 'Draft')
+
+// Old addresses: a small page at each one that sends visitors and search engines to the current
+// address (see scripts/redirects.mjs). GitHub Pages cannot send a real HTTP 301 redirect, so this
+// is the standard static alternative: an instant refresh, a script for browsers that ignore it, a
+// canonical link to the new address and a plain link. Search engines treat an instant refresh like
+// a permanent redirect, but more slowly and less certainly than a 301. Drafts get none in production.
+if (historyIsShallow()) errors.push('The save history is incomplete (a shallow copy), so old project addresses cannot be redirected. The build needs the full history.')
+const { redirects, conflicts } = redirectRegistry(live.filter((p) => p.page_type === 'Full case study'), published)
+for (const c of conflicts) warnings.push(`Old address shared by two projects: ${c}`)
+for (const [from, to] of redirects) {
+  const target = `/${to}/`
+  const doc = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Moved · ${esc(siteName)}</title>
+${PREVIEW ? `    ${NOINDEX}\n` : ''}    ${canonical(to)}
+    <meta http-equiv="refresh" content="0; url=${target}" />
+    <script>location.replace(${JSON.stringify(target)} + location.search + location.hash)</script>
+  </head>
+  <body>
+    <p>This page has moved to <a href="${target}">${esc(`${ORIGIN}${target}`)}</a>.</p>
+  </body>
+</html>
+`
+  mkdirSync(join(DIST, from), { recursive: true })
+  writeFileSync(join(DIST, from, 'index.html'), doc)
+  expected.set(join(from, 'index.html'), canonical(to))
+}
+writeFileSync(join(DIST, 'redirects.json'), JSON.stringify(Object.fromEntries([...redirects].map(([f, t]) => [`/${f}/`, `/${t}/`])), null, 2))
+if (redirects.size) console.log(`Old addresses redirected: ${[...redirects].map(([f, t]) => `/${f}/ -> /${t}/`).join(', ')}`)
 
 // The editor page at /admin is added later and checked on its own.
 for (const f of walk(DIST).filter((f) => f.endsWith('.html') && !f.startsWith(join(DIST, 'admin')))) {

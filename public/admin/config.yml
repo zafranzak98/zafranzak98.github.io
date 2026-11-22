@@ -80,7 +80,13 @@ collections:
         label: Title
         widget: string
         maxlength: 60
-        hint: The project name. A new project's web address is made from this title when it is first saved.
+        hint: The project name. The page's web address follows it, unless Web address below is filled in.
+      - name: url
+        label: Web address
+        widget: string
+        required: false
+        pattern: ['^[a-z0-9]+(-[a-z0-9]+)*$', 'Use lowercase letters and numbers, with single hyphens between words if you want them, for example bersihmalaysia or af-binary.']
+        hint: 'Usually leave this empty: the address is made from the title (AF-Binary becomes af-binary) and follows any rename. Fill it in only to choose a different address; it then stays the same when the title changes. Old addresses always keep working.'
       - name: status
         label: Status
         widget: select

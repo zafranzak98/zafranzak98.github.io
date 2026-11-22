@@ -1,5 +1,6 @@
 ---
 title: BERSIH Malaysia
+url: bersihmalaysia
 status: Published
 page_type: Full case study
 category: brand-communications

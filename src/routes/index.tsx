@@ -36,7 +36,7 @@ function Home() {
             <li key={p.slug}>
               <Link
                 to="/projects/$projectCat/$projectId/"
-                params={{ projectCat: p.category, projectId: p.slug }}
+                params={{ projectCat: p.category, projectId: p.address }}
                 className="work-link"
                 onMouseEnter={() => setHover(p.slug)}
                 onMouseLeave={() => setHover(null)}

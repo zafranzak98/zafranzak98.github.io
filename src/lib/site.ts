@@ -17,7 +17,8 @@ export const caseStudies = projects.filter((p) => p.page_type === 'Full case stu
 
 export const categoryBySlug = (slug: string) => categories.find((c) => c.slug === slug)
 export const projectsIn = (slug: string) => projects.filter((p) => p.category === slug)
-export const projectBySlug = (slug: string) => caseStudies.find((p) => p.slug === slug)
+// Finds a case study by its web address (the last part of its URL), not its file name.
+export const projectByAddress = (address: string) => caseStudies.find((p) => p.address === address)
 export const categoryName = (slug: string) => categoryBySlug(slug)?.name ?? slug
 export const yearOf = (p: Project) => (p.year ? String(p.year) : p.when)
 

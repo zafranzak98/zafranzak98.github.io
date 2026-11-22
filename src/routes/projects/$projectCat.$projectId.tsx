@@ -5,12 +5,12 @@ import Gallery from '#/components/gallery'
 import { Media, Phone } from '#/components/media'
 import OpeningVisual from '#/components/opening-visual'
 import { Rich } from '#/components/rich'
-import { caseStudies, openingOf, categoryName, projectBySlug, yearOf, type Img, type Project } from '#/lib/site'
+import { caseStudies, openingOf, categoryName, projectByAddress, yearOf, type Img, type Project } from '#/lib/site'
 import { useTitle } from '#/lib/title'
 
 export const Route = createFileRoute('/projects/$projectCat/$projectId')({
   loader: ({ params }) => {
-    const project = projectBySlug(params.projectId)
+    const project = projectByAddress(params.projectId)
     if (!project || project.category !== params.projectCat) throw notFound()
     return { project }
   },
@@ -236,7 +236,7 @@ function CaseStudy() {
           <ul>
             {siblings.map((x) => (
               <li key={x.slug}>
-                <Link to="/projects/$projectCat/$projectId/" params={{ projectCat: x.category, projectId: x.slug }}>{x.title}</Link>
+                <Link to="/projects/$projectCat/$projectId/" params={{ projectCat: x.category, projectId: x.address }}>{x.title}</Link>
               </li>
             ))}
           </ul>
@@ -245,11 +245,11 @@ function CaseStudy() {
 
       {caseStudies.length > 1 && (
         <nav aria-label="More projects" className="pn">
-          <Link to="/projects/$projectCat/$projectId/" params={{ projectCat: prev.category, projectId: prev.slug }} className="pn-prev d-only">
+          <Link to="/projects/$projectCat/$projectId/" params={{ projectCat: prev.category, projectId: prev.address }} className="pn-prev d-only">
             <span className="lab">← Previous</span><b className="c">{prev.title}</b>
           </Link>
           <Link to="/projects/" className="text-link pn-all">All projects →</Link>
-          <Link to="/projects/$projectCat/$projectId/" params={{ projectCat: next.category, projectId: next.slug }} className="pn-next">
+          <Link to="/projects/$projectCat/$projectId/" params={{ projectCat: next.category, projectId: next.address }} className="pn-next">
             <span className="lab">Next →</span><b className="c">{next.title}</b>
           </Link>
         </nav>
