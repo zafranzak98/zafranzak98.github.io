@@ -5,7 +5,7 @@ page_type: Full case study
 category: editorial
 summary: Testing *bold words* here
 featured: false
-opening_colour: Olive
+opening_colour: Terracotta
 cover:
   image: /media/projects/safari-test/img_8308.webp
 role: Test
