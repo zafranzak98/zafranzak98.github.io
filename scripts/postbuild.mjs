@@ -146,14 +146,31 @@ const CMS = 'node_modules/@sveltia/cms/dist'
 const ADMIN = join(DIST, 'admin')
 const CMS_VERSION = JSON.parse(readFileSync('node_modules/@sveltia/cms/package.json', 'utf8')).version
 cpSync(CMS, ADMIN, { recursive: true, filter: (f) => !/\.(map|mjs)$/.test(f) })
-const integrity = `sha384-${createHash('sha384').update(readFileSync(join(CMS, 'sveltia-cms.js'))).digest('base64')}`
+const sri = (file) => `sha384-${createHash('sha384').update(readFileSync(file)).digest('base64')}`
+const integrity = sri(join(CMS, 'sveltia-cms.js'))
+// WebP converter for Safari (see src/admin/webp-fallback.js). Published from node_modules at the
+// pinned versions, beside the editor, so no code is fetched from another website.
+const VENDOR = join(ADMIN, 'vendor')
+const WEBP = 'node_modules/@jsquash/webp'
+for (const f of ['encode.js', 'meta.js', 'utils.js', 'LICENSE']) cpSync(join(WEBP, f), join(VENDOR, 'jsquash-webp', f))
+cpSync(join(WEBP, 'codec/enc'), join(VENDOR, 'jsquash-webp/codec/enc'), { recursive: true, filter: (f) => !/\.d\.ts$|README/.test(f) })
+cpSync('node_modules/wasm-feature-detect/dist/esm/index.js', join(VENDOR, 'wasm-feature-detect/index.js'))
+// The encoder names its one dependency by package name; point it at the copy published here.
+const encodeJs = join(VENDOR, 'jsquash-webp/encode.js')
+const encodeSource = readFileSync(encodeJs, 'utf8')
+if (!encodeSource.includes("from 'wasm-feature-detect'")) errors.push('The WebP converter has changed shape: update the copy step in scripts/postbuild.mjs.')
+writeFileSync(encodeJs, encodeSource.replace("from 'wasm-feature-detect'", "from '../wasm-feature-detect/index.js'"))
+cpSync('src/admin/webp-fallback.js', join(ADMIN, 'webp-fallback.js'))
+for (const f of ['jsquash-webp/codec/enc/webp_enc.wasm', 'jsquash-webp/codec/enc/webp_enc_simd.wasm']) if (!existsSync(join(VENDOR, f))) errors.push(`The WebP converter is missing ${f}`)
 // The editor holds a GitHub sign-in, so the page may only run code from this site and talk to
 // GitHub and the sign-in helper (Sveltia CMS Authenticator on Cloudflare), which renews it. Also allowed, as data only: the editor's fonts (jsDelivr), GitHub's status page, and
 // the editor's version number and interface wording for its pinned version (unpkg.com).
-// Extra code the editor would fetch from unpkg.com is refused.
+// Extra code the editor would fetch from unpkg.com is refused. 'wasm-unsafe-eval' lets the
+// browser compile WebAssembly, which the WebP converter for Safari uses; it does not allow eval()
+// or any other way of running text as JavaScript, and the converter itself is served from here.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
   "font-src 'self' https://cdn.jsdelivr.net",
   "img-src 'self' blob: data: https://*.githubusercontent.com",
@@ -176,6 +193,7 @@ writeFileSync(join(ADMIN, 'index.html'), `<!doctype html>
     <title>Website editor · ${esc(siteName)}</title>
   </head>
   <body>
+    <script src="/admin/webp-fallback.js" integrity="${sri('src/admin/webp-fallback.js')}" crossorigin="anonymous"></script>
     <script src="/admin/sveltia-cms.js" integrity="${integrity}" crossorigin="anonymous"></script>
   </body>
 </html>
