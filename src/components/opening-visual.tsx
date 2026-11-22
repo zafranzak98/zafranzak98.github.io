@@ -1,10 +1,9 @@
-import { Media, Phone } from '#/components/media'
+import { Media } from '#/components/media'
 import type { Project } from '#/lib/site'
 
 // Each original case study keeps its own approved opening composition; new projects use the standard one.
-// Shared by the case-study opening and the Projects lookbook, so both show the same visual, with one
-// exception: About-Face Beauty's band shows its cover artwork as it is, without the phone frame.
-export default function OpeningVisual({ p, phoneWidth = 'max(140px, 12.4vw)', inBand = false }: { p: Project; phoneWidth?: string; inBand?: boolean }) {
+// Shared by the case-study opening and the Projects lookbook, so both show the same visual.
+export default function OpeningVisual({ p, inBand = false }: { p: Project; inBand?: boolean }) {
   // How wide the visual is shown: a band's visual (15vw, Evoke 24.5vw; most of the width on a
   // phone) or a case study opening (up to 26vw; 250px on a phone). Evoke shows two images side by side.
   const sizes = inBand ? (p.design === 'evoke' ? '(max-width: 899px) 80vw, 24.5vw' : '(max-width: 899px) 62vw, 15vw') : '(max-width: 899px) 250px, 26vw'
@@ -20,9 +19,8 @@ export default function OpeningVisual({ p, phoneWidth = 'max(140px, 12.4vw)', in
         </div>
       )
     case 'about-face':
-      // In the band the artwork keeps its own proportions (no crop); the case study keeps the phone.
-      if (inBand) return <Media img={p.cover} ratio={p.cover?.image ? 'auto' : '3/4'} label="AR filter on a face" sizes={sizes} />
-      return <Phone img={p.cover} width={phoneWidth} sizes="(max-width: 899px) 140px, 13vw" />
+      // The cover artwork keeps its own proportions (no crop).
+      return <Media img={p.cover} ratio={p.cover?.image ? 'auto' : '3/4'} label="AR filter on a face" sizes={sizes} />
     case 'bersih':
       return <Media img={p.cover} ratio="4/5" label="poster" sizes={sizes} />
     default:

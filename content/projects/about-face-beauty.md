@@ -10,7 +10,7 @@ order: 4
 opening_colour: Terracotta
 cover:
   image: /media/projects/about-face-beauty/brand-proposal-cover-art.webp
-  alt: AR filter on a face
+  alt: AF-Binary cover artwork, a blurred face in purple and pale pink with AF-Binary scrawled in black
 role: '[Your role]'
 project_type: University project
 type_detail: AF-Binary, speculative proposal

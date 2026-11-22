@@ -14,6 +14,7 @@ function Home() {
   const preview = featured.find((p) => p.slug === hover && p.cover?.image)
   return (
     <main id="main" className="home">
+      <h1 className="visually-hidden">{site.name}</h1>
       <p className="home-intro"><Rich text={site.home_intro} highlight /></p>
       <section aria-label="Areas of focus" className="home-focus">
         <h2 className="lab">Areas of Focus</h2>
