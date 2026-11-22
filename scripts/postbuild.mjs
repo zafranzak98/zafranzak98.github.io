@@ -33,6 +33,29 @@ const catSlugs = new Set(categories.map((c) => c.slug))
 const live = projects.filter((p) => PREVIEW || p.status !== 'Draft')
 const drafts = projects.filter((p) => p.status === 'Draft')
 
+// ---- the design editor: Vite builds it as design.html; it lives at /admin/design/ beside the
+// website editor, with a security policy that only allows code from this site and talks only to
+// GitHub (to save layouts). Moved first, so the page checks below treat it like /admin.
+const DESIGN_CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
+  "img-src 'self' blob: data:",
+  "connect-src 'self' https://api.github.com",
+  "frame-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'none'",
+].join('; ')
+if (existsSync(join(DIST, 'design.html'))) {
+  mkdirSync(join(DIST, 'admin', 'design'), { recursive: true })
+  const editorPage = readFileSync(join(DIST, 'design.html'), 'utf8')
+    .replace('<meta name="robots"', `<meta http-equiv="Content-Security-Policy" content="${DESIGN_CSP}" />\n    <meta name="referrer" content="no-referrer" />\n    <meta name="robots"`)
+  writeFileSync(join(DIST, 'admin', 'design', 'index.html'), editorPage)
+  rmSync(join(DIST, 'design.html'))
+} else errors.push('The design editor page (design.html) was not built.')
+
 // ---- content checks
 for (const p of projects) {
   if (!ADDRESS_PATTERN.test(p.slug)) errors.push(`Project "${p.slug}": the file name may only use lowercase letters, numbers and hyphens.`)

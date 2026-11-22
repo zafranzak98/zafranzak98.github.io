@@ -6,7 +6,7 @@ import viteReact from '@vitejs/plugin-react'
 import contentCollections from '@content-collections/vite'
 import sharp from 'sharp'
 import { isPhoto } from './src/lib/image-variants.js'
-import { publishedMedia } from './scripts/published-media.mjs'
+import { publishedLayouts, publishedMedia } from './scripts/published-media.mjs'
 
 // Responsive images: the width and height of every published photo, so each image on a page can list the
 // smaller copies the build makes of it (see src/lib/image-variants.js). Only photos the published
@@ -33,6 +33,20 @@ function imageWidths(): Plugin {
   }
 }
 
+// Saved design-editor layouts (content/layouts), keyed by project file name. In production,
+// layouts of draft projects are left out, like everything else about drafts.
+function layouts(): Plugin {
+  const id = 'virtual:layouts'
+  return {
+    name: 'layouts',
+    resolveId: (source) => (source === id ? `\0${id}` : undefined),
+    load(resolved) {
+      if (resolved !== `\0${id}`) return
+      return `export default ${JSON.stringify(publishedLayouts(process.env.VITE_SITE_MODE === 'preview'))}`
+    },
+  }
+}
+
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [
@@ -40,7 +54,11 @@ const config = defineConfig({
     viteReact(),
     contentCollections(),
     imageWidths(),
+    layouts(),
   ],
+  // The design editor is its own page (design.html), built beside the website and moved to
+  // /admin/design/ after the build. Visitors to the website never load it.
+  build: { rollupOptions: { input: { main: 'index.html', design: 'design.html' } } },
 })
 
 export default config

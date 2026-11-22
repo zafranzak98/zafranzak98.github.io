@@ -1,0 +1,70 @@
+import type { CSSProperties, ComponentType, ReactNode } from 'react'
+import { Media } from '#/components/media'
+import { Rich } from '#/components/rich'
+import { designProps, type Design } from './design'
+import { RenderItems, type Item } from './render'
+
+// Blocks for your own content, placed anywhere on a page: text, an image, a grid that places
+// blocks freely across twelve columns, and a spacer. They use the site's own type, spacing and
+// image handling, so whatever you build matches the approved design.
+
+// A slot holds the blocks placed inside another block. On the website it is the saved list of
+// blocks; inside the design editor it is a drop area provided by the editor.
+type Slot = Item[] | ComponentType<{ className?: string; style?: CSSProperties }>
+function SlotContent({ slot, className, style }: { slot?: Slot; className?: string; style?: CSSProperties }) {
+  if (!slot) return null
+  if (typeof slot === 'function') { const Area = slot; return <Area className={className} style={style} /> }
+  return <div className={className} style={style}><RenderItems items={slot} /></div>
+}
+
+export function TextBlock({ kicker, heading, headingLevel = 'h2', text, size = 'body', design }: {
+  kicker?: string; heading?: string; headingLevel?: 'h2' | 'h3'; text?: string; size?: 'body' | 'lead' | 'statement'; design?: Design
+}) {
+  const H = headingLevel
+  const textClass = size === 'lead' ? 'lead' : size === 'statement' ? 'free-statement' : 'body-text'
+  return (
+    <div {...designProps(design, 'free-block free-text')}>
+      {kicker && <span className="lab">{kicker}</span>}
+      {heading && <H className="c free-heading">{heading}</H>}
+      {text && <p className={textClass}><Rich text={text} highlight /></p>}
+    </div>
+  )
+}
+
+export function ImageBlock({ image, alt, caption, ratio = 'auto', focusX = 50, focusY = 50, design }: {
+  image?: string; alt?: string; caption?: string; ratio?: string; focusX?: number; focusY?: number; design?: Design
+}) {
+  return (
+    <figure {...designProps(design, 'free-block free-image')}>
+      <Media img={{ image, alt }} ratio={ratio} focus={`${focusX}% ${focusY}%`} label={alt || 'image'} sizes="(max-width: 899px) 100vw, 75vw" />
+      {caption && <figcaption className="cap"><Rich text={caption} /></figcaption>}
+    </figure>
+  )
+}
+
+// A twelve-column grid. Each cell says where it starts and how many columns it spans, so blocks
+// can be placed freely side by side or offset. On phones the cells stack in order.
+export function GridBlock({ gap = 'normal', align = 'start', cells, design }: {
+  gap?: 'none' | 'tight' | 'normal' | 'wide'; align?: 'start' | 'center' | 'end'; cells?: Slot; design?: Design
+}) {
+  const { className, style } = designProps(design, `free-block free-grid free-gap-${gap} free-items-${align}`)
+  return <SlotContent slot={cells} className={className} style={style} />
+}
+
+export function CellBlock({ start = 1, span = 6, content, design }: { start?: number; span?: number; content?: Slot; design?: Design }) {
+  const { className, style } = designProps(design, 'free-cell', { '--start': start, '--span': span } as CSSProperties)
+  return <SlotContent slot={content} className={className} style={style} />
+}
+
+const SPACER: Record<string, string> = { small: '1rem', medium: '2.5rem', large: '5.5rem', xlarge: '9rem' }
+export function SpacerBlock({ height = 'medium', heightPhone, design }: { height?: string; heightPhone?: string; design?: Design }) {
+  return <div aria-hidden="true" {...designProps(design, 'free-spacer', { '--h': SPACER[height] ?? SPACER.medium, '--h-m': SPACER[heightPhone ?? height] ?? SPACER.medium } as CSSProperties)} />
+}
+
+export const freeBlocks: Record<string, (props: Record<string, unknown>) => ReactNode> = {
+  Text: TextBlock as never,
+  Image: ImageBlock as never,
+  Grid: GridBlock as never,
+  Cell: CellBlock as never,
+  Spacer: SpacerBlock as never,
+}
