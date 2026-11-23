@@ -266,7 +266,8 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     const onPointerLeave = () => { hide(doc.querySelector('.el-hover')); html.removeAttribute('data-el-over') }
 
     const onClick = (e: MouseEvent) => {
-      if (previewing()) return
+      // The second click of a double-click never changes the selection: the double-click types.
+      if (previewing() || e.detail > 1) return
       if ((e.target as HTMLElement).closest?.('.el-frame')) return
       const el = elementAt(e.clientX, e.clientY)
       // A click on an empty part of a section selects the section itself.

@@ -247,7 +247,7 @@ export function ContextBar() {
           </span>
         </>
       )}
-      <button type="button" className="ctx-btn ctx-hide" aria-pressed={!!shown.hidden} onClick={toggleHidden} title={shown.hidden ? `Show it again on ${SCREEN_LABEL[screen]}` : `Leave it out on ${SCREEN_LABEL[screen]}${screen === 'phone' ? '' : ' (and smaller screens)'}`}><EyeOffIcon /><span className="ctx-reset-word">{shown.hidden ? `Hidden on ${SCREEN_LABEL[screen]}` : `Hide on ${SCREEN_LABEL[screen]}`}</span></button>
+      <button type="button" className="ctx-btn ctx-hide" aria-pressed={!!shown.hidden} onClick={toggleHidden} title={shown.hidden ? `Show it again on ${SCREEN_LABEL[screen]}` : `Leave it out on ${SCREEN_LABEL[screen]}${screen === 'phone' ? '' : ' (and smaller screens)'}`}><EyeOffIcon /><span className="ctx-reset-word">{shown.hidden ? "Hidden here" : "Hide here"}</span></button>
       <button type="button" className="ctx-btn" disabled={from(...LOOKS) !== 'here'} onClick={resetAll} title={`Undo every change to this at ${SCREEN_LABEL[screen]} size`}><ResetIcon /><span className="ctx-reset-word">Reset</span></button>
       <span className="ctx-gap" />
       {where}

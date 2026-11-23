@@ -267,3 +267,7 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
 @media (min-width: 900px) and (max-width: 1279px) { html[data-preview] [data-el-hidden~='t'] { display: none !important; } }
 @media (max-width: 899px) { html[data-preview] [data-el-hidden~='p'] { display: none !important; } }
 .ctx-btn[aria-pressed='true'].ctx-hide { border-color: var(--terra); color: var(--terra); }
+/* The contextual bar scrolls within its own row; it never widens the editor (which would rescale the page). */
+[class*='PuckLayout-header'] { min-width: 0; }
+.editor-bar { min-width: 0; max-width: 100vw; box-sizing: border-box; }
+.editor-bar-ctx { min-width: 0; max-width: calc(100% + 2rem); overflow: hidden; }
