@@ -37,7 +37,7 @@ Original build by Liana. Redesign, content model and build checks added in 2026.
 Content is edited at `/admin` with [Sveltia CMS](https://sveltiacms.app), which saves straight to the `main` branch through GitHub. Each save starts a normal build and deploy.
 
 - **Settings.** `public/admin/config.yml` lists every field in plain English. It must match `content-collections.ts`.
-- **Sign-in.** "Sign in with GitHub", through the [Sveltia CMS Authenticator](https://github.com/sveltia/sveltia-cms-auth) on the site owner's own Cloudflare account (`sveltia-cms-auth.zafranzak98.workers.dev`, free plan). It uses a GitHub App installed on this repository only, with Contents read and write. Sign-ins expire after 8 hours and renew automatically. The Worker only answers sign-ins from `zafranzak98.github.io` and `zafranzakaria.com` (`ALLOWED_DOMAINS`).
+- **Sign-in.** "Sign in with GitHub", through the [Sveltia CMS Authenticator](https://github.com/sveltia/sveltia-cms-auth) on the site owner's own Cloudflare account (`sveltia-cms-auth.zafranzak98.workers.dev`, free plan). It uses a GitHub App installed on this repository only, with Contents read and write. The Worker passes Sveltia the GitHub access token only, not a renewal key, so sign-ins are not renewed: when GitHub's token expires (after 8 hours, if the GitHub App has "Expire user authorization tokens" switched on), Sveltia asks you to sign in again. Signing out removes the sign-in from the browser; it does not cancel it at GitHub. To cancel every sign-in at once, revoke the app in GitHub Settings, Applications. The Worker only answers sign-ins from `zafranzak98.github.io` and `zafranzakaria.com` (`ALLOWED_DOMAINS`).
 - **Version.** `@sveltia/cms` is pinned to an exact version in `package.json`. The build copies it into `dist/admin` from `node_modules`, and the page loads it with an integrity hash and a content security policy that blocks code from other sites.
 - **Uploads.** Images are converted to WebP at quality 85 and at most 2400px wide, in every browser. Project images go to `public/media/projects/<project>/`.
 - **Responsive images.** The build also publishes smaller WebP copies of every published photo, 480, 960 and 1600px wide (never wider than the original), named `photo-w960.webp` beside `photo.webp`. Each image on a page lists them with `srcset` and says how wide it is shown with `sizes`, so the browser downloads the smallest copy that stays sharp. Uploads in the repository are never changed. The rules are in `src/lib/image-variants.js`; the copies are made in `scripts/postbuild.mjs`; the widths come from a small Vite plugin in `vite.config.ts`. Only photos that published content uses are listed (`scripts/published-media.mjs`), so a draft's file names never reach the production build. A new image component needs a `sizes` value that matches how wide it is shown.
@@ -83,6 +83,26 @@ Code changes are made on a branch and reach `main` only through a pull request t
 `.github/workflows/deploy.yml` runs on every push to `main`. A guard job first compares `main` with the version last published: content changes and merged pull requests go ahead, anything else stops before the build (a manual run can publish it only if its "Publish code without a pull request" box is ticked). If the last published version cannot be confirmed, nothing is published. The build job then runs the production build as a check and publishes the preview build to GitHub Pages. If a size warning appears, it opens or updates a "Website size warning" issue, which GitHub emails to the repository owner. A failed build publishes nothing, so the site stays as it was.
 
 Every page also gets its own `index.html` at build time, so direct links and refreshes return a normal page rather than GitHub's 404.
+
+## Recovery
+
+If the website breaks, the last good version can always be brought back without changing any code.
+
+- **Known-good versions** are listed under Releases on the repository page, each named "Known good" with its date and what was checked. Only versions that passed the checks are labelled.
+- **A failed build never changes the website.** The previous version stays up.
+- **`live-backup-2026-11`** is the recovery point for the original site. Never delete or change it.
+
+| Problem | What to do |
+|---|---|
+| An editor save does not appear after a minute, or a "Run failed" email | Repository, Actions, newest "Build and deploy" run. The summary lists lines starting ERROR, each naming the problem (for example an image file that does not exist). Fix that field in the editor and save again. |
+| A run says "Not published" | Code reached `main` without a pull request. If it was meant, open a pull request for it, or run the workflow by hand and tick "Publish code without a pull request". If not, change nothing. |
+| A published edit is wrong | Change it back in the editor. Earlier wording: open the file in `content` on GitHub, choose History, and copy from the earlier version. |
+| A merged pull request broke something | On that pull request's page choose Revert, then merge the pull request it opens. |
+| The site is down or blank | Check githubstatus.com. If GitHub is fine: Releases, note the commit of the latest "Known good" version; Actions, find the successful run for that commit and choose "Re-run all jobs". Check the site afterwards. |
+| Sign-in fails at /admin | Try a private window. Check the GitHub App is still installed on this repository (GitHub Settings, Applications) and the Worker `sveltia-cms-auth` still exists in Cloudflare. Do not create new keys or change secrets. |
+| Anything else | Do not delete branches or force anything. |
+
+**When asking a developer for help, send:** the link to the failed run or pull request, the ERROR lines or a screenshot of the problem, the page address, what changed just before (an editor save, a merged pull request), and the latest "Known good" release.
 
 ## Project web addresses
 
