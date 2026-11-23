@@ -15,6 +15,11 @@ name: Build and deploy test site
 on:
   push:
     branches: [main]
+  # Once a month the site is rebuilt from what is already published, so the security check
+  # (inside the build) runs even when nothing has been edited. GitHub pauses this after 60 days
+  # without any change to the repository.
+  schedule:
+    - cron: '23 5 1 * *'
   workflow_dispatch:
     inputs:
       publish_unapproved_code:
@@ -144,19 +149,23 @@ jobs:
         with:
           path: dist
           include-hidden-files: true # keeps .nojekyll, so the published files stay exactly as before
-      - name: Email a warning if a size limit is getting close
+      - name: Email a warning when something needs attention (only when it changes)
         if: steps.preview.outputs.warnings != ''
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           WARNINGS: ${{ steps.preview.outputs.warnings }}
         with:
           script: |
-            const title = 'Website size warning'
+            const title = 'Website warnings'
+            const text = process.env.WARNINGS.trim()
+            const stamp = '\n\nFrom build ' + context.runId + '.'
             const open = await github.rest.issues.listForRepo({ ...context.repo, state: 'open' })
-            const body = process.env.WARNINGS + '\n\nFrom build ' + context.runId + '.'
             const existing = open.data.find(i => i.title === title)
-            if (existing) await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body })
-            else await github.rest.issues.create({ ...context.repo, title, body })
+            if (!existing) return github.rest.issues.create({ ...context.repo, title, body: text + stamp })
+            const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: existing.number })
+            const last = (comments.length ? comments[comments.length - 1].body : existing.body).split('\n\nFrom build')[0].trim()
+            if (last === text) return core.info('Same warnings as the last report, so no new email.')
+            await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body: text + stamp })
 
   deploy:
     needs: [guard, build]
