@@ -16,6 +16,7 @@ import sharp from 'sharp'
 import { ADDRESS_PATTERN, addressOf, overrideOf, pagePath } from '../src/lib/project-urls.js'
 import { historyIsShallow, redirectRegistry } from './redirects.mjs'
 import { mediaIn, publishedMedia } from './published-media.mjs'
+import { securityCheck } from './security-check.mjs'
 
 const PREVIEW = process.env.VITE_SITE_MODE === 'preview'
 const DIST = 'dist'
@@ -347,12 +348,16 @@ for (const f of walk(join(DIST, 'media')).filter((f) => /-w\d+\.webp$/.test(f)))
 if (siteSize > 500 * MB) warnings.push(`The published website is ${(siteSize / MB).toFixed(0)} MB. GitHub Pages allows up to 1 GB.${siteSize > 800 * MB ? ' URGENT.' : ''}`)
 if (repoSize > 500 * MB) warnings.push(`The repository is ${(repoSize / MB).toFixed(0)} MB. GitHub recommends staying under 1 GB.${repoSize > 800 * MB ? ' URGENT.' : ''}`)
 
+const security = securityCheck()
+if (security.warning) warnings.push(security.warning)
+
 const report = [
   `Mode: ${PREVIEW ? 'preview (drafts shown)' : 'production (drafts excluded)'}`,
   `Projects: ${live.length} built, ${PREVIEW ? 0 : drafts.length} draft(s) excluded`,
   `Responsive images: ${copies} smaller copies of ${photos.length} photos`,
   `Published website: ${(siteSize / MB).toFixed(2)} MB of 1,024 MB (GitHub Pages limit)`,
   `Repository: ${(repoSize / MB).toFixed(2)} MB of 1,024 MB (GitHub recommendation)`,
+  security.note,
   `Largest file: ${biggest[0] ? `${biggest[0][0]} (${(biggest[0][1] / MB).toFixed(2)} MB; limit 100 MB)` : 'none'}`,
   ...warnings.map((w) => `WARNING: ${w}`),
   ...errors.map((e) => `ERROR: ${e}`),
