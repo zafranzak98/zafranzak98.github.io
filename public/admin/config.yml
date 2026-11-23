@@ -8,9 +8,9 @@ backend:
   branch: main
   # "Sign in with GitHub" through the Sveltia CMS Authenticator on Zafran's own Cloudflare
   # account. It uses a GitHub App installed on this repository only (Contents read and write).
-  # The Worker passes on the access token only (no renewal key), so sign-ins are not renewed:
-  # when GitHub's token expires (8 hours, if the app expires tokens) you sign in again.
-  # The token method stays off.
+  # Sign-ins last 8 hours and renew themselves through the Worker with a renewal key kept in
+  # the browser; signing in again is needed after about six months without use. Signing out
+  # does not cancel a sign-in at GitHub: revoke the app there for that. The token method stays off.
   base_url: https://sveltia-cms-auth.zafranzak98.workers.dev
   auth_methods: [oauth]
   commit_messages:
