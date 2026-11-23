@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createUsePuck } from '@puckeditor/core'
 import type { Project } from '#/lib/site'
 import { allCategories } from '../../.content-collections/generated'
@@ -18,12 +18,25 @@ import { LABELS, type LabelKey } from '#/layout/labels'
 const usePuck = createUsePuck()
 
 export type Edits = Record<string, string>
-type Selected = { key: string; blockId: string; field?: string } | null
+export type Picked = { key: string; blockId: string; field?: string }
+type Selected = Picked | null
+const same = (a: Picked, b: Picked) => a.key === b.key && a.blockId === b.blockId
 
-export const Selection = createContext<{ selected: Selected; select: (s: Selected) => void }>({ selected: null, select: () => {} })
+// One element is "selected" (its settings show in the panel). Shift-click adds more to a group;
+// the group moves and takes shared settings together. The last one added is the selected one.
+// On a touchscreen there is no Shift key, so "Select more" makes each tap add or remove instead.
+type SelectionValue = { selected: Selected; group: Picked[]; select: (s: Selected) => void; toggle: (s: Picked) => void; adding: boolean; setAdding: (on: boolean) => void }
+export const Selection = createContext<SelectionValue>({ selected: null, group: [], select: () => {}, toggle: () => {}, adding: false, setAdding: () => {} })
 export function SelectionProvider({ children }: { children: ReactNode }) {
-  const [selected, select] = useState<Selected>(null)
-  return <Selection.Provider value={{ selected, select }}>{children}</Selection.Provider>
+  const [{ selected, group }, set] = useState<{ selected: Selected; group: Picked[] }>({ selected: null, group: [] })
+  const [adding, setAdding] = useState(false)
+  const select = useCallback((s: Selected) => { set({ selected: s, group: [] }); if (!s) setAdding(false) }, [])
+  const toggle = useCallback((s: Picked) => set((now) => {
+    const members = now.group.length ? now.group : now.selected ? [now.selected] : []
+    const next = members.some((m) => same(m, s)) ? members.filter((m) => !same(m, s)) : [...members, s]
+    return { selected: next.at(-1) ?? null, group: next.length > 1 ? next : [] }
+  }), [])
+  return <Selection.Provider value={{ selected, group, select, toggle, adding, setAdding }}>{children}</Selection.Provider>
 }
 
 const NAMES: [RegExp, string][] = [
@@ -150,6 +163,9 @@ export function useWords(p: Project) {
 // Moves (by dragging the grip or with the arrow keys) reach the selected element's panel as its new
 // position for the screen size being edited, in rem. Announcements go to the panel's live region.
 export const moveListeners = new Set<(x: number, y: number) => void>()
+// A group moved together: each member's new position, saved as one change (one undo step).
+export type GroupMove = Picked & { x: number; y: number }
+export const groupMoveListeners = new Set<(moves: GroupMove[]) => void>()
 export const announceListeners = new Set<(text: string) => void>()
 
 // Snapping to guides is on unless switched off in the panel; holding Option (Alt) moves freely.
@@ -185,10 +201,10 @@ export function useCanvasEditing(p: Project, edits: Edits) {
   // The page frame can be redrawn by the editor, so listen on whichever document holds it now.
   const [doc, setDoc] = useState<Document | null>(null)
   const anchor = (node: HTMLSpanElement | null) => setDoc(node?.ownerDocument ?? null)
-  const { selected, select } = useContext(Selection)
+  const { selected, group, select, toggle, adding } = useContext(Selection)
   const words = useWords(p)
-  const latest = useRef({ edits, words, selected })
-  latest.current = { edits, words, selected }
+  const latest = useRef({ edits, words, selected, group, adding })
+  latest.current = { edits, words, selected, group, adding }
 
   useEffect(() => {
     if (!doc) return
@@ -226,6 +242,12 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       return best
     }
     const blockOf = (el: HTMLElement) => el.closest('[data-puck-component]')?.getAttribute('data-puck-component') ?? ''
+    let dragged = false
+    const pickOf = (el: HTMLElement): Picked => ({ key: el.dataset.el!, blockId: blockOf(el), field: el.dataset.edit })
+    // The group's elements on the page; shared names never move, so they are left out of moves.
+    const elOf = (m: Picked) => [...doc.querySelectorAll<HTMLElement>('[data-el]')].find((n) => n.dataset.el === m.key && blockOf(n) === m.blockId)
+    const movable = () => latest.current.group.map((m) => ({ m, el: elOf(m) })).filter((x): x is { m: Picked; el: HTMLElement } => !!x.el && !x.el.hasAttribute('data-shared'))
+    const grouped = () => latest.current.group.length > 1
 
     // Marks drawn over the page: a light outline on hover, a frame on the selected element.
     const layer = (cls: string) => {
@@ -251,9 +273,9 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     const previewing = () => html.hasAttribute('data-preview')
     const onPointerMove = (e: PointerEvent) => {
       if (previewing()) return
-      if (doc.querySelector('.el-typing') || (e.target as HTMLElement).closest?.('.el-frame')) { hide(doc.querySelector('.el-hover')); html.removeAttribute('data-el-over'); return }
+      if (doc.querySelector('.el-typing') || (e.target as HTMLElement).closest?.('.el-frame, .el-gframe')) { hide(doc.querySelector('.el-hover')); html.removeAttribute('data-el-over'); return }
       const el = elementAt(e.clientX, e.clientY)
-      if (!el || el.hasAttribute('data-el-selected')) {
+      if (!el || el.hasAttribute('data-el-selected') || el.hasAttribute('data-el-group')) {
         hide(doc.querySelector('.el-hover'))
         html.removeAttribute('data-el-over')
         return
@@ -268,11 +290,22 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     const onClick = (e: MouseEvent) => {
       // The second click of a double-click never changes the selection: the double-click types.
       if (previewing() || e.detail > 1) return
-      if ((e.target as HTMLElement).closest?.('.el-frame')) return
+      if (dragged) { dragged = false; return }
+      const more = e.shiftKey || latest.current.adding
+      const onFrame = (e.target as HTMLElement).closest?.('.el-frame, .el-gframe')
+      if (onFrame && !more) return
       const el = elementAt(e.clientX, e.clientY)
+      // Shift-click (or a tap with "Select more" on) adds an element to the group, or takes it out again.
+      if (more && el) {
+        if (el.hasAttribute('data-shared')) { announceListeners.forEach((fn) => fn('Shared names are changed on their own, so they cannot join a group.')); return }
+        toggle(pickOf(el))
+        hide(doc.querySelector('.el-hover'))
+        return
+      }
+      if (onFrame) return
       // A click on an empty part of a section selects the section itself.
       if (!el) { select(null); return }
-      select({ key: el.dataset.el!, blockId: blockOf(el), field: el.dataset.edit })
+      select(pickOf(el))
       hide(doc.querySelector('.el-hover'))
     }
 
@@ -342,6 +375,11 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       moveListeners.forEach((fn) => fn(round(leftPx / root), round(topPx / root)))
       announceListeners.forEach((fn) => fn(words))
     }
+    const commitGroup = (moves: (Picked & { left: number; top: number })[], words: string) => {
+      const root = rootSize()
+      groupMoveListeners.forEach((fn) => fn(moves.map(({ left, top, ...m }) => ({ ...m, x: round(left / root), y: round(top / root) }))))
+      announceListeners.forEach((fn) => fn(words))
+    }
     const selectedEl = () => doc.querySelector<HTMLElement>('[data-el-selected]')
     const movedText = (left: number, top: number) => `${px(left)} across, ${px(top)} down`
 
@@ -352,9 +390,18 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       const el = selectedEl()
       if (!el) return
       if (e.key === 'Escape') { e.preventDefault(); select(null); return }
-      if (e.key === 'Enter' && el.dataset.edit) { e.preventDefault(); startTyping(el); return }
       const step = (e.shiftKey ? 1 : 0.25) * rootSize()
       const move: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }
+      if (grouped()) {
+        // A group moves by the same amount, without snapping, as one change.
+        const parts = movable()
+        if (!move[e.key] || !parts.length) return
+        e.preventDefault()
+        const [dx, dy] = move[e.key]
+        commitGroup(parts.map(({ m, el: n }) => { const [l, t] = offsetOf(n); return { ...m, left: l + dx, top: t + dy } }), `Moved ${parts.length} parts together.`)
+        return
+      }
+      if (e.key === 'Enter' && el.dataset.edit) { e.preventDefault(); startTyping(el); return }
       if (!move[e.key] || el.hasAttribute('data-shared')) return
       e.preventDefault()
       let [dx, dy] = move[e.key]
@@ -372,9 +419,15 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     // Dragging the selected element moves only that element; guides show what it lines up with.
     // The handle on an image's right edge changes its width instead.
     const onFrameDown = (e: PointerEvent) => {
-      const frame = (e.target as HTMLElement).closest?.('.el-frame') as HTMLElement | null
+      const frame = (e.target as HTMLElement).closest?.('.el-frame, .el-gframe') as HTMLElement | null
       const el = selectedEl()
-      if (!frame || !el || e.button !== 0) return
+      if (!frame || !el || e.button !== 0 || e.shiftKey) return
+      // Pressing on the frame keeps the browser from moving focus, so hand it to the page here:
+      // otherwise arrow keys would still go to the last toolbar button used.
+      view.focus()
+      // With "Select more" on, a group can still be dragged; a tap without moving adds or removes.
+      if (grouped()) { dragGroup(e, frame, el); return }
+      if (latest.current.adding) return
       if (el.hasAttribute('data-shared')) return
       e.preventDefault()
       e.stopPropagation()
@@ -457,8 +510,63 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       frame.addEventListener('pointerup', onUp)
       frame.addEventListener('pointercancel', onUp)
     }
+    // Dragging any member of a group moves them all; guides follow the selected one.
+    const dragGroup = (e: PointerEvent, frame: HTMLElement, lead: HTMLElement) => {
+      const parts = movable()
+      if (!parts.length) return
+      e.preventDefault()
+      e.stopPropagation()
+      frame.setPointerCapture(e.pointerId)
+      const [x0, y0] = [e.clientX, e.clientY]
+      const starts = parts.map(({ el: n }) => offsetOf(n))
+      const start = boxOf(lead)
+      const lines = linesFor(lead, nameOf)
+      let moved = false
+      let last = { dx: 0, dy: 0 }
+      const frames = () => [doc.querySelector<HTMLElement>('.el-frame'), ...doc.querySelectorAll<HTMLElement>('.el-gframe')].filter(Boolean) as HTMLElement[]
+      const onMove = (m: PointerEvent) => {
+        let dx = m.clientX - x0
+        let dy = m.clientY - y0
+        if (!moved && Math.hypot(dx, dy) < pagePixels(3)) return
+        moved = true
+        frames().forEach((f) => f.setAttribute('data-moving', ''))
+        const s = snapOn() && !m.altKey ? snap(shift(start, dx, dy), lines, pagePixels(6)) : snap(start, { across: [], down: [] }, 0)
+        if (Math.abs(dx) < pagePixels(3)) { s.dx = 0; s.hitAcross = undefined }
+        if (Math.abs(dy) < pagePixels(3)) { s.dy = 0; s.hitDown = undefined }
+        dx += s.dx
+        dy += s.dy
+        parts.forEach(({ el: n }) => { n.style.translate = `${dx}px ${dy}px` })
+        placeFrames()
+        drawGuides(doc, s)
+        last = { dx, dy }
+      }
+      const onUp = () => {
+        frame.removeEventListener('pointermove', onMove)
+        frame.removeEventListener('pointerup', onUp)
+        frame.removeEventListener('pointercancel', onUp)
+        frames().forEach((f) => f.removeAttribute('data-moving'))
+        parts.forEach(({ el: n }) => { n.style.translate = '' })
+        clearGuides(doc)
+        dragged = moved
+        if (moved && (last.dx || last.dy)) commitGroup(parts.map(({ m }, i) => ({ ...m, left: starts[i][0] + last.dx, top: starts[i][1] + last.dy })), `Moved ${parts.length} parts together: ${movedText(last.dx, last.dy)}.`)
+      }
+      frame.addEventListener('pointermove', onMove)
+      frame.addEventListener('pointerup', onUp)
+      frame.addEventListener('pointercancel', onUp)
+    }
+    // Every group member other than the selected one has a lighter frame of its own.
+    const placeFrames = () => {
+      const lead = selectedEl()
+      const frame = doc.querySelector<HTMLElement>('.el-frame')
+      if (frame && lead) place(frame, lead)
+      doc.querySelectorAll<HTMLElement>('.el-gframe').forEach((g) => {
+        const n = elOf({ key: g.dataset.key!, blockId: g.dataset.block! })
+        if (n) place(g, n); else hide(g)
+      })
+    }
+
     const onFrameDoubleClick = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest?.('.el-frame')) return
+      if (!(e.target as HTMLElement).closest?.('.el-frame') || grouped()) return
       const el = selectedEl()
       if (el) { e.preventDefault(); e.stopPropagation(); startTyping(el) }
     }
@@ -472,6 +580,10 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       if (frame) {
         if (el && !el.hasAttribute('data-el-editing')) { if (!frame.hasAttribute('data-moving')) place(frame, el) } else hide(frame)
       }
+      doc.querySelectorAll<HTMLElement>('.el-gframe:not([data-moving])').forEach((g) => {
+        const n = elOf({ key: g.dataset.key!, blockId: g.dataset.block! })
+        if (n) place(g, n); else hide(g)
+      })
       raf = view.requestAnimationFrame(sync)
     }
     sync()
@@ -495,13 +607,28 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       doc.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [doc, p, select])
+  }, [doc, p, select, toggle])
 
   // Mark the selected element and give it a frame after the page redraws.
   useEffect(() => {
     if (!doc) return
     const el = selected && [...doc.querySelectorAll<HTMLElement>('[data-el]')].find((n) => n.dataset.el === selected.key && n.closest('[data-puck-component]')?.getAttribute('data-puck-component') === selected.blockId)
     doc.querySelectorAll('[data-el-selected]').forEach((n) => n !== el && n.removeAttribute('data-el-selected'))
+    // Group members: a mark on each element and a lighter frame for each one but the selected.
+    const blockOf = (n: Element) => n.closest('[data-puck-component]')?.getAttribute('data-puck-component')
+    const members = group.length > 1 ? group : []
+    const isMember = (n: HTMLElement) => members.some((m) => m.key === n.dataset.el && m.blockId === blockOf(n))
+    doc.querySelectorAll<HTMLElement>('[data-el]').forEach((n) => n.toggleAttribute('data-el-group', isMember(n)))
+    doc.querySelectorAll('.el-gframe').forEach((g) => g.remove())
+    for (const m of members) {
+      if (selected && m.key === selected.key && m.blockId === selected.blockId) continue
+      const g = doc.createElement('div')
+      g.className = 'el-gframe'
+      g.setAttribute('aria-hidden', 'true')
+      g.dataset.key = m.key
+      g.dataset.block = m.blockId
+      doc.body.append(g)
+    }
     let frame = doc.querySelector<HTMLElement>('.el-frame')
     if (!el) { frame?.remove(); doc.documentElement.removeAttribute('data-el-active'); return }
     el.setAttribute('data-el-selected', '')
@@ -515,11 +642,11 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       frame.append(tag)
       doc.body.append(frame)
     }
-    const isImage = IMAGES.test(el.dataset.el!)
-    frame.querySelector('.el-tag')!.textContent = nameOf(el.dataset.el!)
+    const isImage = IMAGES.test(el.dataset.el!) && !members.length
+    frame.querySelector('.el-tag')!.textContent = members.length ? `${members.length} selected · drag to move together` : nameOf(el.dataset.el!)
     frame.toggleAttribute('data-shared', el.hasAttribute('data-shared'))
-    frame.toggleAttribute('data-cover', el.classList.contains('cs-open-visual') && doc.defaultView!.getComputedStyle(el.parentElement!).display === 'grid')
-    frame.title = el.hasAttribute('data-shared') ? 'Double-click to change this name everywhere it appears.' : `${el.dataset.edit ? 'Double-click to edit the words. ' : ''}Drag to move${isImage ? '; drag the side handle to change its size' : ''}. Hold Option to move freely.`
+    frame.toggleAttribute('data-cover', !members.length && el.classList.contains('cs-open-visual') && doc.defaultView!.getComputedStyle(el.parentElement!).display === 'grid')
+    frame.title = members.length ? 'Drag to move the group together. Shift-click a part to add or remove it.' : el.hasAttribute('data-shared') ? 'Double-click to change this name everywhere it appears.' : `${el.dataset.edit ? 'Double-click to edit the words. ' : ''}Drag to move${isImage ? '; drag the side handle to change its size' : ''}. Hold Option to move freely.`
     let handle = frame.querySelector('.el-handle')
     if (isImage && !handle) { handle = doc.createElement('span'); handle.className = 'el-handle'; frame.append(handle) }
     if (!isImage) handle?.remove()

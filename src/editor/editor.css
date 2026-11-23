@@ -23,10 +23,13 @@ html[data-el-over] [class*='DraggableComponent--hover'] > [class*='DraggableComp
 html[data-el-active] [class*='DraggableComponent--isSelected'] > [class*='DraggableComponent-overlayWrapper'],
 html[data-el-active] [class*='DraggableComponent--isSelected'] [class*='DraggableComponent-actionsOverlay'] { display: none; }
 [data-el][data-el-editing] { visibility: hidden; }
-.el-hover, .el-frame { position: absolute; display: none; box-sizing: border-box; }
+.el-hover, .el-frame, .el-gframe { position: absolute; display: none; box-sizing: border-box; }
 .el-hover { z-index: 18; pointer-events: none; outline: calc(var(--ui, 1px) * 1.5) dashed var(--terra); outline-offset: calc(var(--ui, 1px) * 3); }
 .el-frame { z-index: 20; outline: calc(var(--ui, 1px) * 2) solid var(--terra); outline-offset: calc(var(--ui, 1px) * 3); cursor: move; touch-action: none; }
 .el-frame[data-moving] { cursor: grabbing; }
+/* Other members of a Shift-click group: the same colour, a thinner line, and they drag the group too. */
+.el-gframe { z-index: 19; outline: calc(var(--ui, 1px) * 1.5) solid var(--terra); outline-offset: calc(var(--ui, 1px) * 3); cursor: move; touch-action: none; }
+.el-gframe[data-moving] { cursor: grabbing; }
 .el-tag { position: absolute; left: calc(var(--ui, 1px) * -3); bottom: calc(100% + var(--ui, 1px) * 6); padding: calc(var(--ui, 1px) * 3) calc(var(--ui, 1px) * 7); border-radius: calc(var(--ui, 1px) * 3); background: var(--terra); color: var(--off); font: 600 calc(var(--ui, 1px) * 12) / 1.3 'Instrument Sans Variable', system-ui, sans-serif; letter-spacing: 0; text-transform: none; white-space: nowrap; pointer-events: none; }
 .el-hover .el-tag { background: var(--off); color: var(--terra); box-shadow: 0 0 0 calc(var(--ui, 1px) * 1) var(--terra); }
 .el-tag-help { bottom: auto; z-index: 21; margin-top: calc(var(--ui, 1px) * 8); background: var(--olive); }
@@ -127,7 +130,7 @@ html[data-el-active] [class*='DraggableComponent--isSelected'] [class*='Draggabl
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Preview: the page exactly as visitors see it. */
-html[data-preview] .el-hover, html[data-preview] .el-frame, html[data-preview] [class*='DraggableComponent'] { display: none !important; }
+html[data-preview] .el-hover, html[data-preview] .el-frame, html[data-preview] .el-gframe, html[data-preview] [class*='DraggableComponent'] { display: none !important; }
 html[data-preview] [data-puck-component] { cursor: default !important; }
 
 .editor-chip { padding: 0.125rem 0.5rem; border-radius: 999px; background: var(--lsage); font-size: 12px; font-weight: 600; cursor: help; }
@@ -272,8 +275,9 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
 .editor-bar { min-width: 0; max-width: 100vw; box-sizing: border-box; }
 .editor-bar-ctx { min-width: 0; max-width: calc(100% + 2rem); overflow: hidden; }
 /* Keep the selection bar in one row at desktop widths: Hide and Reset are named icons, spacing is tighter. */
-@media (max-width: 1919px) { .ctx { gap: 0.5rem; } .ctx-hide .ctx-reset-word, .ctx-reset .ctx-reset-word { display: none; } .ctx-stepper output { min-width: 4.5rem; } .ctx-name { max-width: 10rem; } }
+@media (max-width: 1919px) { .ctx { gap: 0.5rem; } .ctx-hide .ctx-reset-word, .ctx-reset .ctx-reset-word, .ctx-more-sel .ctx-reset-word { display: none; } .ctx-stepper output { min-width: 4.5rem; } .ctx-name { max-width: 10rem; } }
 @media (max-width: 1439px) { .ctx-label-plain { display: none; } }
 /* On tablets, Box position lives in More settings, and Edit words is a named icon. */
 @media (max-width: 1279px) { .ctx-box, .ctx-edit-word { display: none; } }
 @media (max-width: 1023px) { .ctx { mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent); } }
+@media (max-width: 1439px) { .ctx-group-hint { display: none; } }

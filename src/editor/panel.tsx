@@ -3,7 +3,7 @@ import { createUsePuck } from '@puckeditor/core'
 import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { COVER_NAMES, COVER_SIZES, TEXT_SIZES, lookAt, type ElementLook, type ElementStyle, type Elements, type Screen, type TextSize } from '#/layout/elements'
 import type { Project } from '#/lib/site'
-import { IMAGES, Selection, coverListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
+import { IMAGES, Selection, type Picked, groupMoveListeners, coverListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
 import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, PlusIcon, ResetIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
 
 // The editing controls. The contextual bar under the top bar holds what you use most for the
@@ -59,10 +59,74 @@ function useLook() {
   return { key, item, selected, screen, own, shown, setLook, from, resetAll, background }
 }
 
+// Several elements, in any sections, change together as one change: one step to undo.
+type Item = { type: string; props: Record<string, unknown> & { id?: string; elements?: Elements } }
+const isItem = (n: unknown): n is Item => !!n && typeof n === 'object' && 'type' in n && 'props' in n
+function eachItem(node: unknown, fn: (item: Item) => Item): unknown {
+  if (Array.isArray(node)) return node.map((n) => eachItem(n, fn))
+  if (!isItem(node)) return node
+  const item = fn(node)
+  // Sections inside sections (grid columns) keep their contents in arrays on their props.
+  const props = Object.fromEntries(Object.entries(item.props).map(([k, v]) => [k, Array.isArray(v) ? eachItem(v, fn) : v]))
+  return { ...item, props }
+}
+type Data = { content: unknown[]; zones?: Record<string, unknown[]> }
+const allItems = (data: Data) => {
+  const found: Item[] = []
+  eachItem([...data.content, ...Object.values(data.zones ?? {}).flat()], (it) => { found.push(it); return it })
+  return found
+}
+// Merges a change into one element's settings at one screen size, dropping what becomes empty.
+function merged(all: Elements | undefined, key: string, screen: Screen, patch: Partial<ElementLook>): Elements {
+  const style: ElementStyle = all?.[key] ?? {}
+  const next = { ...(style[screen] ?? {}), ...patch }
+  for (const k of Object.keys(next) as (keyof ElementLook)[]) if (next[k] === undefined) delete next[k]
+  const nextStyle = { ...style, [screen]: next }
+  if (!Object.keys(next).length) delete nextStyle[screen]
+  const out = { ...(all ?? {}), [key]: nextStyle }
+  if (!Object.keys(nextStyle).length) delete out[key]
+  return out
+}
+
+// The group's members, each with its settings at the screen size being edited.
+function useGroup() {
+  const { group } = useContext(Selection)
+  const data = usePuck((s) => s.appState.data) as unknown as Data
+  const ui = usePuck((s) => s.appState.ui)
+  const dispatch = usePuck((s) => s.dispatch)
+  const screen = screenFor(Number(ui.viewports.current.width) || 1440)
+  const items = group.length > 1 ? allItems(data) : []
+  const members = group.map((m) => {
+    const style: ElementStyle = items.find((it) => it.props.id === m.blockId)?.props.elements?.[m.key] ?? {}
+    return { ...m, own: style[screen] ?? {}, shown: lookAt(style, screen) }
+  })
+  // One change for every member: patch(member) gives that member's change, or nothing.
+  const apply = (patch: (m: (typeof members)[number]) => Partial<ElementLook> | null) => {
+    const changes = new Map<string, [string, Partial<ElementLook>][]>()
+    for (const m of members) {
+      const p = patch(m)
+      if (p) changes.set(m.blockId, [...(changes.get(m.blockId) ?? []), [m.key, p]])
+    }
+    if (!changes.size) return
+    const fn = (it: Item) => {
+      const list = it.props.id ? changes.get(it.props.id) : undefined
+      if (!list) return it
+      const elements = list.reduce((all, [key, p]) => merged(all, key, screen, p), it.props.elements)
+      return { ...it, props: { ...it.props, elements } }
+    }
+    // setData is left out of undo history unless asked, so the group change is recorded explicitly.
+    dispatch({ type: 'setData', recordHistory: true, data: (prev: unknown) => {
+      const d = prev as Data
+      return { ...d, content: eachItem(d.content, fn), zones: Object.fromEntries(Object.entries(d.zones ?? {}).map(([z, v]) => [z, eachItem(v, fn)])) } as never
+    } })
+  }
+  return { members, screen, apply }
+}
+
 // The text size an element shows now, as the nearest step on the site's type scale.
-function currentSize(look: ElementLook): number {
+function currentSize(look: ElementLook, of: HTMLElement | null = selectedEl()): number {
   if (look.size) return SIZES.indexOf(look.size)
-  const el = selectedEl()
+  const el = of
   const doc = canvas()
   if (!el || !doc) return SIZES.indexOf('body')
   const probe = doc.createElement('span')
@@ -88,6 +152,12 @@ export const sectionName = (type: string) => LABELS[type] ?? type
 
 // ---- The contextual bar: under the top bar, it changes with what is selected.
 
+// "Select more": the touchscreen way to Shift-click. On, each tap adds or removes a part.
+function SelectMore() {
+  const { adding, setAdding } = useContext(Selection)
+  return <button type="button" className="ctx-btn ctx-more-sel" aria-label="Select more" aria-pressed={adding} title="Tap more parts to change them together (or Shift-click)" onClick={() => setAdding(!adding)}><PlusIcon /><span className="ctx-reset-word">Select more</span></button>
+}
+
 export function ContextBar() {
   const { key, item, selected, screen, shown, setLook, from, resetAll } = useLook()
   const { select } = useContext(Selection)
@@ -97,16 +167,22 @@ export function ContextBar() {
   const content = usePuck((s) => s.appState.data.content)
   const latest = useRef(setLook)
   latest.current = setLook
+  const grouping = useGroup()
+  const latestGroup = useRef(grouping)
+  latestGroup.current = grouping
   const [message, setMessage] = useState('')
   useEffect(() => {
     const onMove = (x: number, y: number) => latest.current({ x, y })
     const onWidth = (width: number) => latest.current({ width })
     const onCover = (steps: number) => latestCover.current(steps)
+    const onGroupMove = (moves: { key: string; blockId: string; x: number; y: number }[]) =>
+      latestGroup.current.apply((m) => { const to = moves.find((v) => v.key === m.key && v.blockId === m.blockId); return to ? { x: to.x, y: to.y } : null })
+    groupMoveListeners.add(onGroupMove)
     moveListeners.add(onMove)
     widthListeners.add(onWidth)
     coverListeners.add(onCover)
     announceListeners.add(setMessage)
-    return () => { moveListeners.delete(onMove); widthListeners.delete(onWidth); coverListeners.delete(onCover); announceListeners.delete(setMessage) }
+    return () => { groupMoveListeners.delete(onGroupMove); moveListeners.delete(onMove); widthListeners.delete(onWidth); coverListeners.delete(onCover); announceListeners.delete(setMessage) }
   }, [])
   const latestCover = useRef((_steps: number) => {})
   latestCover.current = (steps: number) => {
@@ -141,6 +217,8 @@ export function ContextBar() {
     </>
   )
   const live = <span className="sr-only" role="status" aria-live="polite">{message}</span>
+
+  if (grouping.members.length > 1) return <GroupBar {...grouping} where={where} more={more} live={live} onDone={() => select(null)} />
 
   // Nothing selected: what to do first, and the two ways to change the page's structure.
   if (!item) {
@@ -271,11 +349,75 @@ export function ContextBar() {
         </>
       )}
       <button type="button" className="ctx-btn ctx-hide" aria-pressed={!!shown.hidden} aria-label={shown.hidden ? `Hidden on ${SCREEN_LABEL[screen]}: show it` : `Hide on ${SCREEN_LABEL[screen]}`} onClick={toggleHidden} title={shown.hidden ? `Show it again on ${SCREEN_LABEL[screen]}` : `Leave it out on ${SCREEN_LABEL[screen]}${screen === 'phone' ? '' : ' (and smaller screens)'}`}><EyeOffIcon /><span className="ctx-reset-word">{shown.hidden ? "Hidden here" : "Hide here"}</span></button>
+      <SelectMore />
       <button type="button" className="ctx-btn ctx-reset" aria-label="Reset changes" disabled={from(...LOOKS) !== 'here'} onClick={resetAll} title={`Reset: undo every change to this at ${SCREEN_LABEL[screen]} size`}><ResetIcon /><span className="ctx-reset-word">Reset</span></button>
       <span className="ctx-gap" />
       {where}
       {more}
       <button type="button" className="ctx-icon" aria-label="Done, deselect (Esc)" title="Done (Esc)" onClick={() => select(null)}>✕</button>
+      {live}
+    </div>
+  )
+}
+
+// ---- Several elements selected (Shift-click): the settings they can share, applied to all at once.
+
+const elOfPick = (m: Picked) => [...(canvas()?.querySelectorAll<HTMLElement>('[data-el]') ?? [])].find((n) => n.dataset.el === m.key && n.closest('[data-puck-component]')?.getAttribute('data-puck-component') === m.blockId) ?? null
+const allSame = <T,>(values: T[]) => values.every((v) => v === values[0])
+
+function GroupBar({ members, screen, apply, where, more, live, onDone }: ReturnType<typeof useGroup> & { where: ReactNode; more: ReactNode; live: ReactNode; onDone: () => void }) {
+  const looks = members.map((m) => m.shown)
+  const text = members.every((m) => !IMAGES.test(m.key))
+  const sizes = members.map((m) => currentSize(m.shown, elOfPick(m)))
+  const bold = looks.every((l) => (l.weight ?? 0) >= 600)
+  const colour = allSame(looks.map((l) => l.colour)) ? looks[0].colour : undefined
+  const align = allSame(looks.map((l) => l.align)) ? looks[0].align : undefined
+  const place = allSame(looks.map((l) => l.place)) ? looks[0].place : undefined
+  const placeAll = members.every((m) => { const n = elOfPick(m); return !!n && !['inline', 'contents'].includes(getComputedStyle(n).display) })
+  const hidden = looks.every((l) => l.hidden)
+  const changed = members.some((m) => Object.keys(m.own).length)
+  const step = (by: number) => apply((m) => ({ size: SIZES[Math.max(0, Math.min(SIZES.length - 1, currentSize(m.shown, elOfPick(m)) + by))] }))
+  return (
+    <div className="ctx" role="toolbar" aria-label={`${members.length} selected parts tools`}>
+      <span className="ctx-name">{members.length} selected</span>
+      {text && (
+        <>
+          <span className="ctx-group" role="group" aria-label="Text size">
+            <span className="ctx-label ctx-label-plain">Size</span>
+            <span className="ctx-stepper">
+              <button type="button" aria-label="Smaller text, all selected" title="Smaller" onClick={() => step(-1)}>−</button>
+              <output>{allSame(sizes) ? TEXT_SIZES[SIZES[sizes[0]]][0] : 'Mixed'}</output>
+              <button type="button" aria-label="Larger text, all selected" title="Larger" onClick={() => step(1)}>+</button>
+            </span>
+          </span>
+          <button type="button" className="ctx-icon" aria-pressed={bold} aria-label="Bold, all selected" title="Bold" onClick={() => apply(() => ({ weight: bold ? 400 : 700 }))}><BoldIcon /></button>
+          <span className="ctx-group" role="group" aria-label="Colour">
+            <span className="ctx-label ctx-label-plain">Colour</span>
+            <Swatches value={colour} onChange={(c) => apply(() => ({ colour: c }))} small />
+          </span>
+          <span className="ctx-group" role="group" aria-label="Text alignment">
+            <span className="ctx-label">Text</span>
+            <span className="ctx-segment">
+              {ALIGN.map(([v, name, AlignIcon]) => <button key={v} type="button" aria-pressed={align === v} aria-label={`Text: align ${name.toLowerCase()}, all selected`} title={`Align the words ${name.toLowerCase()}`} onClick={() => apply(() => ({ align: v }))}><AlignIcon /></button>)}
+            </span>
+          </span>
+        </>
+      )}
+      {placeAll && (
+        <span className="ctx-group ctx-box" role="group" aria-label="Box position">
+          <span className="ctx-label">Box</span>
+          <span className="ctx-segment">
+            {BOX.map(([v, name, BoxIcon]) => <button key={v} type="button" aria-pressed={place === v} aria-label={`Box: ${name.toLowerCase()} of its area, all selected`} title={`Place each box at the ${name.toLowerCase()} of its area`} onClick={() => apply(() => ({ place: place === v ? undefined : v }))}><BoxIcon /></button>)}
+          </span>
+        </span>
+      )}
+      <button type="button" className="ctx-btn ctx-hide" aria-pressed={hidden} aria-label={hidden ? `All hidden on ${SCREEN_LABEL[screen]}: show them` : `Hide all on ${SCREEN_LABEL[screen]}`} onClick={() => apply(() => ({ hidden: hidden ? (screen === 'desktop' ? undefined : false) : true }))}><EyeOffIcon /><span className="ctx-reset-word">{hidden ? 'Hidden here' : 'Hide here'}</span></button>
+      <button type="button" className="ctx-btn ctx-reset" aria-label="Reset changes, all selected" disabled={!changed} title={`Reset: undo every change to these at ${SCREEN_LABEL[screen]} size`} onClick={() => apply((m) => Object.fromEntries(Object.keys(m.own).map((k) => [k, undefined])))}><ResetIcon /><span className="ctx-reset-word">Reset</span></button>
+      <SelectMore />
+      <span className="ctx-gap" />
+      {where}
+      {more}
+      <button type="button" className="ctx-icon" aria-label="Done, deselect all (Esc)" title="Done (Esc)" onClick={onDone}>✕</button>
       {live}
     </div>
   )
@@ -287,6 +429,9 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
   const { key, item, selected, screen, own, shown, setLook, from, resetAll, background } = useLook()
   const words = useWords(p)
   const [snapping, setSnapping] = useState(snapOn)
+  const { group } = useContext(Selection)
+
+  if (group.length > 1) return <div className="el-panel"><div className="el-head"><p className="el-name">{group.length} parts selected</p><p className="el-note">Settings they share are in the bar above and change all of them at once. Click one part on its own to see all of its settings.</p></div></div>
 
   if (!key) return <Parts blockId={item?.props.id as string | undefined} />
 
