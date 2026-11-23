@@ -84,6 +84,31 @@ Code changes are made on a branch and reach `main` only through a pull request t
 
 Every page also gets its own `index.html` at build time, so direct links and refreshes return a normal page rather than GitHub's 404.
 
+## Quality targets
+
+Checked before launch and on every significant change, and reported with the results. Baseline measured 23 Nov 2026 on the published version (commit `2a989a1`) served locally; figures from the real test site still need a check in PageSpeed Insights (see below).
+
+| Area | Target | Baseline (local) |
+|---|---|---|
+| Page weight, compressed, whole page scrolled, phone width | 500 KB or less per page | 162 to 462 KB (Cancel Me, Not! 462) |
+| Page weight, desktop width, image-led case studies | 1 MB or less | Cancel Me, Not! 884 KB; others under 450 KB |
+| Script, compressed | 120 KB or less | 97 to 106 KB |
+| Loading, Lighthouse mobile (simulated mid-range phone, slow 4G) | Largest Contentful Paint 2.5 s or less | 1.9 to 3.5 s: Projects 2.4 to 3.0, Cancel Me, Not! 3.3 to 3.5 over target |
+| Responsiveness, Lighthouse lab stand-in | Total Blocking Time 200 ms or less | 0 to 81 ms |
+| Visual stability | Cumulative Layout Shift 0.1 or less | 0.13 to 0.18 on Projects, AF-Binary and Cancel Me, Not!: over target |
+| Accessibility | WCAG 2.2 AA: no automated failures, plus the manual checks below | Automated: passes except the approved AF-Binary and Evoke small text on Sage (4.27:1, below AA's 4.5:1). Manual checks: not yet done |
+| Editor code | No design-editor files downloaded by any visitor page | None, on `main` and on the editor branch |
+
+The loading and stability targets are Google's "good" Core Web Vitals thresholds (web.dev/articles/vitals). Lighthouse cannot measure real interaction delay (INP), so Total Blocking Time stands in for it in the lab.
+
+**How to measure**
+
+- *Weight and editor files:* load each representative page (Home, Projects, About, a category page, AF-Binary, Cancel Me, Not!) at 390 and 1440 px, scroll to the end, and total the compressed downloads by type; list any file whose name contains `design-`, `Editor-` or `/admin`.
+- *Loading:* Lighthouse 12, mobile, default simulated throttling, two runs per page, both reported. Local results come from a computer, not a visitor's phone.
+- *Real test site:* pagespeed.web.dev, Mobile, for the same pages. Real-visitor data appears there and in Search Console only once there are enough visits.
+- *Accessibility, automated:* axe-core (WCAG 2 A and AA rules) at 390, 900 and 1440 px, plus Lighthouse's accessibility audit.
+- *Accessibility, manual:* keyboard only (every link and control reachable, focus visible, nothing trapped); a screen-reader pass with VoiceOver on Mac and iPhone; text zoomed to 200% and a 320 px wide window without sideways scrolling; reduced-motion setting respected; link and image descriptions make sense out of context. An automated pass is not proof of compliance.
+
 ## Recovery
 
 If the website breaks, the last good version can always be brought back without changing any code.
