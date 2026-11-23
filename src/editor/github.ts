@@ -106,13 +106,12 @@ const describe = (field: string) => {
   return `the ${name.replace(/_/g, ' ')}`
 }
 
-export async function writeWords(token: string, slug: string, edits: Edits, startedWith: (field: string) => string) {
-  const path = `content/projects/${slug}.md`
-  const file = await api(token, `/contents/${path}?ref=${MAIN}`)
-  if (!file) throw new Error('The project file was not found.')
-  const text = fromBase64(file.content)
+// The changed words for one content file: the file's new text, or null when nothing changes.
+// Each changed field is compared with what the editor started from: if someone has changed the
+// same words in the website editor since, nothing is written.
+function withWords(text: string, edits: Edits, startedWith: (field: string) => string, label?: string) {
   const parts = text.match(/^---\n([\s\S]*?\n)---\n?([\s\S]*)$/)
-  if (!parts) throw new Error('The project file is not in the expected format.')
+  if (!parts) throw new Error('A content file is not in the expected format. Nothing was saved.')
   const doc = parseDocument(parts[1])
   const get = (path: (string | number)[]) => {
     const node = doc.getIn(path)
@@ -122,7 +121,7 @@ export async function writeWords(token: string, slug: string, edits: Edits, star
     const now = wordsAt(field, get)
     return now !== startedWith(field) && now !== edits[field]
   })
-  if (clashes.length) throw new Error(`These words were changed in the website editor after this page was opened: ${clashes.map(describe).join(', ')}. Nothing was saved. Reload the editor to see that change, then make yours again.`)
+  if (clashes.length) throw new Error(`These words were changed in the website editor after this page was opened: ${label ?? clashes.map(describe).join(', ')}. Nothing was saved. Reload the editor to see that change, then make yours again.`)
   for (const [field, words] of Object.entries(edits)) {
     for (const [at, value] of writesFor(field, words)) {
       if (value === undefined) doc.deleteIn(at)
@@ -130,7 +129,51 @@ export async function writeWords(token: string, slug: string, edits: Edits, star
     }
   }
   const updated = `---\n${doc.toString({ lineWidth: 0 })}---\n${parts[2]}`
-  if (updated === text) return false
+  return updated === text ? null : updated
+}
+
+export type Change = { path: string; edits?: Edits; startedWith?: (field: string) => string; text?: string | null; label?: string }
+
+// Publishing saves every changed file in one step: the page's words, any shared category names
+// and its layout. GitHub accepts the step only if nothing else reached the website since the
+// files were read, so the site is never left half-updated and no one's change is overwritten.
+export async function publishTogether(token: string, changes: Change[], message: string) {
+  const head = await api(token, `/git/ref/heads/${MAIN}`)
+  const base = head.object.sha as string
+  const commit = await api(token, `/git/commits/${base}`)
+  const tree: { path: string; mode: '100644'; type: 'blob'; content?: string; sha?: null }[] = []
+  for (const change of changes) {
+    if (change.edits) {
+      const file = await api(token, `/contents/${change.path}?ref=${base}`)
+      if (!file) throw new Error(`${change.path} was not found. Nothing was saved.`)
+      const updated = withWords(fromBase64(file.content), change.edits, change.startedWith!, change.label)
+      if (updated !== null) tree.push({ path: change.path, mode: '100644', type: 'blob', content: updated })
+    } else if (change.text === null) {
+      if (await api(token, `/contents/${change.path}?ref=${base}`)) tree.push({ path: change.path, mode: '100644', type: 'blob', sha: null })
+    } else if (change.text !== undefined) {
+      tree.push({ path: change.path, mode: '100644', type: 'blob', content: change.text })
+    }
+  }
+  if (!tree.length) return false
+  const next = await api(token, '/git/trees', { method: 'POST', body: JSON.stringify({ base_tree: commit.tree.sha, tree }) })
+  const made = await api(token, '/git/commits', { method: 'POST', body: JSON.stringify({ message, tree: next.sha, parents: [base] }) })
+  const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/git/refs/heads/${MAIN}`, {
+    method: 'PATCH',
+    headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28' },
+    body: JSON.stringify({ sha: made.sha, force: false }),
+  })
+  if (res.status === 422 || res.status === 409) throw new Error('The website changed a moment ago. Nothing was saved; publish again.')
+  if (!res.ok) throw new Error(`GitHub answered ${res.status}. Nothing was saved.`)
+  return true
+}
+
+// Writes changed words into the project's content file on main (kept for the word tests).
+export async function writeWords(token: string, slug: string, edits: Edits, startedWith: (field: string) => string) {
+  const path = `content/projects/${slug}.md`
+  const file = await api(token, `/contents/${path}?ref=${MAIN}`)
+  if (!file) throw new Error('The project file was not found.')
+  const updated = withWords(fromBase64(file.content), edits, startedWith)
+  if (updated === null) return false
   const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}`, {
     method: 'PUT',
     headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28' },

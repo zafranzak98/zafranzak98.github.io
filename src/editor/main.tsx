@@ -9,7 +9,8 @@ import { caseStudies, type Project } from '#/lib/site'
 import { savedLayoutFor, standardCaseLayout } from '#/layout/render'
 import { editorConfig, layoutWarnings } from './config'
 import * as github from './github'
-import { Selection, SelectionProvider, nameOf, wordsOf, type Edits } from './elements'
+import { CATEGORY_FIELD, Selection, SelectionProvider, categoryEdits, nameOf, wordsOf, type Edits } from './elements'
+import { categoryName } from '#/lib/site'
 import { checkPage, type Finding } from './checks'
 import { ContextBar } from './panel'
 import { EyeIcon, LayersIcon, PlusIcon, RedoIcon, SlidersIcon, UndoIcon } from './icons'
@@ -176,6 +177,7 @@ function Actions() {
   const [more, setMore] = useState(false)
   const choose = (action: () => void) => () => { setMore(false); action() }
   const warnings = layoutWarnings(data.content as never)
+  const renames = categoryEdits(((data.root.props as { edits?: Edits } | undefined)?.edits) ?? {}).map(([field, to]) => [field.match(CATEGORY_FIELD)![1], to] as const)
   const json = JSON.stringify(data)
   const unsaved = clean.current !== '' && json !== clean.current && json !== saved?.json
   const status = saved && json === saved.json ? saved.text : unsaved ? 'Unsaved changes' : 'No unsaved changes'
@@ -237,13 +239,21 @@ function Actions() {
       setSaved({ json: clean.current, text: `Published at ${time()}` })
       return 'Published in this demo only. In the real editor this saves the page and the test site updates in about a minute, after the usual checks.'
     }
+    // Words, shared category names and the layout are saved together, all or nothing.
     const edits = (data.root.props as { edits?: Edits } | undefined)?.edits ?? {}
-    if (Object.keys(edits).length) await github.writeWords(needToken(), p.slug, edits, (field) => wordsOf(p, field))
+    const pageWords = Object.fromEntries(Object.entries(edits).filter(([field]) => !CATEGORY_FIELD.test(field)))
     const { edits: _words, ...rootProps } = (data.root.props ?? {}) as { edits?: Edits }
     const layout = { ...data, root: { ...data.root, props: rootProps } }
     const standard = JSON.stringify(data.content) === JSON.stringify(standardCaseLayout().content)
-    if (standard) await github.removeLayout(needToken(), p.slug, `Design editor: back to the standard layout for ${p.slug}`)
-    else await github.writeLayout(needToken(), p.slug, layout, github.MAIN, `Design editor: publish layout for ${p.slug}`)
+    const changes: github.Change[] = [
+      ...(Object.keys(pageWords).length ? [{ path: `content/projects/${p.slug}.md`, edits: pageWords, startedWith: (field: string) => wordsOf(p, field) }] : []),
+      ...categoryEdits(edits).map(([field, words]) => {
+        const slug = field.match(CATEGORY_FIELD)![1]
+        return { path: `content/categories/${slug}.md`, edits: { name: words }, startedWith: () => categoryName(slug), label: `the "${categoryName(slug)}" category name` }
+      }),
+      { path: github.layoutPath(p.slug), text: standard ? null : `${JSON.stringify(layout, null, 2)}\n` },
+    ]
+    await github.publishTogether(needToken(), changes, `Design editor: publish ${p.slug}`)
     removeLocal(localKey(p.slug, 'unsaved'))
     clean.current = JSON.stringify(data)
     setSaved({ json: clean.current, text: `Published at ${time()}` })
@@ -341,6 +351,12 @@ function Actions() {
       {panel === 'publish' && (
         <Panel title="Publish this page?" onClose={() => setPanel('')}>
           <p>The test site will show this layout for {p.title} in about a minute, after the usual checks. The current version stays in Versions, so you can bring it back at any time.</p>
+          {renames.length > 0 && (
+            <div className="editor-impact" role="note">
+              <p><b>This also changes other pages.</b> These shared names will change on every project page, the Projects page and the filters:</p>
+              <ul>{renames.map(([slug, to]) => <li key={slug}>{categoryName(slug)} → {to}</li>)}</ul>
+            </div>
+          )}
           {warnings.map((w) => <p key={w} className="editor-warning-text">{w}</p>)}
           {findings === null ? (
             <p role="status">Checking Desktop, Tablet and Phone…</p>

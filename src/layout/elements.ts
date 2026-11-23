@@ -33,7 +33,11 @@ export type ElementLook = {
   width?: number // per cent of the space it sits in (images)
   focusX?: number // crop focus in per cent (images)
   focusY?: number
+  cover?: CoverSize // a project's opening cover: a step on the grid, so the text beside it reflows
 }
+export const COVER_SIZES = ['small', 'standard', 'large', 'xl'] as const
+export type CoverSize = (typeof COVER_SIZES)[number]
+export const COVER_NAMES: Record<CoverSize, string> = { small: 'Small', standard: 'Standard', large: 'Large', xl: 'Extra large' }
 export type ElementStyle = Partial<Record<Screen, ElementLook>>
 export type Elements = Record<string, ElementStyle>
 
@@ -68,6 +72,8 @@ export function useElement(elements: Elements | undefined) {
     const classes = className ? [className] : []
     const vars: Record<string, string> = {}
     for (const screen of SCREENS) {
+      const cover = elements?.[key]?.[screen]?.cover
+      if (cover && COVER_SIZES.includes(cover)) classes.push(`el-cover-${SHORT[screen]}-${cover}`)
       for (const [name, value] of cssFor(elements?.[key]?.[screen] ?? {})) {
         classes.push(`el-${name}-${SHORT[screen]}`)
         vars[`--el-${name}-${SHORT[screen]}`] = value

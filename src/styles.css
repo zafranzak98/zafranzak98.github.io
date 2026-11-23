@@ -530,6 +530,40 @@ h3.free-heading { font-size: var(--h3); }
 
 /* Single-element settings from the design editor (src/layout/elements.ts). Tablet and Phone
    follow the larger size unless set, because their rules come later. */
+/* A project's opening cover at one of four sizes, chosen in the design editor. Each size takes
+   more of the grid, and the text beside it gives way; phones keep the stacked layout. */
+.el-cover-d-small { grid-column: 10 / span 3 !important; max-width: 20vw !important; }
+.cs-open-grid:has(> .el-cover-d-small) > .cs-open-text { grid-column: 1 / span 8; }
+.el-cover-d-standard { grid-column: 9 / span 4 !important; max-width: 26vw !important; }
+.cs-open-grid:has(> .el-cover-d-standard) > .cs-open-text { grid-column: 1 / span 7; }
+.el-cover-d-large { grid-column: 8 / span 5 !important; max-width: 32vw !important; }
+.cs-open-grid:has(> .el-cover-d-large) > .cs-open-text { grid-column: 1 / span 6; }
+.el-cover-d-xl { grid-column: 7 / span 6 !important; max-width: 38vw !important; }
+.cs-open-grid:has(> .el-cover-d-xl) > .cs-open-text { grid-column: 1 / span 5; }
+@media (max-width: 1279px) {
+.el-cover-t-small { grid-column: 10 / span 3 !important; max-width: 20vw !important; }
+.cs-open-grid:has(> .el-cover-t-small) > .cs-open-text { grid-column: 1 / span 8; }
+.el-cover-t-standard { grid-column: 9 / span 4 !important; max-width: 26vw !important; }
+.cs-open-grid:has(> .el-cover-t-standard) > .cs-open-text { grid-column: 1 / span 7; }
+.el-cover-t-large { grid-column: 8 / span 5 !important; max-width: 32vw !important; }
+.cs-open-grid:has(> .el-cover-t-large) > .cs-open-text { grid-column: 1 / span 6; }
+.el-cover-t-xl { grid-column: 7 / span 6 !important; max-width: 38vw !important; }
+.cs-open-grid:has(> .el-cover-t-xl) > .cs-open-text { grid-column: 1 / span 5; }
+}
+@media (max-width: 899px) {
+  .el-cover-d-small { max-width: 12rem !important; }
+  .el-cover-d-standard { max-width: 15.625rem !important; }
+  .el-cover-d-large { max-width: 19rem !important; }
+  .el-cover-d-xl { max-width: 22rem !important; }
+  .el-cover-t-small { max-width: 12rem !important; }
+  .el-cover-t-standard { max-width: 15.625rem !important; }
+  .el-cover-t-large { max-width: 19rem !important; }
+  .el-cover-t-xl { max-width: 22rem !important; }
+  .el-cover-p-small { max-width: 12rem !important; }
+  .el-cover-p-standard { max-width: 15.625rem !important; }
+  .el-cover-p-large { max-width: 19rem !important; }
+  .el-cover-p-xl { max-width: 22rem !important; }
+}
 .el-x-d { position: relative !important; left: var(--el-x-d) !important; }
 .el-y-d { position: relative !important; top: var(--el-y-d) !important; }
 .el-above-d { margin-top: var(--el-above-d) !important; }

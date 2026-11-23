@@ -6,7 +6,8 @@ import { COLOURS, SPACES, designWarnings, type Design } from '#/layout/design'
 import { CellBlock, GridBlock, ImageBlock, SpacerBlock, TextBlock } from '#/layout/free-blocks'
 import { CaseFrame } from '#/layout/render'
 import { Editing, type Elements } from '#/layout/elements'
-import { applyEdits, useCanvasEditing, type Edits } from './elements'
+import { CategoryNames } from '#/components/category-index'
+import { CATEGORY_FIELD, applyEdits, categoryEdits, useCanvasEditing, type Edits } from './elements'
 import { ElementPanel } from './panel'
 
 // The design editor's building blocks: the website's own blocks (src/layout), plus the controls
@@ -81,7 +82,7 @@ export function editorConfig(p: Project): Config {
       render: ({ children, edits }: { children: React.ReactNode; edits?: Edits }) => <EditorFrame p={p} edits={edits ?? {}}>{children}</EditorFrame>,
     },
     categories: {
-      page: { title: 'This project (content from the website editor)', components: ['CategoryNav', 'Opening', 'Facts', 'SectionNav', 'Gap', 'Overview', 'Research', 'Work', 'Outcomes', 'AlsoIn', 'PrevNext'] },
+      page: { title: 'Sections of this project', components: ['CategoryNav', 'Opening', 'Facts', 'SectionNav', 'Gap', 'Overview', 'Research', 'Work', 'Outcomes', 'AlsoIn', 'PrevNext'] },
       free: { title: 'Your own blocks', components: ['Text', 'Image', 'Grid', 'Cell', 'Spacer'] },
     },
     components: {
@@ -160,8 +161,10 @@ function EditorFrame({ p, edits, children }: { p: Project; edits: Edits; childre
   const anchor = useCanvasEditing(p, edits)
   return (
     <Editing.Provider value={true}>
-      <span ref={anchor} hidden />
-      <CaseFrame p={applyEdits(p, edits)} content={content}>{children}</CaseFrame>
+      <CategoryNames.Provider value={Object.fromEntries(categoryEdits(edits).map(([field, words]) => [field.match(CATEGORY_FIELD)![1], words]))}>
+        <span ref={anchor} hidden />
+        <CaseFrame p={applyEdits(p, edits)} content={content}>{children}</CaseFrame>
+      </CategoryNames.Provider>
     </Editing.Provider>
   )
 }

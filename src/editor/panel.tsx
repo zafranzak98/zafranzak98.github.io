@@ -1,9 +1,9 @@
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createUsePuck } from '@puckeditor/core'
 import { COLOURS, contrast, type Colour } from '#/layout/design'
-import { TEXT_SIZES, lookAt, type ElementLook, type ElementStyle, type Elements, type Screen, type TextSize } from '#/layout/elements'
+import { COVER_NAMES, COVER_SIZES, TEXT_SIZES, lookAt, type ElementLook, type ElementStyle, type Elements, type Screen, type TextSize } from '#/layout/elements'
 import type { Project } from '#/lib/site'
-import { IMAGES, Selection, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
+import { IMAGES, Selection, coverListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
 import { AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, PlusIcon, ResetIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
 
 // The editing controls. The contextual bar under the top bar holds what you use most for the
@@ -19,7 +19,7 @@ const SPACING = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4]
 const SWATCH: Record<Colour, string> = { Olive: 'var(--olive)', Sage: 'var(--sage)', 'Light sage': 'var(--lsage)', 'Off-white': 'var(--off)', Terracotta: 'var(--terra)' }
 const WEIGHTS: [number, string][] = [[400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold']]
 const ALIGN: [NonNullable<ElementLook['align']>, string, () => ReactNode][] = [['left', 'Left', AlignLeftIcon], ['center', 'Centre', AlignCentreIcon], ['right', 'Right', AlignRightIcon]]
-const LOOKS: (keyof ElementLook)[] = ['x', 'y', 'size', 'weight', 'colour', 'align', 'width', 'focusX', 'focusY', 'above', 'below']
+const LOOKS: (keyof ElementLook)[] = ['cover', 'x', 'y', 'size', 'weight', 'colour', 'align', 'width', 'focusX', 'focusY', 'above', 'below']
 const px = (rem: number) => `${Math.round(rem * 16)} px`
 
 export const canvas = () => (document.getElementById('preview-frame') as HTMLIFrameElement | null)?.contentDocument ?? null
@@ -75,6 +75,9 @@ function currentSize(look: ElementLook): number {
   probe.remove()
   return best
 }
+// A project's opening cover is sized in steps rather than by width.
+const isCover = (type: string | undefined, key: string) => type === 'Opening' && key === 'image'
+const COVER_OPTIONS = COVER_SIZES.map((c) => [c, COVER_NAMES[c]] as [string, string])
 const sizeName = (look: ElementLook) => TEXT_SIZES[SIZES[currentSize(look)]][0]
 
 const LABELS: Record<string, string> = { Opening: 'Opening', Facts: 'Facts', Overview: 'Overview', Research: 'Research & thinking', Work: 'The work', Outcomes: 'Outcomes', AlsoIn: 'Also in this category', PrevNext: 'Previous and next', CategoryNav: 'Category list', SectionNav: 'Section bar', Gap: 'Gap', Text: 'Text', Image: 'Image', Grid: 'Grid', Cell: 'Grid column', Spacer: 'Spacer' }
@@ -95,15 +98,24 @@ export function ContextBar() {
   useEffect(() => {
     const onMove = (x: number, y: number) => latest.current({ x, y })
     const onWidth = (width: number) => latest.current({ width })
+    const onCover = (steps: number) => latestCover.current(steps)
     moveListeners.add(onMove)
     widthListeners.add(onWidth)
+    coverListeners.add(onCover)
     announceListeners.add(setMessage)
-    return () => { moveListeners.delete(onMove); widthListeners.delete(onWidth); announceListeners.delete(setMessage) }
+    return () => { moveListeners.delete(onMove); widthListeners.delete(onWidth); coverListeners.delete(onCover); announceListeners.delete(setMessage) }
   }, [])
+  const latestCover = useRef((_steps: number) => {})
+  latestCover.current = (steps: number) => {
+    const now = COVER_SIZES.indexOf(shown.cover ?? 'standard')
+    const next = COVER_SIZES[Math.max(0, Math.min(COVER_SIZES.length - 1, now + steps))]
+    setLook({ cover: next })
+    setMessage(`Cover size: ${COVER_NAMES[next]}.`)
+  }
   useEffect(() => setMessage(''), [key, item?.props.id])
   useEffect(() => { if (!message) return; const t = setTimeout(() => setMessage(''), 5000); return () => clearTimeout(t) }, [message])
 
-  const showLeft = () => dispatch({ type: 'setUi', ui: { leftSideBarVisible: true } })
+  const showLeft = (plugin: 'blocks' | 'outline') => dispatch({ type: 'setUi', ui: { leftSideBarVisible: true, plugin: { current: plugin } } })
   const more = (
     <button type="button" className="ctx-btn" aria-pressed={ui.rightSideBarVisible} onClick={() => dispatch({ type: 'setUi', ui: { rightSideBarVisible: !ui.rightSideBarVisible } })}>
       <SlidersIcon /><span className="ctx-long">{ui.rightSideBarVisible ? 'Hide settings' : 'More settings'}</span><span className="ctx-short">Settings</span>
@@ -119,8 +131,8 @@ export function ContextBar() {
       <div className="ctx" role="toolbar" aria-label="Editing tools">
         <p className="ctx-hint"><b>Click</b> anything on the page to change it. <b>Double-click</b> words to type.</p>
         <span className="ctx-gap" />
-        <button type="button" className="ctx-btn" onClick={showLeft}><PlusIcon /><span>Add a section</span></button>
-        <button type="button" className="ctx-btn" onClick={showLeft}><LayersIcon /><span>Page navigator</span></button>
+        <button type="button" className="ctx-btn" onClick={() => showLeft('blocks')}><PlusIcon /><span>Add a section</span></button>
+        <button type="button" className="ctx-btn" onClick={() => showLeft('outline')}><LayersIcon /><span>Page navigator</span></button>
         {live}
       </div>
     )
@@ -158,6 +170,28 @@ export function ContextBar() {
     )
   }
 
+  // A shared name (a category): only its words change, and the change reaches every page.
+  if (key.startsWith('cat-')) {
+    const startTypingShared = () => {
+      const target = selectedEl()
+      if (!target) return
+      const r = target.getBoundingClientRect()
+      target.ownerDocument.defaultView?.focus()
+      target.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, clientX: r.left + 2, clientY: r.top + 2 }))
+    }
+    return (
+      <div className="ctx" role="toolbar" aria-label={`${nameOf(key)} tools`}>
+        <span className="ctx-name">{nameOf(key)}</span>
+        <button type="button" className="ctx-btn" onClick={startTypingShared}><PenIcon /><span>Edit name</span></button>
+        <span className="ctx-shared">Shared: renaming it changes every page, the Projects page and the filters when you publish</span>
+        <span className="ctx-gap" />
+        {message ? <span className="ctx-live">{message}</span> : null}
+        <button type="button" className="ctx-icon" aria-label="Done, deselect (Esc)" title="Done (Esc)" onClick={() => select(null)}>✕</button>
+        {live}
+      </div>
+    )
+  }
+
   // An element is selected: the settings used most, one click away.
   const isImage = IMAGES.test(key)
   const el = selectedEl()
@@ -173,7 +207,14 @@ export function ContextBar() {
     <div className="ctx" role="toolbar" aria-label={`${nameOf(key)} tools`}>
       <span className="ctx-name">{nameOf(key)}</span>
       {selected?.field && <button type="button" className="ctx-btn" onClick={startTyping}><PenIcon /><span>Edit words</span></button>}
-      {isImage ? (
+      {isCover(item.type, key) ? (
+        <span className="ctx-group" role="group" aria-label="Cover size">
+          <span className="ctx-label">Cover size</span>
+          <span className="ctx-segment ctx-words">
+            {COVER_OPTIONS.map(([v, name]) => <button key={v} type="button" aria-pressed={(shown.cover ?? 'standard') === v} onClick={() => setLook({ cover: v as ElementLook['cover'] })}>{name}</button>)}
+          </span>
+        </span>
+      ) : isImage ? (
         <span className="ctx-group" role="group" aria-label="Width">
           <span className="ctx-label">Width</span>
           <input type="range" min={20} max={100} step={5} value={width} aria-label="Width" aria-valuetext={`${width}%`} onChange={(e) => setLook({ width: Number(e.target.value) })} />
@@ -218,6 +259,17 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
 
   if (!key) return <Parts blockId={item?.props.id as string | undefined} />
 
+  if (key.startsWith('cat-') && selected?.field) {
+    return (
+      <div className="el-panel">
+        <div className="el-head"><p className="el-name">{nameOf(key)}</p><p className="el-note">Shared by every page, the Projects page and the filters. Its look follows the site's design.</p></div>
+        <Group title="Name">
+          <textarea className="el-words" rows={1} aria-label="Category name" value={words.read(selected.field, selected.blockId)} onChange={(e) => words.write(selected.field!, e.target.value.replace(/\n/g, ' '), selected.blockId)} />
+        </Group>
+      </div>
+    )
+  }
+
   const isImage = IMAGES.test(key)
   const el = selectedEl()
   const width = shown.width ?? (el ? widthNow(el) : 100)
@@ -237,7 +289,13 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
         </Group>
       )}
 
-      {isImage ? (
+      {isCover(item?.type, key) ? (
+        <Group title="Cover">
+          <Row label="Cover size" hint="Larger covers take more of the page; the words beside them make room." from={from('cover')} onReset={() => reset('cover')}>
+            <Segments label="Cover size" value={shown.cover ?? 'standard'} options={COVER_OPTIONS} onChange={(cover) => setLook({ cover: cover as ElementLook['cover'] })} />
+          </Row>
+        </Group>
+      ) : isImage ? (
         <Group title="Image">
           <Row label="Width" from={from('width')} onReset={() => reset('width')}>
             <input type="range" min={20} max={100} step={5} value={width} aria-label="Width" aria-valuetext={`${width}%`} onChange={(e) => setLook({ width: Number(e.target.value) })} />

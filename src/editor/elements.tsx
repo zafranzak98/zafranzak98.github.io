@@ -1,6 +1,10 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createUsePuck } from '@puckeditor/core'
 import type { Project } from '#/lib/site'
+import { allCategories } from '../../.content-collections/generated'
+
+// Read straight from the content, so the saving code (and its tests) do not load the whole site.
+const categoryName = (slug: string) => allCategories.find((c) => c.slug === slug)?.name ?? slug
 import { boxOf, clearGuides, describeSnap, drawGuides, linesFor, snap, type Box } from './guides'
 import { LABELS, type LabelKey } from '#/layout/labels'
 
@@ -55,6 +59,8 @@ const NAMES: [RegExp, string][] = [
   [/^caption$/, 'Caption'],
 ]
 export const nameOf = (key: string) => {
+  const category = key.match(/^cat-(.+)$/)
+  if (category) return `"${categoryName(category[1])}" category name`
   const fact = key.match(/^(label|value)-(role|type|when|deliverables|tools)$/)
   if (fact) return fact[1] === 'label' ? `"${LABELS[fact[2] as LabelKey]}" label` : `${LABELS[fact[2] as LabelKey]} fact`
   const match = NAMES.find(([re]) => re.test(key))
@@ -78,7 +84,14 @@ export function wordsAt(field: string, get: Get) {
   if (value != null && value !== '') return String(value)
   return field.startsWith('labels:') ? LABELS[field.slice(7) as LabelKey] : ''
 }
-export const wordsOf = (p: Project, field: string, edits: Edits = {}) => (field in edits ? edits[field] : wordsAt(field, fromObject(p)))
+// Category names are shared: they live in the category's own file and show on every page.
+export const CATEGORY_FIELD = /^category:(.+)$/
+export const categoryEdits = (edits: Edits) => Object.entries(edits).filter(([field]) => CATEGORY_FIELD.test(field))
+export const wordsOf = (p: Project, field: string, edits: Edits = {}) => {
+  if (field in edits) return edits[field]
+  const category = field.match(CATEGORY_FIELD)
+  return category ? categoryName(category[1]) : wordsAt(field, fromObject(p))
+}
 
 // Where changed words are written: one or more paths in the content file and their values.
 export function writesFor(field: string, words: string): [(string | number)[], unknown][] {
@@ -94,6 +107,7 @@ export function applyEdits(p: Project, edits: Edits = {}): Project {
   if (!Object.keys(edits).length) return p
   const copy = structuredClone(p) as Record<string, unknown>
   for (const [field, words] of Object.entries(edits)) {
+    if (CATEGORY_FIELD.test(field)) continue
     for (const [path, value] of writesFor(field, words)) {
       let target = copy as Record<string | number, unknown>
       for (const k of path.slice(0, -1)) target = (target[k] ??= {}) as Record<string | number, unknown>
@@ -162,6 +176,9 @@ export const widthNow = (el: HTMLElement) => Math.round((el.getBoundingClientRec
 
 // Image widths changed by dragging the handle reach the panel the same way as moves.
 export const widthListeners = new Set<(width: number) => void>()
+// A project's opening cover changes size in steps; dragging its handle reports how many steps.
+export const coverListeners = new Set<(steps: number) => void>()
+const COVER_VW: Record<number, number> = { 3: 20, 4: 26, 5: 32, 6: 38 }
 const px = (n: number) => `${Math.round(n)} px`
 
 export function useCanvasEditing(p: Project, edits: Edits) {
@@ -337,7 +354,7 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       if (e.key === 'Enter' && el.dataset.edit) { e.preventDefault(); startTyping(el); return }
       const step = (e.shiftKey ? 1 : 0.25) * rootSize()
       const move: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }
-      if (!move[e.key]) return
+      if (!move[e.key] || el.hasAttribute('data-shared')) return
       e.preventDefault()
       let [dx, dy] = move[e.key]
       const [left, top] = offsetOf(el)
@@ -357,6 +374,7 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       const frame = (e.target as HTMLElement).closest?.('.el-frame') as HTMLElement | null
       const el = selectedEl()
       if (!frame || !el || e.button !== 0) return
+      if (el.hasAttribute('data-shared')) return
       e.preventDefault()
       e.stopPropagation()
       frame.setPointerCapture(e.pointerId)
@@ -372,12 +390,29 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       let moved = false
       let last = { dx: 0, dy: 0, s: snap(start, { across: [], down: [] }, 0) }
       let width = 0
+      // The opening cover moves through its sizes, one grid column at a time (50px steps on phones).
+      const cover = resizing && el.classList.contains('cs-open-visual')
+      const grid = el.parentElement
+      const stacked = !grid || view.getComputedStyle(grid).display !== 'grid'
+      const column = stacked ? 50 : (grid.getBoundingClientRect().width || 1) / 12
+      const span0 = stacked ? 4 : 13 - (parseInt(view.getComputedStyle(el).gridColumnStart) || 9)
+      let steps = 0
       const onMove = (m: PointerEvent) => {
         let dx = m.clientX - x0
         let dy = m.clientY - y0
         if (!moved && Math.hypot(dx, dy) < pagePixels(3)) return
         moved = true
         frame.setAttribute('data-moving', '')
+        if (cover) {
+          // The cover sits at the right of the page and grows to the left, so its handle is on its left edge.
+          const span = Math.max(3, Math.min(6, span0 + Math.round((stacked ? dx : -dx) / column)))
+          steps = span - span0
+          if (!stacked) el.style.gridColumn = `${13 - span} / span ${span}`
+          el.style.maxWidth = stacked ? `${[12, 15.625, 19, 22][span - 3]}rem` : `${COVER_VW[span]}vw`
+          place(frame, el)
+          tag.textContent = `Cover: ${['Small', 'Standard', 'Large', 'Extra large'][span - 3]}`
+          return
+        }
         if (resizing) {
           width = Math.max(20, Math.min(100, Math.round(((startWidth + dx) / space) * 20) * 5))
           el.style.width = `${width}%`
@@ -406,10 +441,13 @@ export function useCanvasEditing(p: Project, edits: Edits) {
         el.style.translate = ''
         el.style.width = ''
         el.style.maxWidth = ''
+        el.style.gridColumn = ''
         tag.textContent = name
         clearGuides(doc)
         if (!moved) return
-        if (resizing) {
+        if (cover) {
+          if (steps) coverListeners.forEach((fn) => fn(steps))
+        } else if (resizing) {
           widthListeners.forEach((fn) => fn(width))
           announceListeners.forEach((fn) => fn(`Width ${width}%.`))
         } else if (last.dx || last.dy) commit(left + last.dx, top + last.dy, describeSnap(last.s) || `Moved: ${movedText(left + last.dx, top + last.dy)}.`)
@@ -478,7 +516,9 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     }
     const isImage = IMAGES.test(el.dataset.el!)
     frame.querySelector('.el-tag')!.textContent = nameOf(el.dataset.el!)
-    frame.title = `${el.dataset.edit ? 'Double-click to edit the words. ' : ''}Drag to move${isImage ? '; drag the side handle to change its width' : ''}. Hold Option to move freely.`
+    frame.toggleAttribute('data-shared', el.hasAttribute('data-shared'))
+    frame.toggleAttribute('data-cover', el.classList.contains('cs-open-visual') && doc.defaultView!.getComputedStyle(el.parentElement!).display === 'grid')
+    frame.title = el.hasAttribute('data-shared') ? 'Double-click to change this name everywhere it appears.' : `${el.dataset.edit ? 'Double-click to edit the words. ' : ''}Drag to move${isImage ? '; drag the side handle to change its size' : ''}. Hold Option to move freely.`
     let handle = frame.querySelector('.el-handle')
     if (isImage && !handle) { handle = doc.createElement('span'); handle.className = 'el-handle'; frame.append(handle) }
     if (!isImage) handle?.remove()
