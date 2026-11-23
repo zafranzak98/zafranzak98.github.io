@@ -142,6 +142,9 @@ function Sec({ id, title, children, wide, design, titleProps = { className: 'c' 
 }
 
 type ElementFn = ReturnType<typeof useElement>
+// Adds a wrapper only when an element needs one (in the editor, or once it has settings), so
+// untouched pages keep their markup exactly.
+const Wrap = ({ props, children }: { props: Record<string, unknown>; children: ReactNode }) => (Object.values(props).some((v) => v !== undefined) ? <div {...props}>{children}</div> : <>{children}</>)
 const plain: ElementFn = (_key, { className, style } = {}) => ({ className, style })
 
 const Figures = ({ items, big, el = plain, field }: { items: { figure: string; label: string }[]; big?: boolean; el?: ElementFn; field?: string }) => (
@@ -223,7 +226,7 @@ function WorkContent({ p, el }: { p: Project; el: ElementFn }) {
           {grid()}
           {p.context && (
             <div className="work-context">
-              <div {...el('context')}><Media img={p.context} ratio="9/16" sizes="(max-width: 899px) 33vw, 30vw" /></div>
+              <Wrap props={el('context')}><Media img={p.context} ratio="9/16" sizes="(max-width: 899px) 33vw, 30vw" /></Wrap>
               <p {...el('context-text', { field: 'context:text' })}><Rich text={p.context.text} /></p>
             </div>
           )}
