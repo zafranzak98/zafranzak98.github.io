@@ -97,6 +97,7 @@ export function editorConfig(p: Project): Config {
       PrevNext: block('Previous and next', caseBlocks.PrevNext),
       Text: block('Text', TextBlock, {
         fields: {
+          elements: elementsField(p),
           kicker: { type: 'text', label: 'Small label above' },
           heading: { type: 'text', label: 'Heading' },
           headingLevel: { type: 'radio', label: 'Heading level', options: [{ label: 'Section', value: 'h2' }, { label: 'Sub-section', value: 'h3' }] },
@@ -107,6 +108,7 @@ export function editorConfig(p: Project): Config {
       }),
       Image: block('Image', ImageBlock, {
         fields: {
+          elements: elementsField(p),
           image: { type: 'select', label: 'Photo', options: [{ label: 'Choose a photo', value: '' }, ...photos.map((path) => ({ label: path.replace('/media/', ''), value: path }))] },
           alt: { type: 'text', label: 'Description (what the photo shows)' },
           caption: { type: 'text', label: 'Caption' },

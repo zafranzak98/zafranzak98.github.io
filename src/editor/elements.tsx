@@ -52,6 +52,9 @@ const NAMES: [RegExp, string][] = [
   [/^skills-label$/, 'Skills heading'],
   [/^skills$/, 'Skills line'],
   [/^label$/, 'Label'],
+  [/^kicker$/, 'Small label'],
+  [/^heading$/, 'Heading'],
+  [/^caption$/, 'Caption'],
 ]
 const nameOf = (key: string) => {
   const match = NAMES.find(([re]) => re.test(key))
@@ -100,15 +103,32 @@ export function applyEdits(p: Project, edits: Edits = {}): Project {
   return copy as Project
 }
 
-function useSetWords(p: Project) {
+// Words in your own blocks (fields starting "prop:") belong to the block itself; all other words
+// belong to the project's content file and are kept as edits until publishing.
+function useWords(p: Project) {
   const root = usePuck((s) => s.appState.data.root)
   const dispatch = usePuck((s) => s.dispatch)
-  return (field: string, words: string) => {
-    const edits = { ...((root.props as { edits?: Edits })?.edits ?? {}) }
-    if (words === wordsOf(p, field)) delete edits[field]
-    else edits[field] = words
-    dispatch({ type: 'replaceRoot', root: { ...root, props: { ...root.props, edits } as never } })
+  const getItemById = usePuck((s) => s.getItemById)
+  const getSelectorForId = usePuck((s) => s.getSelectorForId)
+  const edits = (root.props as { edits?: Edits })?.edits ?? {}
+  const read = (field: string, blockId?: string) => {
+    if (!field.startsWith('prop:')) return wordsOf(p, field, edits)
+    return String((getItemById(blockId ?? '')?.props as Record<string, unknown> | undefined)?.[field.slice(5)] ?? '')
   }
+  const write = (field: string, words: string, blockId?: string) => {
+    if (field.startsWith('prop:')) {
+      const item = getItemById(blockId ?? '')
+      const at = getSelectorForId(blockId ?? '')
+      if (!item || !at) return
+      dispatch({ type: 'replace', destinationIndex: at.index, destinationZone: at.zone, data: { ...item, props: { ...item.props, [field.slice(5)]: words } } as never })
+      return
+    }
+    const next = { ...edits }
+    if (words === wordsOf(p, field)) delete next[field]
+    else next[field] = words
+    dispatch({ type: 'replaceRoot', root: { ...root, props: { ...root.props, edits: next } as never } })
+  }
+  return { read, write }
 }
 
 // ---- Arrow-key nudges reach the panel of the selected element through this small channel.
@@ -122,9 +142,9 @@ export function useCanvasEditing(p: Project, edits: Edits) {
   const [doc, setDoc] = useState<Document | null>(null)
   const anchor = (node: HTMLSpanElement | null) => setDoc(node?.ownerDocument ?? null)
   const { selected, select } = useContext(Selection)
-  const setWords = useSetWords(p)
-  const latest = useRef({ edits, setWords, selected })
-  latest.current = { edits, setWords, selected }
+  const words = useWords(p)
+  const latest = useRef({ edits, words, selected })
+  latest.current = { edits, words, selected }
 
   useEffect(() => {
     if (!doc) return
@@ -165,7 +185,8 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       const look = doc.defaultView!.getComputedStyle(el)
       const box = doc.createElement('div')
       box.className = 'el-typing'
-      box.textContent = wordsOf(p, field, latest.current.edits)
+      const blockId = el.closest('[data-puck-component]')?.getAttribute('data-puck-component') ?? ''
+      box.textContent = latest.current.words.read(field, blockId)
       Object.assign(box.style, {
         left: `${r.left + doc.defaultView!.scrollX}px`, top: `${r.top + doc.defaultView!.scrollY}px`, width: `${Math.max(r.width, 120)}px`, minHeight: `${r.height}px`,
         font: look.font, letterSpacing: look.letterSpacing, textTransform: look.textTransform, lineHeight: look.lineHeight, color: look.color, textAlign: look.textAlign,
@@ -184,7 +205,7 @@ export function useCanvasEditing(p: Project, edits: Edits) {
         const words = (box.textContent ?? '').replace(/\s+/g, ' ').trim()
         box.remove()
         el.removeAttribute('data-el-editing')
-        if (keep && words) latest.current.setWords(field, words)
+        if (keep && words) latest.current.words.write(field, words, blockId)
       }
       box.addEventListener('keydown', (k) => {
         k.stopPropagation()
@@ -241,9 +262,8 @@ export function ElementPanel({ value, onChange, p }: { value: Elements | undefin
   const { selected } = useContext(Selection)
   const item = usePuck((s) => s.selectedItem)
   const ui = usePuck((s) => s.appState.ui)
-  const root = usePuck((s) => s.appState.data.root)
   const dispatch = usePuck((s) => s.dispatch)
-  const setWords = useSetWords(p)
+  const words = useWords(p)
   const screen = screenFor(Number(ui.viewports.current.width) || 1440)
   const key = selected && item && selected.blockId === item.props.id ? selected.key : null
   const style: ElementStyle = (key && value?.[key]) || {}
@@ -277,7 +297,6 @@ export function ElementPanel({ value, onChange, p }: { value: Elements | undefin
 
   if (!key) return <p className="el-hint">Click a heading, number, label or image on the page to change it on its own. Double-click words to edit them.</p>
 
-  const edits = (root.props as { edits?: Edits })?.edits ?? {}
   const isImage = IMAGES.test(key)
   const showScreen = (s: Screen) => dispatch({ type: 'setUi', ui: { viewports: { ...ui.viewports, current: { width: SCREEN_WIDTH[s], height: 'auto' } } } })
   const inherited = (k: keyof ElementLook) => own[k] === undefined && shown[k] !== undefined && screen !== 'desktop'
@@ -292,7 +311,7 @@ export function ElementPanel({ value, onChange, p }: { value: Elements | undefin
 
       {selected?.field && (
         <label className="el-row">Words
-          <textarea rows={2} value={wordsOf(p, selected.field, edits)} onChange={(e) => setWords(selected.field!, e.target.value)} />
+          <textarea rows={2} value={words.read(selected.field, selected.blockId)} onChange={(e) => words.write(selected.field!, e.target.value, selected.blockId)} />
         </label>
       )}
 
