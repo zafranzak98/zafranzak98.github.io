@@ -1,7 +1,7 @@
 import json
 from playwright.sync_api import sync_playwright
 res=[]
-def check(n, ok, d=""): res.append(ok); print(("PASS " if ok else "FAIL ")+n+(f"  [{d}]" if d else ""))
+def check(n, ok, d=""): ok = bool(ok); res.append(ok); print(("PASS " if ok else "FAIL ")+n+(f"  [{d}]" if d else ""))
 URL="http://zafranzak98.github.io:4302/admin/design/?project=about-face-beauty"
 TOK="ghu_"+"A"*36; NEW="ghu_"+"B"*36
 ENTRY=json.dumps({"backendName":"github","id":1,"login":"zafranzak98","token":TOK,"refreshToken":"ghr_"+"R"*60})

@@ -3,7 +3,7 @@ from playwright.sync_api import sync_playwright
 BASE=sys.argv[1] if len(sys.argv)>1 else "http://localhost:4302/admin/design/"
 def frame(pg): return [f for f in pg.frames if f!=pg.main_frame][0]
 res=[]
-def check(n, ok, d=""): res.append(ok); print(("PASS " if ok else "FAIL ")+n+(f"  [{d}]" if d else ""), flush=True)
+def check(n, ok, d=""): ok = bool(ok); res.append(ok); print(("PASS " if ok else "FAIL ")+n+(f"  [{d}]" if d else ""), flush=True)
 def unsaved(pg): return pg.evaluate("JSON.parse(localStorage.getItem('design-editor:about-face-beauty:unsaved')||'null')") or {}
 def cover(pg): 
     for it in unsaved(pg).get("content",[]):

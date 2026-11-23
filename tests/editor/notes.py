@@ -4,7 +4,7 @@ import json
 from playwright.sync_api import sync_playwright
 BASE = "http://localhost:4302/admin/design/?project="
 res = []
-def check(n, ok, d=""): res.append(ok); print(("PASS " if ok else "FAIL ") + n + (f"  [{d}]" if d else ""))
+def check(n, ok, d=""): ok = bool(ok); res.append(ok); print(("PASS " if ok else "FAIL ") + n + (f"  [{d}]" if d else ""))
 def frame(pg): return [f for f in pg.frames if f != pg.main_frame][0]
 def saved(pg, slug):
     return json.loads(pg.evaluate(f"localStorage.getItem('design-editor:{slug}:unsaved')") or "null") or {}

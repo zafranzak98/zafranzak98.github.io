@@ -141,6 +141,30 @@ export function LayoutNotes({ p, screen, preview, checkSizes }: { p: Project; sc
     dispatch({ type: 'replace', destinationIndex: at.index, destinationZone: at.zone, data: { ...item, props: { ...item.props, elements } } as never })
     setSaid(`${fix.label}: done. Undo puts it back.`)
   }
+  // Before a fix is chosen, pointing at (or tabbing to) a suggestion shows on the page where the part
+  // would go (dashed outline) and what it is measured against (a dashed line, or the shaded gap).
+  const showGuide = (f: Finding | null) => {
+    const doc = canvasDoc()
+    if (!doc) return
+    doc.querySelector('.el-preview')?.remove()
+    const g = f?.guide
+    if (!g || f!.screen !== screen) return
+    const box = doc.createElement('div')
+    box.className = 'el-preview'
+    box.setAttribute('aria-hidden', 'true')
+    const part = (cls: string, r: { left: number; top: number; width: number; height: number }) => {
+      const n = doc.createElement('div')
+      n.className = cls
+      Object.assign(n.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` })
+      box.append(n)
+    }
+    part('el-preview-ghost', g.ghost)
+    if (g.line?.x !== undefined) part('el-preview-line', { left: g.line.x, top: g.line.y1 ?? 0, width: 0, height: (g.line.y2 ?? 0) - (g.line.y1 ?? 0) })
+    if (g.gap) part('el-preview-gap', { left: g.gap.left, top: g.gap.top, width: g.gap.width, height: g.gap.bottom - g.gap.top })
+    doc.body.append(box)
+    g.ghost && doc.defaultView!.scrollTo({ top: Math.max(0, g.ghost.top - doc.defaultView!.innerHeight / 3), behavior: 'smooth' })
+  }
+  useEffect(() => { if (!open) showGuide(null) }, [open])
   const setIntended = (next: Intended[]) =>
     dispatch({ type: 'replaceRoot', root: { ...data.root, props: { ...root, intended: next } } as never })
   const show = async (f: Finding) => {
@@ -197,11 +221,11 @@ export function LayoutNotes({ p, screen, preview, checkSizes }: { p: Project; sc
               {problems.length > 0 && suggested.length > 0 && <h3 className="editor-notes-head">{title}</h3>}
               <ul>
                 {list.map((f) => (
-                  <li key={noteId(f)}>
+                  <li key={noteId(f)} onMouseEnter={() => showGuide(f)} onMouseLeave={() => showGuide(null)} onFocus={() => showGuide(f)} onBlur={() => showGuide(null)}>
                     <span><b>{f.screen}:</b> {f.text}</span>
                     <span className="editor-notes-actions">
                       <button type="button" onClick={() => show(f)}>Show</button>
-                      {f.fix && f.screen === screen && <button type="button" onClick={() => applyFix(f)}>{f.fix.label}</button>}
+                      {f.fix && f.screen === screen && <button type="button" onClick={() => { showGuide(null); applyFix(f) }}>{f.fix.label}</button>}
                       <button type="button" onClick={() => setIntended([...intended, { id: noteId(f), text: `${f.screen}: ${f.text}` }])}>This is intended</button>
                     </span>
                   </li>

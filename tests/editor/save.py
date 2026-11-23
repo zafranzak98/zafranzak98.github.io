@@ -5,7 +5,7 @@
 import json, time
 from playwright.sync_api import sync_playwright
 res = []
-def check(n, ok, d=""): res.append(ok); print(("PASS " if ok else "FAIL ") + n + (f"  [{d}]" if d else ""))
+def check(n, ok, d=""): ok = bool(ok); res.append(ok); print(("PASS " if ok else "FAIL ") + n + (f"  [{d}]" if d else ""))
 URL = "http://zafranzak98.github.io:4302/admin/design/?project=about-face-beauty"
 TOK = "ghu_" + "A" * 36
 ENTRY = json.dumps({"backendName": "github", "id": 1, "login": "zafranzak98", "token": TOK, "refreshToken": "ghr_" + "R" * 60})
@@ -153,6 +153,50 @@ with sync_playwright() as p:
     weight = frame(pg).evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontWeight")
     check("Undo after loading the standard layout brings the page back", weight in ("700", "bold"), weight)
     ctx.close()
+
+    # 10. Fix 1, repeated saves: three saves with a change between each send three saves; a failed save,
+    #     a retry and a repeat of the same click send exactly what is needed and claim nothing early.
+    ctx, pg = fresh(); before = puts()
+    for k in range(3):
+        change(pg); pg.locator(".editor-save").click(); pg.wait_for_timeout(900)
+    check("Three changes saved one after another send three saves", puts() - before == 3 and status(pg).startswith("Draft saved "), str(puts() - before))
+    change(pg); mode.update(put="abort"); before = puts()
+    pg.locator(".editor-save").click(); pg.wait_for_timeout(900)
+    mode.update(put="ok"); pg.locator(".editor-save").click(); pg.wait_for_timeout(900)
+    pg.locator(".editor-save").click(); pg.wait_for_timeout(900)
+    check("Failed, retried, then clicked again: two attempts sent, the third says Already saved", puts() - before == 2 and "Already saved" in notice(pg), f"{puts() - before} | {notice(pg)[:60]}")
+    ctx.close()
+
+    # 11. Fix 2, Discard and Undo: twice in a row, and again after a reload, nothing is lost.
+    ctx, pg = fresh(); change(pg)
+    w = lambda: frame(pg).evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontWeight")
+    ok = True
+    for k in range(2):
+        pg.locator(".editor-more-wrap > button").click(); pg.get_by_role("button", name="Discard changes").click(); pg.wait_for_timeout(600)
+        ok &= w() not in ("700", "bold")
+        pg.locator(".editor-notice button", has_text="Undo").click(); pg.wait_for_timeout(800)
+        ok &= w() in ("700", "bold")
+    check("Discard then Undo, twice in a row, brings the changes back each time", ok)
+    pg.reload(wait_until="networkidle"); pg.wait_for_timeout(2500)
+    check("After those, a reload still has the changes", w() in ("700", "bold") and status(pg) == "Not saved yet", status(pg))
+    pg.locator(".editor-more-wrap > button").click(); pg.get_by_role("button", name="Discard changes").click(); pg.wait_for_timeout(600)
+    pg.reload(wait_until="networkidle"); pg.wait_for_timeout(2500)
+    check("A Discard that is not undone stays discarded after a reload", w() not in ("700", "bold") and status(pg) == "Same as the website", status(pg))
+    ctx.close()
+
+    # 12. Fix 3, sudden interruption: the tab closed (no time for the usual pause), or hidden, straight
+    #     after a change. A new tab of the same browser still has the change.
+    for how in ("closed", "hidden"):
+        ctx, pg = fresh()
+        change(pg, wait=30)
+        if how == "closed": pg.close()
+        else:
+            pg.evaluate("() => { Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true }); document.dispatchEvent(new Event('visibilitychange')) }")
+            pg.wait_for_timeout(50); kept = pg.evaluate("localStorage.getItem('design-editor:about-face-beauty:unsaved')"); pg.close()
+        pg2 = ctx.new_page(); pg2.goto(URL, wait_until="networkidle"); pg2.wait_for_timeout(2500)
+        weight = [fr for fr in pg2.frames if fr != pg2.main_frame][0].evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontWeight")
+        check(f"Tab {how} 30 ms after a change: the change is still there in a new tab", weight in ("700", "bold"), weight)
+        ctx.close()
 
     check("No script errors", not errors, str(errors[:2]))
     print(f"{sum(res)} of {len(res)} passed")

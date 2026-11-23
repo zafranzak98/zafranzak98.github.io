@@ -13,7 +13,10 @@
 export type Kind = 'off-screen' | 'overlap' | 'outside' | 'clipped' | 'small' | 'contrast'
 // key and blockId name the element; kind (with the other element, for overlaps) names the problem.
 export type Fix = { label: string; dx?: number; dy?: number; back?: boolean } // px to move, or back to the designed place
-export type Finding = { screen: string; text: string; key?: string; blockId?: string; kind?: string; advice?: boolean; fix?: Fix }
+// What a suggestion is measured against, in page coordinates, so the editor can show it before the fix
+// is applied: where the part would go (ghost), and the line or gap it would match.
+export type Guide = { ghost: { left: number; top: number; width: number; height: number }; line?: { x?: number; y1?: number; y2?: number }; gap?: { top: number; bottom: number; left: number; width: number } }
+export type Finding = { screen: string; text: string; key?: string; blockId?: string; kind?: string; advice?: boolean; fix?: Fix; guide?: Guide }
 export type CheckOptions = {
   // An approved design exception: return true to leave this element's contrast alone.
   approvedContrast?: (el: HTMLElement, ratio: number) => boolean
@@ -113,13 +116,16 @@ function suggestions(doc: Document, screen: string, nameOf: (key: string) => str
     const name = nameOf(el.dataset.el!)
     const at = { screen, key: el.dataset.el!, blockId: block.getAttribute('data-puck-component') ?? '', advice: true }
     const r = el.getBoundingClientRect()
+    const sx = doc.defaultView!.scrollX
+    const sy = doc.defaultView!.scrollY
+    const ghost = (dx: number, dy: number) => ({ left: r.left + dx + sx, top: r.top + dy + sy, width: r.width, height: r.height })
 
     // 1. Far from where it was designed to sit: more than a fifth of the page across, or more than its
     //    own height (and at least 120px) down. Small nudges are left alone.
     const far = Math.abs(x) > Math.max(120, width * 0.2) || Math.abs(y) > Math.max(120, r.height)
     if (far) {
       const where = [x && `${px(x)} ${x > 0 ? 'right' : 'left'}`, y && `${px(y)} ${y > 0 ? 'down' : 'up'}`].filter(Boolean).join(' and ')
-      out.push({ ...at, kind: 'far', text: `${name} is ${where} from where it was designed to sit.`, fix: { label: 'Move it back', back: true } })
+      out.push({ ...at, kind: 'far', text: `${name} is ${where} from where it was designed to sit. Move it back returns it to the dashed outline.`, fix: { label: 'Move it back', back: true }, guide: { ghost: ghost(-x, -y) } })
     }
 
     // 2. Just misses an edge: text moved sideways whose left edge (or centre) lands 4 to 24px from
@@ -127,16 +133,25 @@ function suggestions(doc: Document, screen: string, nameOf: (key: string) => str
     //    Further away than that reads as a deliberate placement, so it is not mentioned.
     if (x && isText(el)) {
       const others = all.filter((o) => o !== el && blockOf(o) === block && isText(o) && !isChanged(o))
-      const lefts = others.map((o) => o.getBoundingClientRect().left)
-      const centres = others.map((o) => { const b = o.getBoundingClientRect(); return b.left + b.width / 2 })
-      const near = (value: number, lines: number[]) => lines.map((l) => l - value).filter((d) => Math.abs(d) >= 4 && Math.abs(d) <= 24).sort((a, b) => Math.abs(a) - Math.abs(b))[0]
-      const onLine = (value: number, lines: number[]) => lines.some((l) => Math.abs(l - value) < 4)
+      const lines = others.flatMap((o) => {
+        const b = o.getBoundingClientRect()
+        return [{ at: b.left, edge: 'left edge', o, b }, { at: b.left + b.width / 2, edge: 'centre', o, b }]
+      })
       const centre = r.left + r.width / 2
-      if (lefts.length && !onLine(r.left, lefts) && !onLine(centre, centres)) {
-        const dl = near(r.left, lefts)
-        const dc = near(centre, centres)
-        const d = dl ?? dc
-        if (d !== undefined) out.push({ ...at, kind: 'edge', text: `${name} is ${px(d)} off the ${dl !== undefined ? 'left edge' : 'centre'} of the text around it.`, fix: { label: 'Line it up', dx: d } })
+      const onLine = lines.some((l) => Math.abs(l.at - (l.edge === 'centre' ? centre : r.left)) < 4)
+      const nearest = lines
+        .map((l) => ({ ...l, d: l.at - (l.edge === 'centre' ? centre : r.left) }))
+        .filter((l) => Math.abs(l.d) >= 4 && Math.abs(l.d) <= 24)
+        .sort((a, b) => (a.edge === b.edge ? Math.abs(a.d) - Math.abs(b.d) : a.edge === 'left edge' ? -1 : 1))[0]
+      if (lines.length && !onLine && nearest) {
+        const top = Math.min(r.top, nearest.b.top) + sy
+        const bottom = Math.max(r.bottom, nearest.b.bottom) + sy
+        out.push({
+          ...at, kind: 'edge',
+          text: `${name} is ${px(nearest.d)} off the ${nearest.edge} of ${nameOf(nearest.o.dataset.el!)}. Line it up moves it onto the dashed line.`,
+          fix: { label: 'Line it up', dx: nearest.d },
+          guide: { ghost: ghost(nearest.d, 0), line: { x: nearest.at + sx, y1: top, y2: bottom } },
+        })
       }
     }
 
@@ -167,12 +182,25 @@ function suggestions(doc: Document, screen: string, nameOf: (key: string) => str
       const judge = (gap: number, designed: number) => Number.isFinite(gap) && gap >= 0 && Math.abs(gap - designed) > Math.max(16, designed / 2) && !rhythm.some((g) => Math.abs(g - gap) <= 8)
       if (distinct.length >= 2) {
         const nearest = (gap: number) => rhythm.reduce((best, g) => (Math.abs(g - gap) < Math.abs(best - gap) ? g : best))
+        const where = (gap: number) => (Math.abs(gap - (designedAbove)) < 1 || Math.abs(gap - designedBelow) < 1 ? 'its own designed spacing' : 'the spacing between other parts of this section')
         if (judge(above, designedAbove)) {
           const to = nearest(above)
-          out.push({ ...at, kind: 'spacing', text: `${name} has ${px(above)} of space above it; the nearest spacing used in this section is ${px(to)}.`, fix: { label: 'Match the spacing', dy: to - above } })
+          const prev = column[i - 1]
+          out.push({
+            ...at, kind: 'spacing',
+            text: `${name} has ${px(above)} of space above it, below ${nameOf(prev.o.dataset.el!)}. The nearest spacing used in this section is ${px(to)} (${where(to)}); Match the spacing moves it to the dashed outline.`,
+            fix: { label: 'Match the spacing', dy: to - above },
+            guide: { ghost: ghost(0, to - above), gap: { top: prev.b.bottom + sy, bottom: prev.b.bottom + to + sy, left: r.left + sx, width: r.width } },
+          })
         } else if (judge(below, designedBelow)) {
           const to = nearest(below)
-          out.push({ ...at, kind: 'spacing', text: `${name} has ${px(below)} of space below it; the nearest spacing used in this section is ${px(to)}.`, fix: { label: 'Match the spacing', dy: below - to } })
+          const next = column[i + 1]
+          out.push({
+            ...at, kind: 'spacing',
+            text: `${name} has ${px(below)} of space below it, above ${nameOf(next.o.dataset.el!)}. The nearest spacing used in this section is ${px(to)} (${where(to)}); Match the spacing moves it to the dashed outline.`,
+            fix: { label: 'Match the spacing', dy: below - to },
+            guide: { ghost: ghost(0, below - to), gap: { top: next.b.top - to + sy, bottom: next.b.top + sy, left: r.left + sx, width: r.width } },
+          })
         }
       }
     }

@@ -3,7 +3,7 @@
 from playwright.sync_api import sync_playwright
 ED="http://localhost:4302/admin/design/?project=about-face-beauty"
 res=[]
-def check(n, ok, d=""): res.append(ok); print(("PASS " if ok else "FAIL ")+n+(f"  [{d}]" if d else ""))
+def check(n, ok, d=""): ok = bool(ok); res.append(ok); print(("PASS " if ok else "FAIL ")+n+(f"  [{d}]" if d else ""))
 def frame(pg): return [f for f in pg.frames if f!=pg.main_frame][0]
 TARGETS=["#outcomes [data-el='skills-label']","#outcomes [data-el='figure-label-0']","#overview [data-el='label-did']"]
 def click(pg,f,sel):

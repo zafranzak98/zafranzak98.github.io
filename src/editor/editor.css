@@ -273,7 +273,9 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
 /* Rotate handle: a round knob on a short stem above the selected image (as in Canva and Figma). */
 .el-rotate { position: absolute; left: 50%; top: calc(var(--ui, 1px) * -34); width: calc(var(--ui, 1px) * 16); height: calc(var(--ui, 1px) * 16); margin-left: calc(var(--ui, 1px) * -8); border: calc(var(--ui, 1px) * 2) solid var(--terra); border-radius: 50%; background: var(--off); cursor: grab; touch-action: none; }
 .el-rotate::after { content: ''; position: absolute; left: 50%; top: 100%; width: calc(var(--ui, 1px) * 2); height: calc(var(--ui, 1px) * 18); margin-left: calc(var(--ui, 1px) * -1); background: var(--terra); }
-.el-rotate::before { content: ''; position: absolute; inset: calc(var(--ui, 1px) * -10); } /* a larger area to grab, for touch */
+.el-rotate::before { content: ''; position: absolute; inset: calc(var(--ui, 1px) * -14); } /* a 44px area to grab, for touch */
+.el-frame[data-rotate-below] .el-rotate { top: auto; bottom: calc(var(--ui, 1px) * -34); }
+.el-frame[data-rotate-below] .el-rotate::after { top: auto; bottom: 100%; }
 .el-frame[data-moving] .el-rotate { cursor: grabbing; }
 .el-frame[data-cover] .el-handle { right: auto; left: calc(var(--ui, 1px) * -10); }
 /* Hidden parts stay visible in the editor, faded, so they can be found and shown again. */
@@ -353,3 +355,10 @@ html[data-preview] [data-el-note] { outline: none; }
 /* A short line after Undo or Redo saying what changed back. */
 .editor-undone { position: fixed; left: 50%; bottom: 1rem; z-index: 70; transform: translateX(-50%); margin: 0; padding: 0.5rem 0.875rem; border-radius: 8px; background: var(--olive, #484527); color: #fff; font-size: 13px; box-shadow: 0 4px 18px rgb(0 0 0 / 0.18); }
 @media (max-width: 637px) { .editor-undone { bottom: 6.5rem; } }
+
+/* Suggestion preview on the page: where the fix would put the part, and what it lines up with. */
+.el-preview { position: absolute; inset: 0 auto auto 0; z-index: 21; pointer-events: none; }
+.el-preview > div { position: absolute; box-sizing: border-box; }
+.el-preview-ghost { border: calc(var(--ui, 1px) * 2) dashed var(--terra); background: rgb(154 63 36 / 0.06); }
+.el-preview-line { border-left: calc(var(--ui, 1px) * 2) dashed var(--terra); }
+.el-preview-gap { background: rgb(154 63 36 / 0.16); border-block: calc(var(--ui, 1px) * 1) solid var(--terra); }

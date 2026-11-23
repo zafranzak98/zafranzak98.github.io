@@ -4,7 +4,7 @@ BASE=sys.argv[1] if len(sys.argv)>1 else "http://localhost:4302"
 def frame(pg): return [f for f in pg.frames if f!=pg.main_frame][0]
 res=[]
 def check(n, ok, steps, note=""):
-    res.append(ok); print(("PASS " if ok else "FAIL ")+f"{n} ({steps} steps){'  ['+note+']' if note else ''}", flush=True)
+    ok = bool(ok); res.append(ok); print(("PASS " if ok else "FAIL ")+f"{n} ({steps} steps){'  ['+note+']' if note else ''}", flush=True)
 def centre(l):
     b=l.bounding_box(); return b["x"]+b["width"]/2, b["y"]+b["height"]/2
 def words(l):

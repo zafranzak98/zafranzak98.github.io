@@ -290,6 +290,8 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       const r = visualBox(el)
       Object.assign(n.style, { left: `${r.left + view.scrollX}px`, top: `${r.top + view.scrollY}px`, width: `${r.width}px`, height: `${r.height}px`, display: 'block' })
       // A turned image's frame turns with it (its name tag stays level), as in Canva and Figma.
+      // Near the top of the page the rotate handle would be out of reach, so it sits below instead.
+      if (n.classList.contains('el-frame')) n.toggleAttribute('data-rotate-below', r.top + view.scrollY < pagePixels(48))
       const turned = n.classList.contains('el-frame') && IMAGES.test(el.dataset.el ?? '') && !grouped() ? angleOf(el) : 0
       n.style.rotate = turned ? `${turned}deg` : ''
       const tag = n.querySelector<HTMLElement>('.el-tag')
