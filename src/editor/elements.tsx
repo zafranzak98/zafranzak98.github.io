@@ -1,7 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createUsePuck } from '@puckeditor/core'
-import { COLOURS, contrast, type Colour } from '#/layout/design'
-import { SCREENS, TEXT_SIZES, lookAt, type TextSize, type ElementLook, type ElementStyle, type Elements, type Screen } from '#/layout/elements'
 import type { Project } from '#/lib/site'
 import { boxOf, clearGuides, describeSnap, drawGuides, linesFor, snap, type Box } from './guides'
 import { LABELS, type LabelKey } from '#/layout/labels'
@@ -18,7 +16,7 @@ const usePuck = createUsePuck()
 export type Edits = Record<string, string>
 type Selected = { key: string; blockId: string; field?: string } | null
 
-const Selection = createContext<{ selected: Selected; select: (s: Selected) => void }>({ selected: null, select: () => {} })
+export const Selection = createContext<{ selected: Selected; select: (s: Selected) => void }>({ selected: null, select: () => {} })
 export function SelectionProvider({ children }: { children: ReactNode }) {
   const [selected, select] = useState<Selected>(null)
   return <Selection.Provider value={{ selected, select }}>{children}</Selection.Provider>
@@ -63,7 +61,7 @@ export const nameOf = (key: string) => {
   const n = key.match(/(\d+)$/)
   return match ? `${match[1]}${n ? ` ${Number(n[1]) + 1}` : ''}` : key
 }
-const IMAGES = /^(image|image-\d+|moodboard|key|context|film)$/
+export const IMAGES = /^(image|image-\d+|moodboard|key|context|film)$/
 
 // ---- Words
 
@@ -107,7 +105,7 @@ export function applyEdits(p: Project, edits: Edits = {}): Project {
 
 // Words in your own blocks (fields starting "prop:") belong to the block itself; all other words
 // belong to the project's content file and are kept as edits until publishing.
-function useWords(p: Project) {
+export function useWords(p: Project) {
   const root = usePuck((s) => s.appState.data.root)
   const dispatch = usePuck((s) => s.dispatch)
   const getItemById = usePuck((s) => s.getItemById)
@@ -137,17 +135,21 @@ function useWords(p: Project) {
 
 // Moves (by dragging the grip or with the arrow keys) reach the selected element's panel as its new
 // position for the screen size being edited, in rem. Announcements go to the panel's live region.
-const moveListeners = new Set<(x: number, y: number) => void>()
-const announceListeners = new Set<(text: string) => void>()
+export const moveListeners = new Set<(x: number, y: number) => void>()
+export const announceListeners = new Set<(text: string) => void>()
 
 // Snapping to guides is on unless switched off in the panel; holding Option (Alt) moves freely.
 const SNAP_KEY = 'design-editor:snap'
 export const snapOn = () => { try { return localStorage.getItem(SNAP_KEY) !== 'off' } catch { return true } }
 export const setSnapOn = (on: boolean) => { try { localStorage.setItem(SNAP_KEY, on ? 'on' : 'off') } catch { /* stays on for this visit */ } }
-const round = (n: number) => Math.round(n * 100) / 100
+export const round = (n: number) => Math.round(n * 100) / 100
 const shift = (b: Box, dx: number, dy: number): Box => ({ left: b.left + dx, right: b.right + dx, top: b.top + dy, bottom: b.bottom + dy, baseline: b.baseline === undefined ? undefined : b.baseline + dy })
 
-// ---- On the page: selecting, editing words, nudging
+// ---- On the page: hovering, selecting, editing words, moving
+
+// Image widths changed by dragging the handle reach the panel the same way as moves.
+export const widthListeners = new Set<(width: number) => void>()
+const px = (n: number) => `${Math.round(n)} px`
 
 export function useCanvasEditing(p: Project, edits: Edits) {
   // The page frame can be redrawn by the editor, so listen on whichever document holds it now.
@@ -160,54 +162,112 @@ export function useCanvasEditing(p: Project, edits: Edits) {
 
   useEffect(() => {
     if (!doc) return
+    const view = doc.defaultView!
+    const html = doc.documentElement
+    // The preview is shown scaled down; editor marks are drawn at a steady on-screen size.
+    const scale = () => {
+      const frame = view.frameElement as HTMLElement | null
+      return (frame ? frame.getBoundingClientRect().width / html.clientWidth : 1) || 1
+    }
+    const pagePixels = (n: number) => n / scale()
+    const rootSize = () => parseFloat(view.getComputedStyle(html).fontSize) || 16
+
     // Puck switches off pointer events inside blocks while editing, so find the element by
     // position: the smallest marked element under the pointer.
-    const elementAt = (e: MouseEvent) => {
+    const elementAt = (x: number, y: number) => {
       let best: HTMLElement | undefined
       let bestArea = Infinity
       for (const el of doc.querySelectorAll<HTMLElement>('[data-el]')) {
         const r = el.getBoundingClientRect()
-        if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) continue
+        if (x < r.left || x > r.right || y < r.top || y > r.bottom || !r.width) continue
         if (r.width * r.height < bestArea) { best = el; bestArea = r.width * r.height }
       }
       return best
     }
+    const blockOf = (el: HTMLElement) => el.closest('[data-puck-component]')?.getAttribute('data-puck-component') ?? ''
 
-    const mark = (el: HTMLElement | null) => {
-      doc.querySelectorAll('[data-el-selected]').forEach((n) => n.removeAttribute('data-el-selected'))
-      el?.setAttribute('data-el-selected', '')
+    // Marks drawn over the page: a light outline on hover, a frame on the selected element.
+    const layer = (cls: string) => {
+      let n = doc.querySelector<HTMLElement>(`.${cls}`)
+      if (!n) {
+        n = doc.createElement('div')
+        n.className = cls
+        n.setAttribute('aria-hidden', 'true')
+        const tag = doc.createElement('span')
+        tag.className = 'el-tag'
+        n.append(tag)
+        doc.body.append(n)
+      }
+      return n
     }
+    // Words are framed tightly; a heading that spans the column is outlined around its words only.
+    const visualBox = (el: HTMLElement) => {
+      const box = el.getBoundingClientRect()
+      if (!el.dataset.edit || [...el.children].some((c) => view.getComputedStyle(c).display !== 'inline')) return box
+      const range = doc.createRange()
+      range.selectNodeContents(el)
+      const words = range.getBoundingClientRect()
+      if (!words.width) return box
+      const left = Math.max(box.left, words.left)
+      return { left, top: box.top, width: Math.max(Math.min(box.right, words.right) - left, 8), height: box.height, bottom: box.bottom, right: Math.min(box.right, words.right) }
+    }
+    const place = (n: HTMLElement, el: HTMLElement) => {
+      const r = visualBox(el)
+      Object.assign(n.style, { left: `${r.left + view.scrollX}px`, top: `${r.top + view.scrollY}px`, width: `${r.width}px`, height: `${r.height}px`, display: 'block' })
+    }
+    const tagOf = (n: HTMLElement) => n.querySelector<HTMLElement>('.el-tag')!
+    const hide = (n: HTMLElement | null) => { if (n) n.style.display = 'none' }
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (doc.querySelector('.el-typing') || (e.target as HTMLElement).closest?.('.el-frame')) { hide(doc.querySelector('.el-hover')); html.removeAttribute('data-el-over'); return }
+      const el = elementAt(e.clientX, e.clientY)
+      if (!el || el.hasAttribute('data-el-selected')) {
+        hide(doc.querySelector('.el-hover'))
+        html.removeAttribute('data-el-over')
+        return
+      }
+      html.setAttribute('data-el-over', '')
+      const hover = layer('el-hover')
+      place(hover, el)
+      tagOf(hover).textContent = el.dataset.edit ? `${nameOf(el.dataset.el!)} · double-click to edit` : nameOf(el.dataset.el!)
+    }
+    const onPointerLeave = () => { hide(doc.querySelector('.el-hover')); html.removeAttribute('data-el-over') }
 
     const onClick = (e: MouseEvent) => {
-      const el = elementAt(e)
-      if (!el) return
-      const blockId = el.closest('[data-puck-component]')?.getAttribute('data-puck-component') ?? ''
-      select({ key: el.dataset.el!, blockId, field: el.dataset.edit })
-      mark(el)
+      if ((e.target as HTMLElement).closest?.('.el-frame')) return
+      const el = elementAt(e.clientX, e.clientY)
+      // A click on an empty part of a section selects the section itself.
+      if (!el) { select(null); return }
+      select({ key: el.dataset.el!, blockId: blockOf(el), field: el.dataset.edit })
+      hide(doc.querySelector('.el-hover'))
     }
 
     // Words are typed into a copy laid exactly over the element, in the same type, so the page
     // itself is only ever redrawn from the saved words.
-    const onDoubleClick = (e: MouseEvent) => {
-      const el = elementAt(e)
-      if (!el?.dataset.edit) return
-      e.preventDefault()
+    const startTyping = (el: HTMLElement) => {
+      if (!el.dataset.edit || doc.querySelector('.el-typing')) return
       const field = el.dataset.edit
       const r = el.getBoundingClientRect()
-      const look = doc.defaultView!.getComputedStyle(el)
+      const look = view.getComputedStyle(el)
       const box = doc.createElement('div')
       box.className = 'el-typing'
-      const blockId = el.closest('[data-puck-component]')?.getAttribute('data-puck-component') ?? ''
+      const blockId = blockOf(el)
       box.textContent = latest.current.words.read(field, blockId)
       Object.assign(box.style, {
-        left: `${r.left + doc.defaultView!.scrollX}px`, top: `${r.top + doc.defaultView!.scrollY}px`, width: `${Math.max(r.width, 120)}px`, minHeight: `${r.height}px`,
+        left: `${r.left + view.scrollX}px`, top: `${r.top + view.scrollY}px`, width: `${Math.max(r.width, 120)}px`, minHeight: `${r.height}px`,
         font: look.font, letterSpacing: look.letterSpacing, textTransform: look.textTransform, lineHeight: look.lineHeight, color: look.color, textAlign: look.textAlign,
       })
       try { box.contentEditable = 'plaintext-only' } catch { box.contentEditable = 'true' }
       box.setAttribute('role', 'textbox')
-      box.setAttribute('aria-label', 'Edit the words, then press Enter')
+      box.setAttribute('aria-label', `${nameOf(el.dataset.el!)}: edit the words, then press Enter`)
+      const help = doc.createElement('span')
+      help.className = 'el-tag el-tag-help'
+      help.setAttribute('aria-hidden', 'true')
+      help.textContent = 'Enter to finish · Esc to cancel'
+      Object.assign(help.style, { left: `${r.left + view.scrollX}px`, top: `${r.bottom + view.scrollY}px` })
       el.setAttribute('data-el-editing', '')
-      doc.body.append(box)
+      html.setAttribute('data-el-typing', '')
+      doc.body.append(box, help)
       box.focus()
       doc.getSelection()?.selectAllChildren(box)
       let done = false
@@ -216,8 +276,11 @@ export function useCanvasEditing(p: Project, edits: Edits) {
         done = true
         const words = (box.textContent ?? '').replace(/\s+/g, ' ').trim()
         box.remove()
+        help.remove()
         el.removeAttribute('data-el-editing')
+        html.removeAttribute('data-el-typing')
         if (keep && words) latest.current.words.write(field, words, blockId)
+        announceListeners.forEach((fn) => fn(keep ? 'Words changed.' : 'Typing cancelled; nothing changed.'))
       }
       box.addEventListener('keydown', (k) => {
         k.stopPropagation()
@@ -226,18 +289,18 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       })
       box.addEventListener('blur', () => finish(true))
     }
+    const onDoubleClick = (e: MouseEvent) => {
+      const el = elementAt(e.clientX, e.clientY)
+      if (!el?.dataset.edit) return
+      e.preventDefault()
+      if (!el.hasAttribute('data-el-selected')) select({ key: el.dataset.el!, blockId: blockOf(el), field: el.dataset.edit })
+      startTyping(el)
+    }
 
     // Where the selected element is now: its offset in pixels at this screen size.
     const offsetOf = (el: HTMLElement) => {
-      const look = doc.defaultView!.getComputedStyle(el)
+      const look = view.getComputedStyle(el)
       return [parseFloat(look.left) || 0, parseFloat(look.top) || 0]
-    }
-    const rootSize = () => parseFloat(doc.defaultView!.getComputedStyle(doc.documentElement).fontSize) || 16
-    // Screen pixels in the editor's (scaled) preview, as page pixels.
-    const pagePixels = (px: number) => {
-      const frame = doc.defaultView!.frameElement as HTMLElement | null
-      const scale = frame ? frame.getBoundingClientRect().width / doc.documentElement.clientWidth : 1
-      return px / (scale || 1)
     }
     const commit = (leftPx: number, topPx: number, words: string) => {
       const root = rootSize()
@@ -245,15 +308,19 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       announceListeners.forEach((fn) => fn(words))
     }
     const selectedEl = () => doc.querySelector<HTMLElement>('[data-el-selected]')
+    const movedText = (left: number, top: number) => `${px(left)} across, ${px(top)} down`
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (!latest.current.selected) return
       const target = e.target as HTMLElement
-      if (target.closest('input, textarea, select, [contenteditable]')) return
+      if (target.closest('input, textarea, select, button, [contenteditable]')) return
       const el = selectedEl()
+      if (!el) return
+      if (e.key === 'Escape') { e.preventDefault(); select(null); return }
+      if (e.key === 'Enter' && el.dataset.edit) { e.preventDefault(); startTyping(el); return }
       const step = (e.shiftKey ? 1 : 0.25) * rootSize()
       const move: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }
-      if (!el || !move[e.key]) return
+      if (!move[e.key]) return
       e.preventDefault()
       let [dx, dy] = move[e.key]
       const [left, top] = offsetOf(el)
@@ -264,25 +331,44 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       dx += s.dx
       dy += s.dy
       if (s.dx || s.dy) { drawGuides(doc, s); setTimeout(() => clearGuides(doc), 900) }
-      commit(left + dx, top + dy, describeSnap(s) || 'Moved.')
+      commit(left + dx, top + dy, describeSnap(s) || `Moved: ${movedText(left + dx, top + dy)}.`)
     }
 
-    // Dragging the grip moves only the selected element; guides show what it lines up with.
-    const onGripDown = (e: PointerEvent) => {
-      const grip = (e.target as HTMLElement).closest('.el-grip') as HTMLElement | null
+    // Dragging the selected element moves only that element; guides show what it lines up with.
+    // The handle on an image's right edge changes its width instead.
+    const onFrameDown = (e: PointerEvent) => {
+      const frame = (e.target as HTMLElement).closest?.('.el-frame') as HTMLElement | null
       const el = selectedEl()
-      if (!grip || !el) return
+      if (!frame || !el || e.button !== 0) return
       e.preventDefault()
       e.stopPropagation()
-      grip.setPointerCapture(e.pointerId)
+      frame.setPointerCapture(e.pointerId)
+      const tag = tagOf(frame)
+      const name = tag.textContent ?? ''
+      const [x0, y0] = [e.clientX, e.clientY]
+      const resizing = (e.target as HTMLElement).classList.contains('el-handle')
       const [left, top] = offsetOf(el)
       const start = boxOf(el)
       const lines = linesFor(el, nameOf)
-      const [x0, y0] = [e.clientX, e.clientY]
+      const space = el.parentElement?.getBoundingClientRect().width || 1
+      const startWidth = el.getBoundingClientRect().width
+      let moved = false
       let last = { dx: 0, dy: 0, s: snap(start, { across: [], down: [] }, 0) }
+      let width = 0
       const onMove = (m: PointerEvent) => {
         let dx = m.clientX - x0
         let dy = m.clientY - y0
+        if (!moved && Math.hypot(dx, dy) < pagePixels(3)) return
+        moved = true
+        frame.setAttribute('data-moving', '')
+        if (resizing) {
+          width = Math.max(20, Math.min(100, Math.round(((startWidth + dx) / space) * 20) * 5))
+          el.style.width = `${width}%`
+          el.style.maxWidth = 'none'
+          place(frame, el)
+          tag.textContent = `Width ${width}%`
+          return
+        }
         // Snap only along a direction you are actually moving in, so a sideways drag never shifts it up or down.
         const s = snapOn() && !m.altKey ? snap(shift(start, dx, dy), lines, pagePixels(6)) : snap(start, { across: [], down: [] }, 0)
         if (Math.abs(dx) < pagePixels(3)) { s.dx = 0; s.hitAcross = undefined }
@@ -290,177 +376,97 @@ export function useCanvasEditing(p: Project, edits: Edits) {
         dx += s.dx
         dy += s.dy
         el.style.translate = `${dx}px ${dy}px`
+        place(frame, el)
         drawGuides(doc, s)
+        tag.textContent = `${movedText(left + dx, top + dy)}${s.hitAcross || s.hitDown ? ' · lined up' : ''}`
         last = { dx, dy, s }
       }
       const onUp = () => {
-        grip.removeEventListener('pointermove', onMove)
-        grip.removeEventListener('pointerup', onUp)
-        grip.removeEventListener('pointercancel', onUp)
+        frame.removeEventListener('pointermove', onMove)
+        frame.removeEventListener('pointerup', onUp)
+        frame.removeEventListener('pointercancel', onUp)
+        frame.removeAttribute('data-moving')
         el.style.translate = ''
+        el.style.width = ''
+        el.style.maxWidth = ''
+        tag.textContent = name
         clearGuides(doc)
-        if (last.dx || last.dy) commit(left + last.dx, top + last.dy, describeSnap(last.s) || 'Moved.')
+        if (!moved) return
+        if (resizing) {
+          widthListeners.forEach((fn) => fn(width))
+          announceListeners.forEach((fn) => fn(`Width ${width}%.`))
+        } else if (last.dx || last.dy) commit(left + last.dx, top + last.dy, describeSnap(last.s) || `Moved: ${movedText(left + last.dx, top + last.dy)}.`)
       }
-      grip.addEventListener('pointermove', onMove)
-      grip.addEventListener('pointerup', onUp)
-      grip.addEventListener('pointercancel', onUp)
+      frame.addEventListener('pointermove', onMove)
+      frame.addEventListener('pointerup', onUp)
+      frame.addEventListener('pointercancel', onUp)
+    }
+    const onFrameDoubleClick = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest?.('.el-frame')) return
+      const el = selectedEl()
+      if (el) { e.preventDefault(); e.stopPropagation(); startTyping(el) }
     }
 
-    doc.addEventListener('pointerdown', onGripDown, true)
+    // Keep the frame on the selected element as the page reflows, zooms or redraws.
+    let raf = 0
+    const sync = () => {
+      html.style.setProperty('--ui', `${1 / scale()}px`)
+      const el = selectedEl()
+      const frame = doc.querySelector<HTMLElement>('.el-frame')
+      if (frame) {
+        if (el && !el.hasAttribute('data-el-editing')) { if (!frame.hasAttribute('data-moving')) place(frame, el) } else hide(frame)
+      }
+      raf = view.requestAnimationFrame(sync)
+    }
+    sync()
+
+    doc.addEventListener('pointerdown', onFrameDown, true)
+    doc.addEventListener('pointermove', onPointerMove, { passive: true })
+    html.addEventListener('pointerleave', onPointerLeave)
     doc.addEventListener('click', onClick, true)
+    doc.addEventListener('dblclick', onFrameDoubleClick, true)
     doc.addEventListener('dblclick', onDoubleClick, true)
     doc.addEventListener('keydown', onKeyDown)
     if (doc !== document) document.addEventListener('keydown', onKeyDown)
     return () => {
-      doc.removeEventListener('pointerdown', onGripDown, true)
+      view.cancelAnimationFrame(raf)
+      doc.removeEventListener('pointerdown', onFrameDown, true)
+      doc.removeEventListener('pointermove', onPointerMove)
+      html.removeEventListener('pointerleave', onPointerLeave)
       doc.removeEventListener('click', onClick, true)
+      doc.removeEventListener('dblclick', onFrameDoubleClick, true)
       doc.removeEventListener('dblclick', onDoubleClick, true)
       doc.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [doc, p, select])
 
-  // Keep the outline and the grip on the selected element after the page redraws.
+  // Mark the selected element and give it a frame after the page redraws.
   useEffect(() => {
     if (!doc) return
     const el = selected && [...doc.querySelectorAll<HTMLElement>('[data-el]')].find((n) => n.dataset.el === selected.key && n.closest('[data-puck-component]')?.getAttribute('data-puck-component') === selected.blockId)
     doc.querySelectorAll('[data-el-selected]').forEach((n) => n !== el && n.removeAttribute('data-el-selected'))
-    let grip = doc.querySelector<HTMLElement>('.el-grip')
-    if (!el) { grip?.remove(); return }
+    let frame = doc.querySelector<HTMLElement>('.el-frame')
+    if (!el) { frame?.remove(); doc.documentElement.removeAttribute('data-el-active'); return }
     el.setAttribute('data-el-selected', '')
-    if (!grip) {
-      grip = doc.createElement('div')
-      grip.className = 'el-grip'
-      grip.title = 'Drag to move this element (hold Option to move freely)'
-      grip.setAttribute('aria-hidden', 'true')
-      doc.body.append(grip)
+    doc.documentElement.setAttribute('data-el-active', '')
+    if (!frame) {
+      frame = doc.createElement('div')
+      frame.className = 'el-frame'
+      frame.setAttribute('aria-hidden', 'true')
+      const tag = doc.createElement('span')
+      tag.className = 'el-tag'
+      frame.append(tag)
+      doc.body.append(frame)
     }
-    const r = el.getBoundingClientRect()
-    const view = doc.defaultView!
-    Object.assign(grip.style, { left: `${r.left + view.scrollX - 26}px`, top: `${r.top + view.scrollY - 2}px` })
+    const isImage = IMAGES.test(el.dataset.el!)
+    frame.querySelector('.el-tag')!.textContent = nameOf(el.dataset.el!)
+    frame.title = `${el.dataset.edit ? 'Double-click to edit the words. ' : ''}Drag to move${isImage ? '; drag the side handle to change its width' : ''}. Hold Option to move freely.`
+    let handle = frame.querySelector('.el-handle')
+    if (isImage && !handle) { handle = doc.createElement('span'); handle.className = 'el-handle'; frame.append(handle) }
+    if (!isImage) handle?.remove()
   })
 
   return anchor
 }
 
-// ---- The "Selected element" panel
-
-const SCREEN_WIDTH: Record<Screen, number> = { desktop: 1440, tablet: 1024, phone: 390 }
-const SCREEN_LABEL: Record<Screen, string> = { desktop: 'Desktop', tablet: 'Tablet', phone: 'Phone' }
-const screenFor = (width: number): Screen => (width >= 1280 ? 'desktop' : width >= 900 ? 'tablet' : 'phone')
-const SPACING = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4]
-
-export function ElementPanel({ value, onChange, p }: { value: Elements | undefined; onChange: (v: Elements) => void; p: Project }) {
-  const { selected } = useContext(Selection)
-  const item = usePuck((s) => s.selectedItem)
-  const ui = usePuck((s) => s.appState.ui)
-  const dispatch = usePuck((s) => s.dispatch)
-  const words = useWords(p)
-  const screen = screenFor(Number(ui.viewports.current.width) || 1440)
-  const key = selected && item && selected.blockId === item.props.id ? selected.key : null
-  const style: ElementStyle = (key && value?.[key]) || {}
-  const own = style[screen] ?? {}
-  const shown = lookAt(style, screen)
-
-  const setLook = (patch: Partial<ElementLook>) => {
-    if (!key) return
-    const next = { ...own, ...patch }
-    for (const k of Object.keys(next) as (keyof ElementLook)[]) if (next[k] === undefined) delete next[k]
-    const nextStyle = { ...style, [screen]: next }
-    if (!Object.keys(next).length) delete nextStyle[screen]
-    const all = { ...(value ?? {}), [key]: nextStyle }
-    if (!Object.keys(nextStyle).length) delete all[key]
-    onChange(all)
-  }
-  const latest = useRef(setLook)
-  latest.current = setLook
-  const [message, setMessage] = useState('')
-  const [snapping, setSnapping] = useState(snapOn)
-  useEffect(() => {
-    const onMove = (x: number, y: number) => latest.current({ x, y })
-    moveListeners.add(onMove)
-    announceListeners.add(setMessage)
-    return () => { moveListeners.delete(onMove); announceListeners.delete(setMessage) }
-  }, [])
-
-  // Text colours are checked against the block's background (Off-white unless the block sets one).
-  const background = ((item?.props as { design?: { background?: Colour } })?.design?.background ?? 'Off-white') as Colour
-  const ratio = key && shown.colour && !IMAGES.test(key) ? contrast(shown.colour, background) : null
-  const hardToRead = ratio !== null && ratio < 4.5
-
-  if (!key) return <p className="el-hint">Click a heading, number, label or image on the page to change it on its own. Double-click words to edit them.</p>
-
-  const isImage = IMAGES.test(key)
-  const showScreen = (s: Screen) => dispatch({ type: 'setUi', ui: { viewports: { ...ui.viewports, current: { width: SCREEN_WIDTH[s], height: 'auto' } } } })
-  const inherited = (k: keyof ElementLook) => own[k] === undefined && shown[k] !== undefined && screen !== 'desktop'
-
-  return (
-    <div className="el-panel">
-      <p className="el-name">{nameOf(key)}</p>
-      <div className="el-screens" role="group" aria-label="Screen size these settings apply to">
-        {SCREENS.map((s) => <button key={s} type="button" aria-pressed={s === screen} onClick={() => showScreen(s)}>{SCREEN_LABEL[s]}</button>)}
-      </div>
-      <p className="el-note">{screen === 'desktop' ? 'Tablet and Phone follow these settings unless you change them there.' : `Settings not changed here follow ${screen === 'tablet' ? 'Desktop' : 'Tablet'}.`}</p>
-
-      {selected?.field && (
-        <label className="el-row">Words
-          <textarea rows={2} value={words.read(selected.field, selected.blockId)} onChange={(e) => words.write(selected.field!, e.target.value, selected.blockId)} />
-        </label>
-      )}
-
-      <fieldset className="el-row">
-        <legend>Move (without moving anything else)</legend>
-        <Stepper label="Left or right" value={shown.x ?? 0} onChange={(x) => setLook({ x })} inherited={inherited('x')} />
-        <Stepper label="Up or down" value={shown.y ?? 0} onChange={(y) => setLook({ y })} inherited={inherited('y')} />
-        <p className="el-note">Drag the grip beside it, or use the arrow keys (Shift for bigger steps). Hold Option to move freely.</p>
-        <label className="el-switch"><input type="checkbox" checked={snapping} onChange={(e) => { setSnapOn(e.target.checked); setSnapping(e.target.checked) }} /> Snap to guides</label>
-        <p className="el-live" role="status" aria-live="polite">{message}</p>
-      </fieldset>
-
-      <Choice label="Space above" value={own.above} options={SPACING.map((s) => [s, `${s} rem`])} onChange={(above) => setLook({ above })} inherited={inherited('above')} />
-      <Choice label="Space below" value={own.below} options={SPACING.map((s) => [s, `${s} rem`])} onChange={(below) => setLook({ below })} inherited={inherited('below')} />
-      {isImage ? (
-        <>
-          <Choice label="Width" value={own.width} options={[40, 50, 60, 70, 80, 90, 100].map((w) => [w, `${w}%`])} onChange={(width) => setLook({ width })} inherited={inherited('width')} />
-          <Choice label="Crop focus across" value={own.focusX} options={[0, 25, 50, 75, 100].map((v) => [v, `${v}%`])} onChange={(focusX) => setLook({ focusX })} inherited={inherited('focusX')} />
-          <Choice label="Crop focus down" value={own.focusY} options={[0, 25, 50, 75, 100].map((v) => [v, `${v}%`])} onChange={(focusY) => setLook({ focusY })} inherited={inherited('focusY')} />
-        </>
-      ) : (
-        <>
-          <Choice label="Alignment" value={own.align} options={[['left', 'Left'], ['center', 'Centre'], ['right', 'Right']]} onChange={(align) => setLook({ align })} inherited={inherited('align')} />
-          <Choice label="Text size" value={own.size} options={(Object.keys(TEXT_SIZES) as TextSize[]).map((k) => [k, TEXT_SIZES[k][0]])} onChange={(size) => setLook({ size })} inherited={inherited('size')} />
-          <Choice label="Weight" value={own.weight} options={[[400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold']]} onChange={(weight) => setLook({ weight })} inherited={inherited('weight')} />
-          <Choice label="Colour" value={own.colour} options={COLOURS.map((c) => [c, c])} onChange={(colour) => setLook({ colour })} inherited={inherited('colour')} />
-          {hardToRead && <p className="editor-warning-text" role="note">{shown.colour} on {background} is hard to read ({ratio.toFixed(1)}:1; 4.5:1 is the minimum for text). Choose another colour or background.</p>}
-        </>
-      )}
-      <button type="button" className="el-reset" onClick={() => setLook(Object.fromEntries(Object.keys(own).map((k) => [k, undefined])))}>Reset {SCREEN_LABEL[screen]} settings</button>
-    </div>
-  )
-}
-
-
-function Stepper({ label, value, onChange, inherited }: { label: string; value: number; onChange: (v: number) => void; inherited: boolean }) {
-  return (
-    <div className="el-stepper">
-      <span>{label}{inherited && <small> (following a larger size)</small>}</span>
-      <button type="button" aria-label={`${label}: less`} onClick={() => onChange(round(value - 0.25))}>−</button>
-      <output>{value} rem</output>
-      <button type="button" aria-label={`${label}: more`} onClick={() => onChange(round(value + 0.25))}>+</button>
-    </div>
-  )
-}
-
-function Choice<T extends string | number>({ label, value, options, onChange, inherited }: { label: string; value: T | undefined; options: [T, string][]; onChange: (v: T | undefined) => void; inherited: boolean }) {
-  return (
-    <label className="el-row">{label}{inherited && <small> (following a larger size)</small>}
-      <select value={value === undefined ? '' : String(value)} onChange={(e) => {
-        const picked = options.find(([v]) => String(v) === e.target.value)
-        onChange(picked ? picked[0] : undefined)
-      }}>
-        <option value="">As designed</option>
-        {options.map(([v, text]) => <option key={String(v)} value={String(v)}>{text}</option>)}
-      </select>
-    </label>
-  )
-}

@@ -6,7 +6,8 @@ import { COLOURS, SPACES, designWarnings, type Design } from '#/layout/design'
 import { CellBlock, GridBlock, ImageBlock, SpacerBlock, TextBlock } from '#/layout/free-blocks'
 import { CaseFrame } from '#/layout/render'
 import { Editing, type Elements } from '#/layout/elements'
-import { ElementPanel, applyEdits, useCanvasEditing, type Edits } from './elements'
+import { applyEdits, useCanvasEditing, type Edits } from './elements'
+import { ElementPanel } from './panel'
 
 // The design editor's building blocks: the website's own blocks (src/layout), plus the controls
 // shown for each. Adding a block here makes it available in the editor for every page.
@@ -63,7 +64,7 @@ function block(label: string, Render: (props: any) => React.ReactNode, extra: Re
 // Settings for single elements inside a block, shown for the element clicked on the page.
 const elementsField = (p: Project) => ({
   type: 'custom',
-  label: 'Selected element',
+  label: 'Single elements',
   render: ({ value, onChange }: { value: Elements | undefined; onChange: (v: Elements) => void }) => <ElementPanel value={value} onChange={onChange} p={p} />,
 })
 

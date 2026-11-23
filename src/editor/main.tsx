@@ -9,7 +9,7 @@ import { caseStudies, type Project } from '#/lib/site'
 import { savedLayoutFor, standardCaseLayout } from '#/layout/render'
 import { editorConfig, layoutWarnings } from './config'
 import * as github from './github'
-import { SelectionProvider, nameOf, wordsOf, type Edits } from './elements'
+import { Selection, SelectionProvider, nameOf, wordsOf, type Edits } from './elements'
 import { checkPage, type Finding } from './checks'
 
 // The design editor at /admin/design/. Arrange and restyle a page with its real blocks, then
@@ -28,7 +28,7 @@ type Version = { id: string; date: string; message: string; layout?: Data }
 const readLocal = <T,>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(key) ?? '') as T } catch { return fallback } }
 const writeLocal = (key: string, value: unknown) => { try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* storage full or blocked: work continues */ } }
 const removeLocal = (key: string) => { try { localStorage.removeItem(key) } catch { /* nothing to remove */ } }
-const session = { get: (k: string) => { try { return sessionStorage.getItem(k) } catch { return null } }, set: (k: string, v: string) => { try { sessionStorage.setItem(k, v) } catch { /* sign-in lasts until the page closes */ } } }
+const session = { get: (k: string) => { try { return sessionStorage.getItem(k) } catch { return null } }, set: (k: string, v: string) => { try { sessionStorage.setItem(k, v) } catch { /* sign-in lasts until the page closes */ } }, remove: (k: string) => { try { sessionStorage.removeItem(k) } catch { /* nothing kept */ } } }
 
 function startingLayout(p: Project): { data: Data; restored: boolean } {
   const unsaved = readLocal<Data | null>(localKey(p.slug, 'unsaved'), null)
@@ -90,6 +90,7 @@ function EditorApp() {
           { width: 1920, label: 'Large desktop', icon: 'Monitor' },
         ]}
         overrides={OVERRIDES}
+        ui={{ leftSideBarVisible: false }}
       />
       {notice && <div className="editor-notice" role="status"><p>{notice}</p><button type="button" onClick={() => setNotice('')}>Close</button></div>}
       </SelectionProvider>
@@ -100,7 +101,39 @@ function EditorApp() {
 type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string) => void; markClean: () => void; clean: { current: string | null } }
 
 const SessionContext = createContext<Session | null>(null)
-const OVERRIDES = { headerActions: () => <Actions /> }
+const OVERRIDES = { headerActions: () => <Actions />, fields: SidePanel }
+
+// The right-hand panel: the selected element's settings; or the section's parts, its own content
+// and its design settings; or, with nothing selected, how to get started.
+function SidePanel({ fields }: { children: React.ReactNode; fields: Partial<Record<string, React.ReactNode>> }) {
+  const { selected } = useContext(Selection)
+  const item = usePuck((s) => s.selectedItem)
+  const dispatch = usePuck((s) => s.dispatch)
+  if (!item) {
+    return (
+      <div className="el-panel el-welcome">
+        <h2>Edit this page</h2>
+        <ul>
+          <li><b>Click</b> anything on the page to change it. A dashed outline shows what you can select.</li>
+          <li><b>Double-click</b> words to type on the page.</li>
+          <li><b>Drag</b> a selected item to move it. Guides show when it lines up.</li>
+          <li><b>Desktop, Tablet and Phone</b> each keep their own changes.</li>
+          <li><b>Undo</b> and <b>Redo</b> are at the top; nothing reaches the website until you publish.</li>
+        </ul>
+        <button type="button" onClick={() => dispatch({ type: 'setUi', ui: { leftSideBarVisible: true } })}>Add or rearrange sections</button>
+      </div>
+    )
+  }
+  const { elements, design, ...content } = fields
+  if (selected && selected.blockId === item.props.id && elements) return <>{elements}</>
+  return (
+    <>
+      {elements}
+      {Object.values(content)}
+      {design && <details className="el-section-design"><summary>Section design (background, spacing, width)</summary>{design}</details>}
+    </>
+  )
+}
 
 function Actions() {
   const { p, token, setToken, setNotice, markClean, clean } = useContext(SessionContext)!
@@ -133,7 +166,15 @@ function Actions() {
 
   const run = async (label: string, task: () => Promise<string>) => {
     setBusy(label)
-    try { setNotice(await task()) } catch (e) { setNotice(`${label} did not work: ${(e as Error).message} Nothing was changed.`) } finally { setBusy('') }
+    try { setNotice(await task()) } catch (e) {
+      const message = (e as Error).message
+      // An expired or withdrawn sign-in: forget it, so "Sign in with GitHub" shows again.
+      if (/\b401\b|Bad credentials/i.test(message)) {
+        session.remove('design-editor:token')
+        setToken(null)
+        setNotice(`${label} did not work because your sign-in has expired. Choose "Sign in with GitHub", then try again. Nothing was changed.`)
+      } else setNotice(`${label} did not work: ${message} Nothing was changed.`)
+    } finally { setBusy('') }
   }
   const needToken = () => { if (!token) throw new Error('Sign in first.'); return token }
   const stamp = () => new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
@@ -209,6 +250,7 @@ function Actions() {
       </select>
       {warnings.length > 0 && <span className="editor-flag" title={warnings.join(' ')}>{warnings.length} check{warnings.length > 1 ? 's' : ''} to look at</span>}
       {DEMO ? <span className="editor-flag">Demo: saves in this browser only</span> : !token && <button type="button" onClick={signIn} disabled={!!busy}>Sign in with GitHub</button>}
+      <button type="button" className="editor-add" aria-pressed={!!ui.leftSideBarVisible} onClick={() => dispatch({ type: 'setUi', ui: { leftSideBarVisible: !ui.leftSideBarVisible } })}>Add & arrange</button>
       <button type="button" className="editor-more-toggle" aria-expanded={more} onClick={() => setMore(!more)}>More</button>
       <div className={more ? 'editor-more open' : 'editor-more'}>
         <button type="button" onClick={choose(openHistory)} disabled={!!busy}>Versions</button>
