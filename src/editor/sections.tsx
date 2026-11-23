@@ -233,7 +233,7 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
                   <button type="button" onClick={() => { duplicate(i); setMenu(null) }}><CopyIcon /> Duplicate</button>
                   <span className="sec-menu-label">Show on</span>
                   {([['', 'All screens'], ['desktop', 'Desktop only'], ['phone', 'Phones only']] as const).map(([v, l]) => (
-                    <button key={v} type="button" aria-pressed={(show ?? '') === v} className="sec-check" onClick={() => { setShow(i, v); setMenu(null) }}>{(show ?? '') === v ? '✓ ' : ''}{l}</button>
+                    <button key={v} type="button" aria-pressed={(show ?? '') === v} className="sec-check" onClick={() => { setShow(i, v); setMenu(null) }}><span className="sec-tick" aria-hidden="true">{(show ?? '') === v ? '✓' : ''}</span>{l}</button>
                   ))}
                   <button type="button" className="sec-danger" onClick={() => { remove(i); setMenu(null) }}><TrashIcon /> Remove</button>
                 </div>

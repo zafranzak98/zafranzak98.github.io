@@ -238,7 +238,7 @@ export function ContextBar() {
   if (!item) {
     return (
       <div className="ctx" role="toolbar" aria-label="Editing tools">
-        <p className="ctx-hint"><b>Click</b> anything on the page to change it. <b>Double-click</b> words to type.</p>
+        <p className="ctx-hint"><b>Click</b> anything on the page to change it. <b>Double-click</b> words to type. To add or reorder sections, open <b>Sections</b> on the left.</p>
         {live}
       </div>
     )

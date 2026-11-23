@@ -265,6 +265,18 @@ function Actions() {
   const [busy, setBusy] = useState('')
   const [panel, setPanel] = useState<'' | 'publish' | 'history' | 'reset'>('')
   const ui = usePuck((s) => s.appState.ui)
+  // Puck draws the rail buttons (Sections, Settings) as plain boxes; make them real buttons for the
+  // keyboard and screen readers, saying which panel is open.
+  useEffect(() => {
+    document.querySelectorAll<HTMLElement>("[class*='_NavItem-link_']").forEach((b) => {
+      if (b.dataset.kb) { b.setAttribute('aria-pressed', String(!!b.closest("[class*='_NavItem--active']"))); return }
+      b.dataset.kb = '1'
+      b.setAttribute('role', 'button')
+      b.tabIndex = 0
+      b.setAttribute('aria-pressed', String(!!b.closest("[class*='_NavItem--active']")))
+      b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); b.click() } })
+    })
+  })
   // Undo and Redo bring back the page, not the editor's own layout: Puck stores both in each step,
   // so after a step back or forward the open panels and the screen size being edited are put back
   // as they were. Without this, Undo could close the Sections panel or switch from Phone to Desktop.

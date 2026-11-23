@@ -385,7 +385,7 @@ html[data-preview] [data-el-note] { outline: none; }
 .sec-row.is-selected .sec-num { background: var(--terra, #9a3f24); color: #fff; box-shadow: none; }
 .sec-text { display: grid; min-width: 0; text-align: left; }
 .sec-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sec-hint { font-size: 12.5px; color: #6b6955; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sec-hint { font-size: 12.5px; line-height: 1.35; color: #6b6955; }
 .sec-badge { color: var(--terra, #9a3f24); font-weight: 600; }
 .sec-more { all: unset; box-sizing: border-box; flex: none; width: 44px; min-height: 44px; display: grid; place-items: center; border-radius: 6px; font-size: 18px; color: #5d5b45; cursor: pointer; }
 .sec-more:hover, .sec-more[aria-expanded='true'] { background: #e9eadf; }
@@ -395,7 +395,7 @@ html[data-preview] [data-el-note] { outline: none; }
 .sec-menu button:hover:not(:disabled), .sec-menu button:focus-visible { background: #f0efec; }
 .sec-menu button:disabled { color: #8a887a; cursor: default; }
 .sec-menu-label { padding: 0.5rem 0.75rem 0.125rem; font-size: 12px; font-weight: 600; color: #6b6955; border-top: 1px solid #eceee6; margin-top: 0.25rem; }
-.sec-menu .sec-check { padding-left: 1.25rem; }
+.sec-tick { display: inline-block; width: 16px; text-align: center; }
 .sec-menu .sec-danger { color: var(--terra, #9a3f24); border-top: 1px solid #eceee6; margin-top: 0.25rem; }
 .sec-add-link { all: unset; box-sizing: border-box; margin: 0.5rem 0.875rem 1rem; min-height: 40px; padding: 0.5rem 0.75rem; border: 1px dashed #b9bea8; border-radius: 8px; text-align: center; font-weight: 600; cursor: pointer; }
 .sec-add-link:hover { background: #f4f4f0; }

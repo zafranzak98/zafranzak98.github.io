@@ -146,6 +146,10 @@ export type Change = { path: string; edits?: Edits; startedWith?: (field: string
 // and its layout. GitHub accepts the step only if nothing else reached the website since the
 // files were read, so the site is never left half-updated and no one's change is overwritten.
 export async function publishTogether(token: string, changes: Change[], message: string) {
+  // The editor only ever writes content files. Anything else is refused here, before GitHub is asked,
+  // so a mistake in the editor can never change the website's code (the build guard checks this too).
+  const outside = changes.filter((c) => !/^content\/[a-z0-9][a-z0-9/_.-]*$/i.test(c.path) || c.path.includes('..'))
+  if (outside.length) throw new Error(`The editor can only change content files, not ${outside.map((c) => c.path).join(', ')}. Nothing was saved.`)
   const head = await api(token, `/git/ref/heads/${MAIN}`)
   const base = head.object.sha as string
   const commit = await api(token, `/git/commits/${base}`)
