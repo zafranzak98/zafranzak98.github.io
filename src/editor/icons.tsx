@@ -30,3 +30,6 @@ export const LayersIcon = () => <Icon><path d="m12 3 9 5-9 5-9-5Z" /><path d="m3
 export const CheckIcon = () => <Icon><path d="m5 12 5 5 9-10" /></Icon>
 export const CloseIcon = () => <Icon><path d="M6 6l12 12M18 6 6 18" /></Icon>
 export const EyeOffIcon = () => <Icon><path d="M3 3l18 18" /><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.7 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></Icon>
+export const BoxStartIcon = () => <Icon><path d="M4 4v16" /><rect x="7" y="8" width="9" height="8" rx="1.5" /></Icon>
+export const BoxCentreIcon = () => <Icon><path d="M12 4v4M12 16v4" /><rect x="7.5" y="8" width="9" height="8" rx="1.5" /></Icon>
+export const BoxEndIcon = () => <Icon><path d="M20 4v16" /><rect x="8" y="8" width="9" height="8" rx="1.5" /></Icon>

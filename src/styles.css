@@ -530,6 +530,20 @@ h3.free-heading { font-size: var(--h3); }
 
 /* Single-element settings from the design editor (src/layout/elements.ts). Tablet and Phone
    follow the larger size unless set, because their rules come later. */
+/* A whole box placed at the start, centre or end of its area (its words keep their own alignment). */
+.el-place-d-start { width: fit-content !important; max-width: 100% !important; margin-left: 0 !important; margin-right: auto !important; justify-self: start !important; }
+.el-place-d-center { width: fit-content !important; max-width: 100% !important; margin-left: auto !important; margin-right: auto !important; justify-self: center !important; }
+.el-place-d-end { width: fit-content !important; max-width: 100% !important; margin-left: auto !important; margin-right: 0 !important; justify-self: end !important; }
+@media (max-width: 1279px) {
+.el-place-t-start { width: fit-content !important; max-width: 100% !important; margin-left: 0 !important; margin-right: auto !important; justify-self: start !important; }
+.el-place-t-center { width: fit-content !important; max-width: 100% !important; margin-left: auto !important; margin-right: auto !important; justify-self: center !important; }
+.el-place-t-end { width: fit-content !important; max-width: 100% !important; margin-left: auto !important; margin-right: 0 !important; justify-self: end !important; }
+}
+@media (max-width: 899px) {
+.el-place-p-start { width: fit-content !important; max-width: 100% !important; margin-left: 0 !important; margin-right: auto !important; justify-self: start !important; }
+.el-place-p-center { width: fit-content !important; max-width: 100% !important; margin-left: auto !important; margin-right: auto !important; justify-self: center !important; }
+.el-place-p-end { width: fit-content !important; max-width: 100% !important; margin-left: auto !important; margin-right: 0 !important; justify-self: end !important; }
+}
 /* Parts hidden at one screen size in the design editor. */
 @media (min-width: 1280px) { .el-hidden-d { display: none !important; } }
 @media (min-width: 900px) and (max-width: 1279px) { .el-hidden-t { display: none !important; } }

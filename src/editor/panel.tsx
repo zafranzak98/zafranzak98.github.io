@@ -4,7 +4,7 @@ import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { COVER_NAMES, COVER_SIZES, TEXT_SIZES, lookAt, type ElementLook, type ElementStyle, type Elements, type Screen, type TextSize } from '#/layout/elements'
 import type { Project } from '#/lib/site'
 import { IMAGES, Selection, coverListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
-import { EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, PlusIcon, ResetIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
+import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, PlusIcon, ResetIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
 
 // The editing controls. The contextual bar under the top bar holds what you use most for the
 // selected text, image or section; the side panel ("More settings") holds everything, grouped.
@@ -19,7 +19,10 @@ const SPACING = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4]
 const SWATCH: Record<Colour, string> = { Olive: 'var(--olive)', Sage: 'var(--sage)', 'Light sage': 'var(--lsage)', 'Off-white': 'var(--off)', Terracotta: 'var(--terra)' }
 const WEIGHTS: [number, string][] = [[400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold']]
 const ALIGN: [NonNullable<ElementLook['align']>, string, () => ReactNode][] = [['left', 'Left', AlignLeftIcon], ['center', 'Centre', AlignCentreIcon], ['right', 'Right', AlignRightIcon]]
-const LOOKS: (keyof ElementLook)[] = ['hidden', 'cover', 'x', 'y', 'size', 'weight', 'colour', 'align', 'width', 'focusX', 'focusY', 'above', 'below']
+const LOOKS: (keyof ElementLook)[] = ['place', 'hidden', 'cover', 'x', 'y', 'size', 'weight', 'colour', 'align', 'width', 'focusX', 'focusY', 'above', 'below']
+const BOX: [NonNullable<ElementLook['place']>, string, () => ReactNode][] = [['start', 'Left', BoxStartIcon], ['center', 'Centre', BoxCentreIcon], ['end', 'Right', BoxEndIcon]]
+// A box can only be placed when it is a block narrower than its area could make it (not words inside a sentence).
+const placeable = () => { const el = selectedEl(); return !!el && !['inline', 'contents'].includes(getComputedStyle(el).display) }
 const px = (rem: number) => `${Math.round(rem * 16)} px`
 
 export const canvas = () => (document.getElementById('preview-frame') as HTMLIFrameElement | null)?.contentDocument ?? null
@@ -115,9 +118,18 @@ export function ContextBar() {
   useEffect(() => setMessage(''), [key, item?.props.id])
   useEffect(() => { if (!message) return; const t = setTimeout(() => setMessage(''), 5000); return () => clearTimeout(t) }, [message])
 
+  // On phones the editor uses a panel at the bottom of the screen, so settings open there.
+  const phone = () => window.innerWidth < 638
+  const toggleSettings = () => {
+    if (phone()) {
+      // The phone layout's own Settings tab opens and closes its bottom panel.
+      const tab = [...document.querySelectorAll<HTMLElement>("[class*='NavItem-link']")].find((b) => b.textContent?.trim() === 'Settings')
+      tab?.click()
+    } else dispatch({ type: 'setUi', ui: { rightSideBarVisible: !ui.rightSideBarVisible } })
+  }
   const showLeft = (plugin: 'blocks' | 'outline') => dispatch({ type: 'setUi', ui: { leftSideBarVisible: true, plugin: { current: plugin } } })
   const more = (
-    <button type="button" className="ctx-btn" aria-pressed={ui.rightSideBarVisible} onClick={() => dispatch({ type: 'setUi', ui: { rightSideBarVisible: !ui.rightSideBarVisible } })}>
+    <button type="button" className="ctx-btn" aria-pressed={phone() ? ui.plugin?.current === 'fields' : ui.rightSideBarVisible} onClick={toggleSettings}>
       <SlidersIcon /><span className="ctx-long">{ui.rightSideBarVisible ? 'Hide settings' : 'More settings'}</span><span className="ctx-short">Settings</span>
     </button>
   )
@@ -213,7 +225,7 @@ export function ContextBar() {
   return (
     <div className="ctx" role="toolbar" aria-label={`${nameOf(key)} tools`}>
       <span className="ctx-name">{nameOf(key)}</span>
-      {selected?.field && <button type="button" className="ctx-btn" onClick={startTyping}><PenIcon /><span>Edit words</span></button>}
+      {selected?.field && <button type="button" className="ctx-btn" aria-label="Edit words" onClick={startTyping}><PenIcon /><span className="ctx-edit-word">Edit words</span></button>}
       {isCover(item.type, key) ? (
         <span className="ctx-group" role="group" aria-label="Cover size">
           <span className="ctx-label">Cover size</span>
@@ -230,7 +242,7 @@ export function ContextBar() {
       ) : (
         <>
           <span className="ctx-group" role="group" aria-label="Text size">
-            <span className="ctx-label">Size</span>
+            <span className="ctx-label ctx-label-plain">Size</span>
             <span className="ctx-stepper">
               <button type="button" aria-label="Smaller text" title="Smaller" onClick={() => setLook({ size: SIZES[Math.max(0, currentSize(shown) - 1)] })}>−</button>
               <output>{sizeName(shown)}</output>
@@ -239,16 +251,27 @@ export function ContextBar() {
           </span>
           <button type="button" className="ctx-icon" aria-pressed={(shown.weight ?? 0) >= 600} aria-label="Bold" title="Bold" onClick={() => setLook({ weight: (shown.weight ?? 0) >= 600 ? 400 : 700 })}><BoldIcon /></button>
           <span className="ctx-group" role="group" aria-label="Colour">
-            <span className="ctx-label">Colour</span>
+            <span className="ctx-label ctx-label-plain">Colour</span>
             <Swatches value={shown.colour} onChange={(colour) => setLook({ colour })} small />
           </span>
-          <span className="ctx-segment" role="group" aria-label="Alignment">
-            {ALIGN.map(([v, name, AlignIcon]) => <button key={v} type="button" aria-pressed={shown.align === v} aria-label={`Align ${name.toLowerCase()}`} title={`Align ${name.toLowerCase()}`} onClick={() => setLook({ align: v })}><AlignIcon /></button>)}
+          <span className="ctx-group" role="group" aria-label="Text alignment">
+            <span className="ctx-label">Text</span>
+            <span className="ctx-segment">
+              {ALIGN.map(([v, name, AlignIcon]) => <button key={v} type="button" aria-pressed={shown.align === v} aria-label={`Text: align ${name.toLowerCase()}`} title={`Align the words ${name.toLowerCase()}`} onClick={() => setLook({ align: v })}><AlignIcon /></button>)}
+            </span>
           </span>
+          {placeable() && (
+            <span className="ctx-group ctx-box" role="group" aria-label="Box position">
+              <span className="ctx-label">Box</span>
+              <span className="ctx-segment">
+                {BOX.map(([v, name, BoxIcon]) => <button key={v} type="button" aria-pressed={shown.place === v} aria-label={`Box: ${name.toLowerCase()} of its area`} title={`Place the whole box at the ${name.toLowerCase()} of its area`} onClick={() => setLook({ place: shown.place === v ? undefined : v })}><BoxIcon /></button>)}
+              </span>
+            </span>
+          )}
         </>
       )}
-      <button type="button" className="ctx-btn ctx-hide" aria-pressed={!!shown.hidden} onClick={toggleHidden} title={shown.hidden ? `Show it again on ${SCREEN_LABEL[screen]}` : `Leave it out on ${SCREEN_LABEL[screen]}${screen === 'phone' ? '' : ' (and smaller screens)'}`}><EyeOffIcon /><span className="ctx-reset-word">{shown.hidden ? "Hidden here" : "Hide here"}</span></button>
-      <button type="button" className="ctx-btn" disabled={from(...LOOKS) !== 'here'} onClick={resetAll} title={`Undo every change to this at ${SCREEN_LABEL[screen]} size`}><ResetIcon /><span className="ctx-reset-word">Reset</span></button>
+      <button type="button" className="ctx-btn ctx-hide" aria-pressed={!!shown.hidden} aria-label={shown.hidden ? `Hidden on ${SCREEN_LABEL[screen]}: show it` : `Hide on ${SCREEN_LABEL[screen]}`} onClick={toggleHidden} title={shown.hidden ? `Show it again on ${SCREEN_LABEL[screen]}` : `Leave it out on ${SCREEN_LABEL[screen]}${screen === 'phone' ? '' : ' (and smaller screens)'}`}><EyeOffIcon /><span className="ctx-reset-word">{shown.hidden ? "Hidden here" : "Hide here"}</span></button>
+      <button type="button" className="ctx-btn ctx-reset" aria-label="Reset changes" disabled={from(...LOOKS) !== 'here'} onClick={resetAll} title={`Reset: undo every change to this at ${SCREEN_LABEL[screen]} size`}><ResetIcon /><span className="ctx-reset-word">Reset</span></button>
       <span className="ctx-gap" />
       {where}
       {more}
@@ -325,9 +348,14 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
             <Swatches value={shown.colour} onChange={(colour) => setLook({ colour })} />
           </Row>
           {ratio !== null && ratio < 4.5 && <p className="el-warning" role="note">{shown.colour} on {background} is hard to read. Choose another colour.</p>}
-          <Row label="Alignment" from={from('align')} onReset={() => reset('align')}>
-            <Segments label="Alignment" value={shown.align} options={ALIGN.map(([v, name]) => [v, name])} onChange={(align) => setLook({ align: align as ElementLook['align'] })} />
+          <Row label="Text alignment" hint="How the words line up inside the box." from={from('align')} onReset={() => reset('align')}>
+            <Segments label="Text alignment" value={shown.align} options={ALIGN.map(([v, name]) => [v, name])} onChange={(align) => setLook({ align: align as ElementLook['align'] })} />
           </Row>
+          {placeable() && (
+            <Row label="Box position" hint="Where the whole box sits in its area. The words keep their own alignment." from={from('place')} onReset={() => reset('place')}>
+              <Segments label="Box position" value={shown.place} options={BOX.map(([v, name]) => [v, name])} onChange={(place) => setLook({ place: place as ElementLook['place'] })} />
+            </Row>
+          )}
         </Group>
       )}
 

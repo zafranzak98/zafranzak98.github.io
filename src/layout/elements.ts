@@ -33,9 +33,12 @@ export type ElementLook = {
   width?: number // per cent of the space it sits in (images)
   focusX?: number // crop focus in per cent (images)
   focusY?: number
+  place?: Place // where the whole box sits in its area (start, centre, end), apart from its text alignment
   hidden?: boolean // left out at this screen size (and smaller ones, unless shown there)
   cover?: CoverSize // a project's opening cover: a step on the grid, so the text beside it reflows
 }
+export const PLACES = ['start', 'center', 'end'] as const
+export type Place = (typeof PLACES)[number]
 export const COVER_SIZES = ['small', 'standard', 'large', 'xl'] as const
 export type CoverSize = (typeof COVER_SIZES)[number]
 export const COVER_NAMES: Record<CoverSize, string> = { small: 'Small', standard: 'Standard', large: 'Large', xl: 'Extra large' }
@@ -78,6 +81,8 @@ export function useElement(elements: Elements | undefined) {
     for (const screen of SCREENS) {
       const cover = elements?.[key]?.[screen]?.cover
       if (cover && COVER_SIZES.includes(cover)) classes.push(`el-cover-${SHORT[screen]}-${cover}`)
+      const place = elements?.[key]?.[screen]?.place
+      if (place && PLACES.includes(place)) classes.push(`el-place-${SHORT[screen]}-${place}`)
       for (const [name, value] of cssFor(elements?.[key]?.[screen] ?? {})) {
         classes.push(`el-${name}-${SHORT[screen]}`)
         vars[`--el-${name}-${SHORT[screen]}`] = value
