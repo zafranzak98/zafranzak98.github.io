@@ -10,7 +10,8 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statS
 import { join, relative } from 'node:path'
 import { execSync } from 'node:child_process'
 import matter from 'gray-matter'
-import { assignColours, FOOTER, listings, tooSimilar } from '../src/lib/project-colours.js'
+import { allOrder, assignColours, bandOrder, FOOTER, listings, tooSimilar } from '../src/lib/project-colours.js'
+import { coverFrame, coverSizes, croppedSizesFor } from '../src/lib/cover-image.js'
 import { isPhoto, variantPath, widthsFor } from '../src/lib/image-variants.js'
 import sharp from 'sharp'
 import { ADDRESS_PATTERN, addressOf, overrideOf, pagePath } from '../src/lib/project-urls.js'
@@ -92,14 +93,33 @@ const ORIGIN = PREVIEW ? 'https://zafranzak98.github.io' : PRODUCTION_URL
 const esc = (text) => String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 // Text for titles, descriptions and sharing: formatting marks (**highlight**, *bold*) removed.
 const plain = (text) => text?.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*\s](?:[^*]*[^*\s])?)\*/g, '$1').replace(/\s+/g, ' ').trim()
+// The page's main typeface (Latin letters) is preloaded, so it is ready before the first paint and
+// text does not reflow when it arrives (a layout shift). Other character sets load only when used.
+const FONT = readdirSync(join(DIST, 'assets')).find((f) => /^instrument-sans-latin-wdth-normal-.*\.woff2$/.test(f))
+if (!FONT) errors.push('The main font file (instrument-sans-latin-wdth-normal) was not found in the build.')
 const html = readFileSync(join(DIST, 'index.html'), 'utf8')
+  .replace('  </head>', FONT ? `    <link rel="preload" href="/assets/${FONT}" as="font" type="font/woff2" crossorigin />\n  </head>` : '  </head>')
   .replace(/\s*<link rel="canonical"[^>]*>/g, '')
   .replace(/<title>.*?<\/title>/, `<title>${esc(site.site_title)}</title>`)
 writeFileSync(join(DIST, '404.html'), html)
 const DESCRIPTION = /<meta name="description" content="([^"]*)" \/>/
 const defaultDescription = html.match(DESCRIPTION)[1]
 const expected = new Map([['index.html', canonical('')]])
-const withHead = (path, { title, description, image } = {}, isDraft = false) => {
+// The cover at the top of a page (a case study's opening, or the first band on a Projects page),
+// named in the page's head so the browser fetches it at once rather than after the page's script
+// has run. Same files and sizes as the page asks for (src/lib/cover-image.js), so nothing loads twice.
+const coverPreload = async (p, inBand) => {
+  const path = p?.cover?.image
+  const file = path && join('public', path)
+  if (!path || !existsSync(file)) return ''
+  if (!isPhoto(path)) return `<link rel="preload" as="image" href="${encodeURI(path)}" fetchpriority="high" />`
+  const { width, height } = await sharp(file).metadata()
+  const [fw, fh] = coverFrame(p.design).split('/').map(Number)
+  const sizes = croppedSizesFor(coverSizes(p.design, inBand), { width, height }, fh ? fw / fh : undefined)
+  const srcset = [...widthsFor(width).map((w) => `${encodeURI(variantPath(path, w))} ${w}w`), `${encodeURI(path)} ${width}w`].join(', ')
+  return `<link rel="preload" as="image" href="${encodeURI(path)}" imagesrcset="${srcset}" imagesizes="${sizes}" fetchpriority="high" />`
+}
+const withHead = (path, { title, description, image, preload } = {}, isDraft = false) => {
   const fullTitle = esc(title ? `${title} · ${siteName}` : site.site_title)
   const text = description ? esc(description) : defaultDescription
   const tags = [
@@ -109,6 +129,7 @@ const withHead = (path, { title, description, image } = {}, isDraft = false) => 
     `<meta property="og:description" content="${text}" />`,
     ...(isDraft ? [] : [`<meta property="og:url" content="${address(path)}" />`, canonical(path)]),
     ...(image ? [`<meta property="og:image" content="${ORIGIN}${encodeURI(image)}" />`, `<meta name="twitter:card" content="summary_large_image" />`] : []),
+    ...(preload ? [preload] : []),
   ]
   return html
     .replace(/<title>.*?<\/title>/, `<title>${fullTitle}</title>`)
@@ -124,16 +145,17 @@ const page = (path, meta, isDraft = false) => {
 }
 writeFileSync(join(DIST, 'index.html'), withHead(''))
 page('about', { title: 'About' })
-page('projects', { title: 'Projects' })
+page('projects', { title: 'Projects', preload: await coverPreload(allOrder(live)[0], true) })
 const usedCats = new Set(live.map((p) => p.category))
 const draftOnly = (slug) => !live.some((p) => p.category === slug && p.status !== 'Draft')
-for (const c of categories) if (usedCats.has(c.slug)) page(`projects/${c.slug}`, { title: c.name }, draftOnly(c.slug))
+for (const c of categories) if (usedCats.has(c.slug)) page(`projects/${c.slug}`, { title: c.name, preload: await coverPreload(bandOrder(live.filter((p) => p.category === c.slug))[0], true) }, draftOnly(c.slug))
 // A project's search and sharing details fall back to its title, summary and cover image.
 for (const p of live) if (p.page_type === 'Full case study')
   page(pagePath(p.category, addressOf(p)), {
     title: p.seo?.title || p.title,
     description: plain(p.seo?.description || p.summary),
     image: p.seo?.image || p.cover?.image,
+    preload: await coverPreload(p, false),
   }, p.status === 'Draft')
 
 // Old addresses: a small page at each one that sends visitors and search engines to the current
