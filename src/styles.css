@@ -169,6 +169,7 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 }
 .home-preview { grid-column: 11 / span 2; margin-top: 6.75rem; }
 .home-preview img { width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block; }
+.home-preview img.whole { aspect-ratio: auto; height: auto; object-fit: contain; }
 .home-preview figcaption { margin-top: 0.625rem; font-size: var(--t-meta); display: flex; justify-content: space-between; gap: 0.5rem; }
 .home-preview .terra { font-weight: 600; }
 @media (max-width: 1279px) and (min-width: 900px) {
