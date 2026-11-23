@@ -11,7 +11,7 @@ import { CopyIcon, DownIcon, TrashIcon, UpIcon } from './icons'
 const usePuck = createUsePuck()
 const canvas = () => (document.getElementById('preview-frame') as HTMLIFrameElement | null)?.contentDocument ?? null
 
-type Item = { type: string; props: Record<string, unknown> & { id: string; design?: { show?: string } } }
+type Item = { type: string; props: Record<string, unknown> & { id: string; design?: { show?: string; width?: string } } }
 type Kind = { name: string; hint: string }
 
 // What each kind of section is called here, and what it is, in a few words.
@@ -59,7 +59,9 @@ const newId = (type: string) => `${type}-${Date.now().toString(36)}${(nextId++).
 // kind of block. Text and Image start ready to type into or to choose a photo for.
 type Option = { id: string; name: string; text: string; picture: React.ReactNode; make: () => Item }
 const text = (props: Record<string, unknown> = {}): Item => ({ type: 'Text', props: { id: newId('Text'), heading: 'Heading', text: 'Write here.', headingLevel: 'h2', size: 'body', ...props } })
-const image = (): Item => ({ type: 'Image', props: { id: newId('Image'), image: '', ratio: 'auto', focusX: 50, focusY: 50 } })
+// A single Image section starts as wide as the text column, so a photo is never page-wide by
+// default; the width can be changed in More settings, Section design. In columns it fills its column.
+const image = (alone = false): Item => ({ type: 'Image', props: { id: newId('Image'), image: '', ratio: 'auto', focusX: 50, focusY: 50, ...(alone && { design: { width: 'text' } }) } })
 const cell = (start: number, span: number, content: Item[]): Item => ({ type: 'Cell', props: { id: newId('Cell'), start, span, content } })
 const grid = (cells: Item[]): Item => ({ type: 'Grid', props: { id: newId('Grid'), gap: 'normal', align: 'start', cells } })
 
@@ -81,7 +83,7 @@ const GROUPS: { title: string; options: Option[] }[] = [
   {
     title: 'Images',
     options: [
-      { id: 'image', name: 'Image', text: 'One image, with a caption if you want one.', make: image, picture: <Pic>{photo(12, 6, 40, 24)}<rect x="12" y="33" width="20" height="2" rx="1" fill={P.olive} opacity="0.45" /></Pic> },
+      { id: 'image', name: 'Image', text: 'One image, with a caption if you want one.', make: () => image(true), picture: <Pic>{photo(12, 6, 40, 24)}<rect x="12" y="33" width="20" height="2" rx="1" fill={P.olive} opacity="0.45" /></Pic> },
       { id: 'two-images', name: 'Two images', text: 'Two images side by side. On phones they stack.', make: () => grid([cell(1, 6, [image()]), cell(7, 6, [image()])]), picture: <Pic>{photo(6, 8, 24, 24)}{photo(34, 8, 24, 24)}</Pic> },
       { id: 'image-text', name: 'Image and text', text: 'An image beside a heading and paragraph.', make: () => grid([cell(1, 6, [image()]), cell(7, 6, [text()])]), picture: <Pic>{photo(6, 8, 26, 24)}<rect x="36" y="10" width="16" height="3" rx="1" fill={P.olive} />{lines(36, 17, 22, 3)}</Pic> },
     ],

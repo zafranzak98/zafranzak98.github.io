@@ -17,6 +17,7 @@ import { describeStep } from './history'
 import { LayoutNotes, checkOptions, settled, type Intended } from './notes'
 import { ContextBar, screenFor } from './panel'
 import { SectionsPanel, openSections } from './sections'
+import { PhotoPicker, emptyImages, openPhotoPicker } from './photos'
 import { EyeIcon, LayersIcon, RedoIcon, SlidersIcon, UndoIcon } from './icons'
 
 // The design editor at /admin/design/. Arrange and restyle a page with its real blocks, then
@@ -329,6 +330,8 @@ function Actions() {
     return () => { document.removeEventListener('keydown', key); document.removeEventListener('pointerdown', away); window.removeEventListener('blur', blur) }
   }, [more])
   const warnings = layoutWarnings(data.content as never)
+  // Image sections with no photo: publishing waits until each has one (a draft can still be saved).
+  const empties = emptyImages(data.content as never)
   const renames = categoryEdits(((data.root.props as { edits?: Edits } | undefined)?.edits) ?? {}).map(([field, to]) => [field.match(CATEGORY_FIELD)![1], to] as const)
   const json = JSON.stringify(data)
   // Different from the published page (a saved draft still counts), and not yet saved anywhere.
@@ -415,6 +418,8 @@ function Actions() {
   })
 
   const publish = () => run('Publishing', async () => {
+    // Never publish an empty Image section, whichever way Publish was reached.
+    if (emptyImages(data.content as never).length) throw new Error('An Image section has no photo yet. Choose a photo or remove the section, then publish.')
     setPanel('')
     if (DEMO) {
       const list = readLocal<Version[]>(localKey(p.slug, 'versions'), [])
@@ -487,6 +492,7 @@ function Actions() {
 
   return (
     <header className="editor-bar">
+      <PhotoPicker />
       <div className="editor-bar-start">
         <span className="editor-brand">Design editor</span>
         {DEMO && <span className="editor-chip" title="Everything works, but saving and publishing stay in this browser.">Demo</span>}
@@ -557,6 +563,12 @@ function Actions() {
             </div>
           )}
           {warnings.map((w) => <p key={w} className="editor-warning-text">{w}</p>)}
+          {empties.length > 0 && (
+            <div className="editor-blocked" role="alert">
+              <p><b>{empties.length === 1 ? 'An Image section has no photo yet.' : `${empties.length} Image sections have no photo yet.`}</b> Choose a photo, or remove the section, before publishing. Saving a draft still works.</p>
+              <ul>{empties.map((id, k) => <li key={id}><button type="button" onClick={() => { setPanel(''); openPhotoPicker(id) }}>Choose a photo{empties.length > 1 ? ` (${k + 1})` : ''}</button></li>)}</ul>
+            </div>
+          )}
           {findings === null ? (
             <p role="status">Checking Desktop, Tablet and Phone…</p>
           ) : findings.length ? (
@@ -567,7 +579,7 @@ function Actions() {
           ) : (
             <p role="status">Checked on Desktop, Tablet and Phone: nothing overlaps, runs off the screen, is too small or is hard to read.</p>
           )}
-          <button type="button" className="editor-primary" onClick={publish} disabled={findings === null}>{findings?.length ? 'Publish anyway' : 'Publish'}</button>
+          <button type="button" className="editor-primary" onClick={publish} disabled={findings === null || empties.length > 0}>{findings?.length ? 'Publish anyway' : 'Publish'}</button>
         </Panel>
       )}
       {panel === 'reset' && (

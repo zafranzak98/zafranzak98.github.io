@@ -2,13 +2,14 @@ import { createUsePuck, type ComponentConfig, type Config, type Fields } from '@
 import imageWidths from 'virtual:image-widths'
 import type { Project } from '#/lib/site'
 import * as caseBlocks from '#/layout/case-blocks'
-import { COLOURS, SPACES, designWarnings, type Design } from '#/layout/design'
+import { COLOURS, SPACES, designProps, designWarnings, type Design } from '#/layout/design'
 import { CellBlock, GridBlock, ImageBlock, SpacerBlock, TextBlock } from '#/layout/free-blocks'
 import { CaseFrame } from '#/layout/render'
 import { Editing, type Elements } from '#/layout/elements'
 import { CategoryNames } from '#/components/category-index'
 import { CATEGORY_FIELD, applyEdits, categoryEdits, useCanvasEditing, type Edits } from './elements'
 import { ElementPanel } from './panel'
+import { EmptyImage } from './photos'
 
 // The design editor's building blocks: the website's own blocks (src/layout), plus the controls
 // shown for each. Adding a block here makes it available in the editor for every page.
@@ -53,12 +54,16 @@ function block(label: string, Render: (props: any) => React.ReactNode, extra: Re
     label,
     ...extra,
     fields: { ...((extra.fields as object) ?? {}), design: designField },
-    render: ({ puck, ...props }) => (
-      <>
-        {puck.isEditing && <Warnings messages={designWarnings(props.design as Design)} />}
-        <Render {...props} />
-      </>
-    ),
+    render: ({ puck, ...props }) => {
+      // While editing, a block may draw itself differently (an Image section with no photo yet).
+      const editing = puck.isEditing && (extra.whileEditing as ((p: Record<string, unknown>) => React.ReactNode) | undefined)?.(props)
+      return (
+        <>
+          {puck.isEditing && <Warnings messages={designWarnings(props.design as Design)} />}
+          {editing || <Render {...props} />}
+        </>
+      )
+    },
   } as ComponentConfig
 }
 
@@ -119,6 +124,8 @@ export function editorConfig(p: Project): Config {
           focusY: percent('Crop focus down (%)'),
         } as never,
         defaultProps: { image: '', ratio: 'auto', focusX: 50, focusY: 50 } as never,
+        // No photo yet: an empty frame with "Choose a photo", only in the editor.
+        whileEditing: (props: Record<string, unknown>) => (props.image ? null : <EmptyImage id={props.id as string} {...designProps(props.design as Design, 'free-block free-image')} />),
       }),
       Grid: block('Free grid', GridBlock, {
         fields: {

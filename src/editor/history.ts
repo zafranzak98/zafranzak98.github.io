@@ -55,6 +55,7 @@ export function describeStep(before: Page | undefined, after: Page | undefined):
       if (!same(pa, pb)) {
         const { design: da, ...wa } = pa
         const { design: db, ...wb } = pb
+        if ((wa as { image?: unknown }).image !== (wb as { image?: unknown }).image) return `choose a photo for ${kindName(a[i].type)}`
         if (same(wa, wb) && !same(da, db)) return (da as { show?: string } | undefined)?.show !== (db as { show?: string } | undefined)?.show ? `show or hide ${kindName(a[i].type)}` : `change the look of ${kindName(a[i].type)}`
         return 'edit the words'
       }
