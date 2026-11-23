@@ -37,7 +37,7 @@ Original build by Liana. Redesign, content model and build checks added in 2026.
 Content is edited at `/admin` with [Sveltia CMS](https://sveltiacms.app), which saves straight to the `main` branch through GitHub. Each save starts a normal build and deploy.
 
 - **Settings.** `public/admin/config.yml` lists every field in plain English. It must match `content-collections.ts`.
-- **Sign-in.** "Sign in with GitHub", through the [Sveltia CMS Authenticator](https://github.com/sveltia/sveltia-cms-auth) on the site owner's own Cloudflare account (`sveltia-cms-auth.zafranzak98.workers.dev`, free plan). It uses a GitHub App installed on this repository only, with Contents read and write. Sign-ins expire after 8 hours and renew automatically. The Worker only answers sign-ins from `zafranzak98.github.io` and `zafranzakaria.com` (`ALLOWED_DOMAINS`).
+- **Sign-in.** "Sign in with GitHub", through the [Sveltia CMS Authenticator](https://github.com/sveltia/sveltia-cms-auth) on the site owner's own Cloudflare account (`sveltia-cms-auth.zafranzak98.workers.dev`, free plan). It uses a GitHub App installed on this repository only, with Contents read and write. Sign-ins last 8 hours and renew automatically: when GitHub's token expires, Sveltia sends the renewal key it keeps in the browser to the Worker, which asks GitHub for a new token (this needs the GitHub App's "Expire user authorization tokens" setting). Each renewal issues a new renewal key; after about six months without use you sign in again. Signing out removes the sign-in from the browser; it does not cancel it at GitHub. To cancel every sign-in and renewal key at once, revoke the app in GitHub Settings, Applications. The Worker only answers sign-ins from `zafranzak98.github.io` and `zafranzakaria.com` (`ALLOWED_DOMAINS`).
 - **Version.** `@sveltia/cms` is pinned to an exact version in `package.json`. The build copies it into `dist/admin` from `node_modules`, and the page loads it with an integrity hash and a content security policy that blocks code from other sites.
 - **Uploads.** Images are converted to WebP at quality 85 and at most 2400px wide, in every browser. Project images go to `public/media/projects/<project>/`.
 - **Responsive images.** The build also publishes smaller WebP copies of every published photo, 480, 960 and 1600px wide (never wider than the original), named `photo-w960.webp` beside `photo.webp`. Each image on a page lists them with `srcset` and says how wide it is shown with `sizes`, so the browser downloads the smallest copy that stays sharp. Uploads in the repository are never changed. The rules are in `src/lib/image-variants.js`; the copies are made in `scripts/postbuild.mjs`; the widths come from a small Vite plugin in `vite.config.ts`. Only photos that published content uses are listed (`scripts/published-media.mjs`), so a draft's file names never reach the production build. A new image component needs a `sizes` value that matches how wide it is shown.
@@ -83,6 +83,62 @@ Code changes are made on a branch and reach `main` only through a pull request t
 `.github/workflows/deploy.yml` runs on every push to `main`. A guard job first compares `main` with the version last published: content changes and merged pull requests go ahead, anything else stops before the build (a manual run can publish it only if its "Publish code without a pull request" box is ticked). If the last published version cannot be confirmed, nothing is published. The build job then runs the production build as a check and publishes the preview build to GitHub Pages. If a size warning appears, it opens or updates a "Website size warning" issue, which GitHub emails to the repository owner. A failed build publishes nothing, so the site stays as it was.
 
 Every page also gets its own `index.html` at build time, so direct links and refreshes return a normal page rather than GitHub's 404.
+
+## Quality targets
+
+Checked before launch and on every significant change, and reported with the results. The local baseline (23 Nov 2026) was measured on a copy of the published version (commit `2a989a1`) served from a local computer, not on the public site; the workspace used could not reach the site. Published-site figures come from PageSpeed Insights and are listed separately below. Neither is real-visitor data.
+
+| Area | Target | Baseline (local) |
+|---|---|---|
+| Page weight, compressed, whole page scrolled, phone width | 500 KB or less per page | 162 to 462 KB (Cancel Me, Not! 462) |
+| Page weight, desktop width, image-led case studies | 1 MB or less | Cancel Me, Not! 884 KB; others under 450 KB |
+| Script, compressed | 120 KB or less | 97 to 106 KB |
+| Loading, Lighthouse mobile (simulated mid-range phone, slow 4G) | Largest Contentful Paint 2.5 s or less (Google's "good" threshold) | 1.9 to 3.5 s: Projects 2.4 to 3.0, Cancel Me, Not! 3.3 to 3.5 over target |
+| Responsiveness: Total Blocking Time, a lab stand-in for INP (not INP itself) | 200 ms or less (Lighthouse's "good" threshold) | 0 to 81 ms |
+| Visual stability | Cumulative Layout Shift 0.1 or less (Google's "good" threshold) | 0.13 to 0.18 on Projects, AF-Binary and Cancel Me, Not!: over target |
+| Accessibility | WCAG 2.2 AA: no automated failures, plus the manual checks below | Automated: passes except the approved AF-Binary and Evoke small text on Sage (4.27:1, below AA's 4.5:1). Manual checks: not yet done |
+| Editor code | No design-editor files downloaded by any visitor page | None, on `main` and on the editor branch |
+
+Largest Contentful Paint and Cumulative Layout Shift use Google's "good" Core Web Vitals thresholds (web.dev/articles/vitals), which Google applies to real visits at the 75th percentile; here they are applied to lab measurements. The third Core Web Vital, Interaction to Next Paint (INP, good at 200 ms or less), needs real interactions and cannot be measured by Lighthouse, so Total Blocking Time stands in for it in the lab. The page-weight and script limits are this project's own, chosen from the baseline with room for new work.
+
+**Published test site (PageSpeed Insights, Lighthouse 13.6, one run each, 23 Nov 2026, 12:05)**
+
+| Page | Form | Performance | LCP | TBT | CLS | Accessibility |
+|---|---|---|---|---|---|---|
+| Home | Mobile | 95 | 1.2 s | 0 ms | 0.107 (over 0.1) | 100 |
+| Home | Desktop | 99 | 0.2 s | 0 ms | 0.061 | 100 |
+
+SEO scores 66 on the test site because it deliberately asks search engines not to index it until launch. Projects and Cancel Me, Not! are still to be measured on the published site.
+
+**Accessibility exception.** AF-Binary and Evoke deliberately show small text directly on Sage at 4.27:1 (approved 22 Nov 2026), below WCAG 2.2 AA's 4.5:1 for small text. While it stands, the site does not fully meet WCAG 2.2 AA.
+
+**How to measure**
+
+- *Weight and editor files:* load each representative page (Home, Projects, About, a category page, AF-Binary, Cancel Me, Not!) at 390 and 1440 px, scroll to the end, and total the compressed downloads by type; list any file whose name contains `design-`, `Editor-` or `/admin`.
+- *Loading:* Lighthouse 12, mobile, default simulated throttling, two runs per page, both reported. Local results come from a computer, not a visitor's phone.
+- *Real test site:* pagespeed.web.dev, Mobile, for the same pages. Real-visitor data appears there and in Search Console only once there are enough visits.
+- *Accessibility, automated:* axe-core (WCAG 2 A and AA rules) at 390, 900 and 1440 px, plus Lighthouse's accessibility audit.
+- *Accessibility, manual:* keyboard only (every link and control reachable, focus visible, nothing trapped); a screen-reader pass with VoiceOver on Mac and iPhone; text zoomed to 200% and a 320 px wide window without sideways scrolling; reduced-motion setting respected; link and image descriptions make sense out of context. An automated pass is not proof of compliance.
+
+## Recovery
+
+If the website breaks, the last good version can always be brought back without changing any code.
+
+- **Known-good versions** are listed under Releases on the repository page, each named "Known good" with its date and what was checked. Only versions that passed the checks are labelled.
+- **A failed build never changes the website.** The previous version stays up.
+- **`live-backup-2026-11`** is the recovery point for the original site. Never delete or change it.
+
+| Problem | What to do |
+|---|---|
+| An editor save does not appear after a minute, or a "Run failed" email | Repository, Actions, newest "Build and deploy" run. The summary lists lines starting ERROR, each naming the problem (for example an image file that does not exist). Fix that field in the editor and save again. |
+| A run says "Not published" | Code reached `main` without a pull request. If it was meant, open a pull request for it, or run the workflow by hand and tick "Publish code without a pull request". If not, change nothing. |
+| A published edit is wrong | Change it back in the editor. Earlier wording: open the file in `content` on GitHub, choose History, and copy from the earlier version. |
+| A merged pull request broke something | On that pull request's page choose Revert, then merge the pull request it opens. |
+| The site is down or blank | Check githubstatus.com. If GitHub is fine: Releases, note the commit of the latest "Known good" version; Actions, find the successful run for that commit and choose "Re-run all jobs". Check the site afterwards. |
+| Sign-in fails at /admin | Try a private window. Check the GitHub App is still installed on this repository (GitHub Settings, Applications) and the Worker `sveltia-cms-auth` still exists in Cloudflare. Do not create new keys or change secrets. |
+| Anything else | Do not delete branches or force anything. |
+
+**When asking a developer for help, send:** the link to the failed run or pull request, the ERROR lines or a screenshot of the problem, the page address, what changed just before (an editor save, a merged pull request), and the latest "Known good" release.
 
 ## Project web addresses
 
