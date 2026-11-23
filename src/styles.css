@@ -291,6 +291,8 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .cat-index a:hover { color: var(--terra); }
 .cat-index a[aria-current="page"] { color: var(--terra); }
 .cat-index-sep { margin: 0 .28em; font-weight: 400; }
+/* The number of projects beside each category name: small and light, in the link's own colour so it keeps its contrast. */
+.cat-n { margin-left: 0.12em; font-size: 0.38em; font-weight: 400; letter-spacing: 0; vertical-align: 1.35em; line-height: 0; }
 /* Lookbook: one full-width band per project, in its own opening colour. */
 .bands { margin-top: 3.5rem; }
 /* --vis is the space the project visual takes on the right; titles wrap before it. */
