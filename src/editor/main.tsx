@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { Puck, createUsePuck, type Data } from '@puckeditor/core'
+import { Puck, blocksPlugin, createUsePuck, outlinePlugin, type Data } from '@puckeditor/core'
 import '@puckeditor/core/no-external.css'
 import '@fontsource-variable/instrument-sans/wdth.css'
 import '../styles.css'
@@ -55,7 +55,8 @@ function EditorApp() {
   const config = useMemo(() => editorConfig(p), [p])
   const [start] = useState(() => startingLayout(p))
   const [token, setToken] = useState<string | null>(() => session.get('design-editor:token'))
-  const [notice, setNotice] = useState<string>(start.restored ? 'Your unsaved changes from last time are back. Use Undo, or "Discard unsaved changes", to drop them.' : '')
+  const [notice, setNoticeState] = useState<Notice>(start.restored ? { text: 'Your unsaved changes from last time are back. Undo removes them one by one, or choose More, then "Discard unsaved changes".' } : { text: '' })
+  const setNotice = (text: string, undo = false) => setNoticeState({ text, undo })
   const saveTimer = useRef<number>(undefined)
   // The page as published, in the form the editor holds it; matching it means nothing is unsaved.
   // '' means "take the next state the editor shows as the published one".
@@ -73,7 +74,8 @@ function EditorApp() {
 
   useEffect(labelPuckControls, [])
 
-  const actions = useMemo(() => ({ p, token, setToken, setNotice, markClean: () => { clean.current = '' }, clean }), [p, token])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const actions = useMemo(() => ({ p, token, setToken, setNotice, notice, markClean: () => { clean.current = '' }, clean }), [p, token, notice])
   return (
     <SessionContext.Provider value={actions}>
       <SelectionProvider>
@@ -90,18 +92,23 @@ function EditorApp() {
           { width: 1920, label: 'Large desktop', icon: 'Monitor' },
         ]}
         overrides={OVERRIDES}
+        plugins={PLUGINS}
         ui={{ leftSideBarVisible: false }}
+        onAction={(action) => { if (action.type === 'remove') setNotice('Section removed from the page.', true) }}
       />
-      {notice && <div className="editor-notice" role="status"><p>{notice}</p><button type="button" onClick={() => setNotice('')}>Close</button></div>}
       </SelectionProvider>
     </SessionContext.Provider>
   )
 }
 
-type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string) => void; markClean: () => void; clean: { current: string | null } }
+type Notice = { text: string; undo?: boolean }
+type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string, undo?: boolean) => void; notice: Notice; markClean: () => void; clean: { current: string | null } }
+
+// The left-hand tools, named for what they do.
+const PLUGINS = [{ ...blocksPlugin(), label: 'Add section' }, { ...outlinePlugin(), label: 'Page navigator' }]
 
 const SessionContext = createContext<Session | null>(null)
-const OVERRIDES = { headerActions: () => <Actions />, fields: SidePanel }
+const OVERRIDES = { header: () => <Actions />, fields: SidePanel }
 
 // The right-hand panel: the selected element's settings; or the section's parts, its own content
 // and its design settings; or, with nothing selected, how to get started.
@@ -135,9 +142,19 @@ function SidePanel({ fields }: { children: React.ReactNode; fields: Partial<Reco
   )
 }
 
+const SCREENS_BAR: [string, number][] = [['Desktop', 1440], ['Tablet', 1024], ['Phone', 390]]
+const DESKTOP_WIDTHS = [1280, 1440, 1920]
+const time = () => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+
+// The top bar: the project, the screen size being edited, undo and redo, where the work stands,
+// and the three steps that matter: preview, save a draft, publish.
 function Actions() {
-  const { p, token, setToken, setNotice, markClean, clean } = useContext(SessionContext)!
+  const { p, token, setToken, setNotice, notice, markClean, clean } = useContext(SessionContext)!
   const data = usePuck((s) => s.appState.data)
+  const history = usePuck((s) => s.history)
+  const [saved, setSaved] = useState<{ json: string; text: string } | null>(null)
+  const [preview, setPreview] = useState(false)
+  const { select } = useContext(Selection)
   useEffect(() => { if (clean.current === '') clean.current = JSON.stringify(data) }, [data, clean])
   const dispatch = usePuck((s) => s.dispatch)
   const [busy, setBusy] = useState('')
@@ -163,6 +180,27 @@ function Actions() {
   const [more, setMore] = useState(false)
   const choose = (action: () => void) => () => { setMore(false); action() }
   const warnings = layoutWarnings(data.content as never)
+  const json = JSON.stringify(data)
+  const unsaved = clean.current !== '' && json !== clean.current && json !== saved?.json
+  const status = saved && json === saved.json ? saved.text : unsaved ? 'Unsaved changes' : 'No unsaved changes'
+  const showWidth = (width: number) => dispatch({ type: 'setUi', ui: { viewports: { ...ui.viewports, current: { width, height: 'auto' } } } })
+  // Preview hides every editing mark and panel, so the page looks exactly as visitors see it.
+  const before = useRef<{ left: boolean; right: boolean } | null>(null)
+  const togglePreview = () => {
+    const doc = (document.getElementById('preview-frame') as HTMLIFrameElement | null)?.contentDocument
+    if (!preview) {
+      before.current = { left: ui.leftSideBarVisible, right: ui.rightSideBarVisible }
+      dispatch({ type: 'setUi', ui: { leftSideBarVisible: false, rightSideBarVisible: false, itemSelector: null } })
+      doc?.documentElement.setAttribute('data-preview', '')
+      document.body.classList.add('is-preview')
+      select(null)
+    } else {
+      dispatch({ type: 'setUi', ui: { leftSideBarVisible: before.current?.left ?? false, rightSideBarVisible: before.current?.right ?? true } })
+      doc?.documentElement.removeAttribute('data-preview')
+      document.body.classList.remove('is-preview')
+    }
+    setPreview(!preview)
+  }
 
   const run = async (label: string, task: () => Promise<string>) => {
     setBusy(label)
@@ -187,8 +225,9 @@ function Actions() {
   })
 
   const saveDraft = () => run('Saving the draft', async () => {
-    if (DEMO) { writeLocal(localKey(p.slug, 'draft'), data); return `Draft saved in this browser (${stamp()}). In the real editor it is saved to the drafts branch; nothing is published.` }
+    if (DEMO) { writeLocal(localKey(p.slug, 'draft'), data); setSaved({ json: JSON.stringify(data), text: `Draft saved at ${time()}` }); return `Draft saved in this browser (${stamp()}). In the real editor it is saved to the drafts branch; nothing is published.` }
     await github.writeLayout(needToken(), p.slug, data, github.DRAFTS, `Design editor: draft for ${p.slug}`)
+    setSaved({ json: JSON.stringify(data), text: `Draft saved at ${time()}` })
     return `Draft saved (${stamp()}). Nothing is published until you choose Publish.`
   })
 
@@ -199,6 +238,7 @@ function Actions() {
       writeLocal(localKey(p.slug, 'versions'), [{ id: String(Date.now()), date: new Date().toISOString(), message: 'Published (demo)', layout: data }, ...list].slice(0, 30))
       removeLocal(localKey(p.slug, 'unsaved'))
       clean.current = JSON.stringify(data)
+      setSaved({ json: clean.current, text: `Published at ${time()}` })
       return 'Published in this demo only. In the real editor this saves the page and the test site updates in about a minute, after the usual checks.'
     }
     const edits = (data.root.props as { edits?: Edits } | undefined)?.edits ?? {}
@@ -210,6 +250,7 @@ function Actions() {
     else await github.writeLayout(needToken(), p.slug, layout, github.MAIN, `Design editor: publish layout for ${p.slug}`)
     removeLocal(localKey(p.slug, 'unsaved'))
     clean.current = JSON.stringify(data)
+    setSaved({ json: clean.current, text: `Published at ${time()}` })
     return 'Published. The test site updates in about a minute, after the usual checks. If a check fails, the site stays as it was and you get the usual email.'
   })
 
@@ -244,22 +285,61 @@ function Actions() {
   }
 
   return (
-    <div className="editor-actions">
-      <select className="editor-project" aria-label="Project to edit" value={p.slug} onChange={(e) => { location.search = `?project=${e.target.value}` }}>
-        {caseStudies.map((x) => <option key={x.slug} value={x.slug}>{x.title}</option>)}
-      </select>
-      {warnings.length > 0 && <span className="editor-flag" title={warnings.join(' ')}>{warnings.length} check{warnings.length > 1 ? 's' : ''} to look at</span>}
-      {DEMO ? <span className="editor-flag">Demo: saves in this browser only</span> : !token && <button type="button" onClick={signIn} disabled={!!busy}>Sign in with GitHub</button>}
-      <button type="button" className="editor-add" aria-pressed={!!ui.leftSideBarVisible} onClick={() => dispatch({ type: 'setUi', ui: { leftSideBarVisible: !ui.leftSideBarVisible } })}>Add & arrange</button>
-      <button type="button" className="editor-more-toggle" aria-expanded={more} onClick={() => setMore(!more)}>More</button>
-      <div className={more ? 'editor-more open' : 'editor-more'}>
-        <button type="button" onClick={choose(openHistory)} disabled={!!busy}>Versions</button>
-        <button type="button" onClick={choose(() => setPanel('reset'))} disabled={!!busy}>Standard layout</button>
-        <button type="button" onClick={choose(discardUnsaved)} disabled={!!busy}>Discard unsaved changes</button>
+    <header className="editor-bar">
+      <div className="editor-bar-start">
+        <span className="editor-brand">Design editor</span>
+        {DEMO && <span className="editor-chip" title="Everything works, but saving and publishing stay in this browser.">Demo</span>}
+        <label className="editor-field"><span className="sr-only">Project</span>
+          <select className="editor-project" value={p.slug} onChange={(e) => { location.search = `?project=${e.target.value}` }}>
+            {caseStudies.map((x) => <option key={x.slug} value={x.slug}>{x.title}</option>)}
+          </select>
+        </label>
       </div>
-      <button type="button" onClick={saveDraft} disabled={!!busy}>Save draft</button>
-      <button type="button" className="editor-primary" onClick={openPublish} disabled={!!busy}>Publish</button>
-      {busy && <span className="editor-flag" role="status">{busy}…</span>}
+
+      <div className="editor-bar-middle" role="group" aria-label="Screen size you are editing">
+        <div className="editor-screens">
+          {SCREENS_BAR.map(([name, width]) => {
+            const current = Number(ui.viewports.current.width)
+            const on = name === 'Desktop' ? current >= 1280 : name === 'Tablet' ? current >= 900 && current < 1280 : current < 900
+            return <button key={name} type="button" aria-pressed={on} onClick={() => showWidth(width)}>{name}</button>
+          })}
+        </div>
+        {Number(ui.viewports.current.width) >= 1280 && (
+          <label className="editor-field editor-width"><span className="sr-only">Desktop width</span>
+            <select value={Number(ui.viewports.current.width)} onChange={(e) => showWidth(Number(e.target.value))}>
+              {DESKTOP_WIDTHS.map((w) => <option key={w} value={w}>{w} px wide</option>)}
+            </select>
+          </label>
+        )}
+      </div>
+
+      <div className="editor-bar-end">
+        <div className="editor-history">
+          <button type="button" onClick={history.back} disabled={!history.hasPast} title="Undo (Cmd+Z)" aria-label="Undo"><span aria-hidden="true">↶</span><span className="editor-word"> Undo</span></button>
+          <button type="button" onClick={history.forward} disabled={!history.hasFuture} title="Redo (Cmd+Shift+Z)" aria-label="Redo"><span aria-hidden="true">↷</span><span className="editor-word"> Redo</span></button>
+        </div>
+        <span className={`editor-status${unsaved ? ' is-unsaved' : ''}`} role="status" title={unsaved ? 'Kept safely in this browser. Save a draft or publish when ready.' : undefined}>{busy ? `${busy}…` : status}</span>
+        <button type="button" className="editor-quiet editor-preview" aria-pressed={preview} onClick={togglePreview}>{preview ? 'Back to editing' : 'Preview'}</button>
+        <div className="editor-more-wrap">
+          <button type="button" className="editor-quiet" aria-expanded={more} aria-haspopup="true" onClick={() => setMore(!more)}>More <span aria-hidden="true">▾</span></button>
+          <div className={more ? 'editor-more open' : 'editor-more'}>
+            <button type="button" onClick={choose(openHistory)} disabled={!!busy}>Versions <small>bring back an earlier version</small></button>
+            <button type="button" onClick={choose(discardUnsaved)} disabled={!!busy || !unsaved}>Discard unsaved changes <small>go back to the published page</small></button>
+            <button type="button" onClick={choose(() => setPanel('reset'))} disabled={!!busy}>Standard layout <small>start again from the template</small></button>
+          </div>
+        </div>
+        {!DEMO && !token && <button type="button" className="editor-signin" onClick={signIn} disabled={!!busy}>Sign in</button>}
+        <button type="button" className="editor-save" onClick={saveDraft} disabled={!!busy} title="Saves without changing the website">Save<span className="editor-long"> draft</span></button>
+        <button type="button" className="editor-primary" onClick={openPublish} disabled={!!busy} title="Checks the page, then updates the website">Publish</button>
+      </div>
+      {warnings.length > 0 && <p className="editor-demo editor-checks">{warnings.join(' ')}</p>}
+      {notice.text && (
+        <div className="editor-notice" role="status">
+          <p>{notice.text}</p>
+          {notice.undo && <button type="button" onClick={() => { history.back(); setNotice('') }}>Undo</button>}
+          <button type="button" onClick={() => setNotice('')}>Close</button>
+        </div>
+      )}
 
       {panel === 'publish' && (
         <Panel title="Publish this page?" onClose={() => setPanel('')}>
@@ -298,7 +378,7 @@ function Actions() {
           ) : <p>No saved versions yet: the page uses the standard layout.</p>}
         </Panel>
       )}
-    </div>
+    </header>
   )
 }
 

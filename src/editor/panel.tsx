@@ -191,6 +191,17 @@ export function ElementPanel({ value, onChange, p }: { value: Elements | undefin
 // The section's single elements, as a list: another way to select one, also by keyboard.
 function Parts({ blockId }: { blockId?: string }) {
   const { select } = useContext(Selection)
+  const item = usePuck((s) => s.selectedItem)
+  const dispatch = usePuck((s) => s.dispatch)
+  const getSelectorForId = usePuck((s) => s.getSelectorForId)
+  const design = ((item?.props as { design?: { background?: Colour } })?.design ?? {}) as { background?: Colour }
+  const setBackground = (background: Colour | undefined) => {
+    const at = item && getSelectorForId(item.props.id as string)
+    if (!item || !at) return
+    const next = { ...design, background }
+    if (!background) delete next.background
+    dispatch({ type: 'replace', destinationIndex: at.index, destinationZone: at.zone, data: { ...item, props: { ...item.props, design: next } } as never })
+  }
   const [parts, setParts] = useState<{ key: string; field?: string }[]>([])
   useEffect(() => {
     const doc = canvas()
@@ -202,15 +213,21 @@ function Parts({ blockId }: { blockId?: string }) {
       return [{ key: el.dataset.el!, field: el.dataset.edit }]
     }))
   }, [blockId])
-  if (!parts.length) return null
   return (
     <div className="el-panel">
-      <p className="el-note">Click anything on the page to change it, or choose a part here. Double-click words on the page to edit them.</p>
-      <Group title="Parts of this section">
-        <ul className="el-parts">
-          {parts.map((part) => <li key={part.key}><button type="button" onClick={() => select({ key: part.key, blockId: blockId!, field: part.field })}>{nameOf(part.key)}</button></li>)}
-        </ul>
+      <p className="el-note">Click anything on the page to change it{parts.length ? ', or choose a part here' : ''}. Double-click words on the page to edit them. Drag the section's label bar to move the whole section.</p>
+      <Group title="Section background">
+        <Row label="Background" from={design.background ? 'here' : 'design'} onReset={() => setBackground(undefined)}>
+          <Swatches value={design.background} onChange={setBackground} />
+        </Row>
       </Group>
+      {parts.length > 0 && (
+        <Group title="Parts of this section">
+          <ul className="el-parts">
+            {parts.map((part) => <li key={part.key}><button type="button" onClick={() => select({ key: part.key, blockId: blockId!, field: part.field })}>{nameOf(part.key)}</button></li>)}
+          </ul>
+        </Group>
+      )}
     </div>
   )
 }
@@ -294,7 +311,7 @@ function FloatingToolbar({ look, canType }: { look: ReturnType<typeof useLook>; 
         const scale = f.width / (el.ownerDocument.documentElement.clientWidth || 1)
         const r = el.getBoundingClientRect()
         const top = f.top + r.top * scale - bar.offsetHeight - 30
-        const left = Math.min(Math.max(f.left + r.left * scale, f.left + 8), f.right - bar.offsetWidth - 8)
+        const left = Math.max(8, Math.min(Math.max(f.left + r.left * scale, f.left + 8), Math.min(f.right, innerWidth) - bar.offsetWidth - 8))
         const below = f.top + r.bottom * scale + 12
         const visible = r.bottom * scale > 0 && r.top * scale < f.height
         Object.assign(bar.style, { top: `${top < f.top + 4 ? below : top}px`, left: `${left}px`, visibility: visible ? 'visible' : 'hidden' })

@@ -218,7 +218,9 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     const tagOf = (n: HTMLElement) => n.querySelector<HTMLElement>('.el-tag')!
     const hide = (n: HTMLElement | null) => { if (n) n.style.display = 'none' }
 
+    const previewing = () => html.hasAttribute('data-preview')
     const onPointerMove = (e: PointerEvent) => {
+      if (previewing()) return
       if (doc.querySelector('.el-typing') || (e.target as HTMLElement).closest?.('.el-frame')) { hide(doc.querySelector('.el-hover')); html.removeAttribute('data-el-over'); return }
       const el = elementAt(e.clientX, e.clientY)
       if (!el || el.hasAttribute('data-el-selected')) {
@@ -234,6 +236,7 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     const onPointerLeave = () => { hide(doc.querySelector('.el-hover')); html.removeAttribute('data-el-over') }
 
     const onClick = (e: MouseEvent) => {
+      if (previewing()) return
       if ((e.target as HTMLElement).closest?.('.el-frame')) return
       const el = elementAt(e.clientX, e.clientY)
       // A click on an empty part of a section selects the section itself.
@@ -290,6 +293,7 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       box.addEventListener('blur', () => finish(true))
     }
     const onDoubleClick = (e: MouseEvent) => {
+      if (previewing()) return
       const el = elementAt(e.clientX, e.clientY)
       if (!el?.dataset.edit) return
       e.preventDefault()
