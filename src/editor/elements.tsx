@@ -202,14 +202,25 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     const pagePixels = (n: number) => n / scale()
     const rootSize = () => parseFloat(view.getComputedStyle(html).fontSize) || 16
 
+    // Words are framed tightly; a heading that spans the column is outlined around its words only.
+    const visualBox = (el: HTMLElement) => {
+      const box = el.getBoundingClientRect()
+      if (!el.dataset.edit || [...el.children].some((c) => view.getComputedStyle(c).display !== 'inline')) return box
+      const range = doc.createRange()
+      range.selectNodeContents(el)
+      const words = range.getBoundingClientRect()
+      if (!words.width) return box
+      const left = Math.max(box.left, words.left)
+      return { left, top: box.top, width: Math.max(Math.min(box.right, words.right) - left, 8), height: box.height, bottom: box.bottom, right: Math.min(box.right, words.right) }
+    }
     // Puck switches off pointer events inside blocks while editing, so find the element by
-    // position: the smallest marked element under the pointer.
+    // position: the smallest marked element under the pointer, judged by what you can see of it.
     const elementAt = (x: number, y: number) => {
       let best: HTMLElement | undefined
       let bestArea = Infinity
       for (const el of doc.querySelectorAll<HTMLElement>('[data-el]')) {
-        const r = el.getBoundingClientRect()
-        if (x < r.left || x > r.right || y < r.top || y > r.bottom || !r.width) continue
+        const r = visualBox(el)
+        if (x < r.left || x > r.left + r.width || y < r.top || y > r.top + r.height || !r.width) continue
         if (r.width * r.height < bestArea) { best = el; bestArea = r.width * r.height }
       }
       return best
@@ -229,17 +240,6 @@ export function useCanvasEditing(p: Project, edits: Edits) {
         doc.body.append(n)
       }
       return n
-    }
-    // Words are framed tightly; a heading that spans the column is outlined around its words only.
-    const visualBox = (el: HTMLElement) => {
-      const box = el.getBoundingClientRect()
-      if (!el.dataset.edit || [...el.children].some((c) => view.getComputedStyle(c).display !== 'inline')) return box
-      const range = doc.createRange()
-      range.selectNodeContents(el)
-      const words = range.getBoundingClientRect()
-      if (!words.width) return box
-      const left = Math.max(box.left, words.left)
-      return { left, top: box.top, width: Math.max(Math.min(box.right, words.right) - left, 8), height: box.height, bottom: box.bottom, right: Math.min(box.right, words.right) }
     }
     const place = (n: HTMLElement, el: HTMLElement) => {
       const r = visualBox(el)

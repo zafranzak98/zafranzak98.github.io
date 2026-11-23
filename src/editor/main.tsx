@@ -179,7 +179,9 @@ function Actions() {
   const warnings = layoutWarnings(data.content as never)
   const renames = categoryEdits(((data.root.props as { edits?: Edits } | undefined)?.edits) ?? {}).map(([field, to]) => [field.match(CATEGORY_FIELD)![1], to] as const)
   const json = JSON.stringify(data)
-  const unsaved = clean.current !== '' && json !== clean.current && json !== saved?.json
+  // Different from the published page (a saved draft still counts), and not yet saved anywhere.
+  const unpublished = clean.current !== '' && json !== clean.current
+  const unsaved = unpublished && json !== saved?.json
   const status = saved && json === saved.json ? saved.text : unsaved ? 'Unsaved changes' : 'No unsaved changes'
   const showWidth = (width: number) => dispatch({ type: 'setUi', ui: { viewports: { ...ui.viewports, current: { width, height: 'auto' } } } })
   // Preview hides every editing mark and panel, so the page looks exactly as visitors see it.
@@ -330,7 +332,7 @@ function Actions() {
           <button type="button" className="editor-quiet" aria-expanded={more} aria-haspopup="true" onClick={() => setMore(!more)}>More <span aria-hidden="true">▾</span></button>
           <div className={more ? 'editor-more open' : 'editor-more'}>
             <button type="button" onClick={choose(openHistory)} disabled={!!busy}>Versions <small>bring back an earlier version</small></button>
-            <button type="button" onClick={choose(discardUnsaved)} disabled={!!busy || !unsaved}>Discard unsaved changes <small>go back to the published page</small></button>
+            <button type="button" onClick={choose(discardUnsaved)} disabled={!!busy || !unpublished}>Discard changes <small>go back to the published page</small></button>
             <button type="button" onClick={choose(() => setPanel('reset'))} disabled={!!busy}>Standard layout <small>start again from the template</small></button>
           </div>
         </div>

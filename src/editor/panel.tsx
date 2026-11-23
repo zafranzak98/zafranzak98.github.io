@@ -122,7 +122,12 @@ export function ContextBar() {
     </button>
   )
   // Moves and other news appear here briefly; otherwise, off Desktop, a reminder of which size you are changing.
-  const where = message ? <span className="ctx-live">{message}</span> : screen !== 'desktop' ? <span className="ctx-where"><span className="ctx-long">Changes apply to </span>{SCREEN_LABEL[screen]} only</span> : null
+  const where = (
+    <>
+      {message && <span className="ctx-live">{message}</span>}
+      {screen !== 'desktop' && <span className="ctx-where"><span className="ctx-long">Changes apply to </span>{SCREEN_LABEL[screen]} only</span>}
+    </>
+  )
   const live = <span className="sr-only" role="status" aria-live="polite">{message}</span>
 
   // Nothing selected: what to do first, and the two ways to change the page's structure.
