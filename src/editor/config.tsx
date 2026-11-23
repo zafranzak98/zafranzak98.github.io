@@ -5,8 +5,6 @@ import * as caseBlocks from '#/layout/case-blocks'
 import { COLOURS, SPACES, designWarnings, type Design } from '#/layout/design'
 import { CellBlock, GridBlock, ImageBlock, SpacerBlock, TextBlock } from '#/layout/free-blocks'
 import { CaseFrame } from '#/layout/render'
-import { Editing, type Elements } from '#/layout/elements'
-import { ElementPanel, applyEdits, useCanvasEditing, type Edits } from './elements'
 
 // The design editor's building blocks: the website's own blocks (src/layout), plus the controls
 // shown for each. Adding a block here makes it available in the editor for every page.
@@ -60,13 +58,6 @@ function block(label: string, Render: (props: any) => React.ReactNode, extra: Re
   } as ComponentConfig
 }
 
-// Settings for single elements inside a block, shown for the element clicked on the page.
-const elementsField = (p: Project) => ({
-  type: 'custom',
-  label: 'Selected element',
-  render: ({ value, onChange }: { value: Elements | undefined; onChange: (v: Elements) => void }) => <ElementPanel value={value} onChange={onChange} p={p} />,
-})
-
 const photos = Object.keys(imageWidths).sort()
 const ratioOptions = [{ label: 'Its own shape', value: 'auto' }, { label: 'Square', value: '1/1' }, { label: 'Portrait 4:5', value: '4/5' }, { label: 'Portrait 3:4', value: '3/4' }, { label: 'Tall 9:16', value: '9/16' }, { label: 'Landscape 16:9', value: '16/9' }, { label: 'Wide 21:9', value: '21/9' }]
 const SIZES = [['Small', 'small'], ['Medium', 'medium'], ['Large', 'large'], ['Extra large', 'xlarge']].map(([label, value]) => ({ label, value }))
@@ -77,7 +68,7 @@ export function editorConfig(p: Project): Config {
     root: {
       fields: {},
       // The page itself: the same frame the website uses, so the canvas is the real page.
-      render: ({ children, edits }: { children: React.ReactNode; edits?: Edits }) => <EditorFrame p={p} edits={edits ?? {}}>{children}</EditorFrame>,
+      render: ({ children }: { children: React.ReactNode }) => <EditorFrame p={p}>{children}</EditorFrame>,
     },
     categories: {
       page: { title: 'This project (content from the website editor)', components: ['CategoryNav', 'Opening', 'Facts', 'SectionNav', 'Gap', 'Overview', 'Research', 'Work', 'Outcomes', 'AlsoIn', 'PrevNext'] },
@@ -85,19 +76,18 @@ export function editorConfig(p: Project): Config {
     },
     components: {
       CategoryNav: block('Category list', caseBlocks.CategoryNav),
-      Opening: block('Opening', caseBlocks.Opening, { fields: { elements: elementsField(p) } }),
-      Facts: block('Facts', caseBlocks.Facts, { fields: { elements: elementsField(p) } }),
+      Opening: block('Opening', caseBlocks.Opening),
+      Facts: block('Facts', caseBlocks.Facts),
       SectionNav: block('Section bar', caseBlocks.SectionNav),
       Gap: block('Gap before sections', caseBlocks.Gap),
-      Overview: block('Overview', caseBlocks.Overview, { fields: { elements: elementsField(p) } }),
-      Research: block('Research & thinking', caseBlocks.Research, { fields: { elements: elementsField(p) } }),
-      Work: block('The work', caseBlocks.Work, { fields: { elements: elementsField(p) } }),
-      Outcomes: block('Outcomes', caseBlocks.Outcomes, { fields: { elements: elementsField(p) } }),
-      AlsoIn: block('Also in this category', caseBlocks.AlsoIn, { fields: { elements: elementsField(p) } }),
+      Overview: block('Overview', caseBlocks.Overview),
+      Research: block('Research & thinking', caseBlocks.Research),
+      Work: block('The work', caseBlocks.Work),
+      Outcomes: block('Outcomes', caseBlocks.Outcomes),
+      AlsoIn: block('Also in this category', caseBlocks.AlsoIn),
       PrevNext: block('Previous and next', caseBlocks.PrevNext),
       Text: block('Text', TextBlock, {
         fields: {
-          elements: elementsField(p),
           kicker: { type: 'text', label: 'Small label above' },
           heading: { type: 'text', label: 'Heading' },
           headingLevel: { type: 'radio', label: 'Heading level', options: [{ label: 'Section', value: 'h2' }, { label: 'Sub-section', value: 'h3' }] },
@@ -108,7 +98,6 @@ export function editorConfig(p: Project): Config {
       }),
       Image: block('Image', ImageBlock, {
         fields: {
-          elements: elementsField(p),
           image: { type: 'select', label: 'Photo', options: [{ label: 'Choose a photo', value: '' }, ...photos.map((path) => ({ label: path.replace('/media/', ''), value: path }))] },
           alt: { type: 'text', label: 'Description (what the photo shows)' },
           caption: { type: 'text', label: 'Caption' },
@@ -154,15 +143,9 @@ export function editorConfig(p: Project): Config {
 
 // The real page frame inside the editor, kept up to date with the blocks being arranged.
 const usePuck = createUsePuck()
-function EditorFrame({ p, edits, children }: { p: Project; edits: Edits; children: React.ReactNode }) {
+function EditorFrame({ p, children }: { p: Project; children: React.ReactNode }) {
   const content = usePuck((s) => s.appState.data.content) as never
-  const anchor = useCanvasEditing(p, edits)
-  return (
-    <Editing.Provider value={true}>
-      <span ref={anchor} hidden />
-      <CaseFrame p={applyEdits(p, edits)} content={content}>{children}</CaseFrame>
-    </Editing.Provider>
-  )
+  return <CaseFrame p={p} content={content}>{children}</CaseFrame>
 }
 
 // Images placed in the editor need a description, as on the rest of the site.

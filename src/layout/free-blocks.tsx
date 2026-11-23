@@ -2,7 +2,6 @@ import type { CSSProperties, ComponentType, ReactNode } from 'react'
 import { Media } from '#/components/media'
 import { Rich } from '#/components/rich'
 import { designProps, type Design } from './design'
-import { useElement, type Elements } from './elements'
 import { RenderItems, type Item } from './render'
 
 // Blocks for your own content, placed anywhere on a page: text, an image, a grid that places
@@ -18,29 +17,27 @@ function SlotContent({ slot, className, style }: { slot?: Slot; className?: stri
   return <div className={className} style={style}><RenderItems items={slot} /></div>
 }
 
-export function TextBlock({ kicker, heading, headingLevel = 'h2', text, size = 'body', design, elements }: {
-  kicker?: string; heading?: string; headingLevel?: 'h2' | 'h3'; text?: string; size?: 'body' | 'lead' | 'statement'; design?: Design; elements?: Elements
+export function TextBlock({ kicker, heading, headingLevel = 'h2', text, size = 'body', design }: {
+  kicker?: string; heading?: string; headingLevel?: 'h2' | 'h3'; text?: string; size?: 'body' | 'lead' | 'statement'; design?: Design
 }) {
-  const el = useElement(elements)
   const H = headingLevel
   const textClass = size === 'lead' ? 'lead' : size === 'statement' ? 'free-statement' : 'body-text'
   return (
     <div {...designProps(design, 'free-block free-text')}>
-      {kicker && <span {...el('kicker', { className: 'lab', field: 'prop:kicker' })}>{kicker}</span>}
-      {heading && <H {...el('heading', { className: 'c free-heading', field: 'prop:heading' })}>{heading}</H>}
-      {text && <p {...el('text', { className: textClass, field: 'prop:text' })}><Rich text={text} highlight /></p>}
+      {kicker && <span className="lab">{kicker}</span>}
+      {heading && <H className="c free-heading">{heading}</H>}
+      {text && <p className={textClass}><Rich text={text} highlight /></p>}
     </div>
   )
 }
 
-export function ImageBlock({ image, alt, caption, ratio = 'auto', focusX = 50, focusY = 50, design, elements }: {
-  image?: string; alt?: string; caption?: string; ratio?: string; focusX?: number; focusY?: number; design?: Design; elements?: Elements
+export function ImageBlock({ image, alt, caption, ratio = 'auto', focusX = 50, focusY = 50, design }: {
+  image?: string; alt?: string; caption?: string; ratio?: string; focusX?: number; focusY?: number; design?: Design
 }) {
-  const el = useElement(elements)
   return (
     <figure {...designProps(design, 'free-block free-image')}>
       <Media img={{ image, alt }} ratio={ratio} focus={`${focusX}% ${focusY}%`} label={alt || 'image'} sizes="(max-width: 899px) 100vw, 75vw" />
-      {caption && <figcaption {...el('caption', { className: 'cap', field: 'prop:caption' })}><Rich text={caption} /></figcaption>}
+      {caption && <figcaption className="cap"><Rich text={caption} /></figcaption>}
     </figure>
   )
 }
