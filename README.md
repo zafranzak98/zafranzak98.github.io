@@ -101,14 +101,17 @@ Checked before launch and on every significant change, and reported with the res
 
 Largest Contentful Paint and Cumulative Layout Shift use Google's "good" Core Web Vitals thresholds (web.dev/articles/vitals), which Google applies to real visits at the 75th percentile; here they are applied to lab measurements. The third Core Web Vital, Interaction to Next Paint (INP, good at 200 ms or less), needs real interactions and cannot be measured by Lighthouse, so Total Blocking Time stands in for it in the lab. The page-weight and script limits are this project's own, chosen from the baseline with room for new work.
 
-**Published test site (PageSpeed Insights, Lighthouse 13.6, one run each, 23 Nov 2026, 12:05)**
+**Published test site (PageSpeed Insights, Lighthouse 13.6, one run each, 23 Nov 2026). Lab measurements, not real-visitor data: PageSpeed shows "No Data" for real users so far.**
 
-| Page | Form | Performance | LCP | TBT | CLS | Accessibility |
+| Page (time captured) | Form | Performance | LCP | TBT | CLS | Accessibility |
 |---|---|---|---|---|---|---|
-| Home | Mobile | 95 | 1.2 s | 0 ms | 0.107 (over 0.1) | 100 |
-| Home | Desktop | 99 | 0.2 s | 0 ms | 0.061 | 100 |
+| Home (12:05) | Mobile | 95 | 1.2 s | 0 ms | 0.107 (over 0.1) | 100 |
+| Home (12:05) | Desktop | 99 | 0.2 s | 0 ms | 0.061 | 100 |
+| Projects (12:29, timing uncertain: the loading fixes went live at 12:28) | Mobile | 91 | 2.0 s | 0 ms | 0.15 | not recorded |
+| Cancel Me, Not! (12:29, timing uncertain) | Mobile | 98 | 2.0 s | 0 ms | 0 | not recorded |
+| Projects (12:34, after the loading fixes) | Mobile | 99 | 2.0 s | 0 ms | 0.00 | 95 |
 
-SEO scores 66 on the test site because it deliberately asks search engines not to index it until launch. Projects and Cancel Me, Not! are still to be measured on the published site.
+SEO scores 66 on the test site because it deliberately asks search engines not to index it until launch. One run each, so a single figure can vary; the Projects result after the fixes is one run, not yet a consistent pattern. Cancel Me, Not! is still to be measured after the fixes.
 
 **Accessibility exception.** AF-Binary and Evoke deliberately show small text directly on Sage at 4.27:1 (approved 22 Nov 2026), below WCAG 2.2 AA's 4.5:1 for small text. While it stands, the site does not fully meet WCAG 2.2 AA.
 
