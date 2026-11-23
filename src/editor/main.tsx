@@ -32,7 +32,8 @@ const usePuck = createUsePuck()
 const localKey = (slug: string, kind: string) => `design-editor:${slug}:${kind}`
 type Version = { id: string; date: string; message: string; layout?: Data }
 const readLocal = <T,>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(key) ?? '') as T } catch { return fallback } }
-const writeLocal = (key: string, value: unknown) => { try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* storage full or blocked: work continues */ } }
+// Returns false when the browser would not keep it (storage full or blocked); work continues.
+const writeLocal = (key: string, value: unknown) => { try { localStorage.setItem(key, JSON.stringify(value)); return true } catch { return false } }
 const removeLocal = (key: string) => { try { localStorage.removeItem(key) } catch { /* nothing to remove */ } }
 
 function startingLayout(p: Project): { data: Data; restored: boolean } {
@@ -83,22 +84,47 @@ function EditorApp() {
     }, () => { /* offline or GitHub unavailable: keep the sign-in and try again on the next save */ })
     return () => { live = false }
   }, [token])
-  const [notice, setNoticeState] = useState<Notice>(start.restored ? { text: 'Your unsaved changes from last time are back. Undo removes them one by one, or choose More, then "Discard unsaved changes".' } : { text: '' })
+  const [notice, setNoticeState] = useState<Notice>(start.restored ? { text: 'Your changes from last time are back, exactly as you left them. To go back to the published page instead, choose More, then Discard changes (Undo brings them back again).' } : { text: '' })
   const setNotice = (text: string, undo = false) => setNoticeState({ text, undo })
   const saveTimer = useRef<number>(undefined)
   // The page as published, in the form the editor holds it; matching it means nothing is unsaved.
   // '' means "take the next state the editor shows as the published one".
   const clean = useRef<string | null>(start.restored ? null : '')
 
-  // Keep unsaved work in this browser, a moment after each change.
-  const onChange = (data: Data) => {
+  // Keep unsaved work in this browser, a moment after each change, and at once if the tab is being
+  // closed, reloaded or hidden, so the last change is never lost. If the browser will not keep it,
+  // the status says so and closing the tab asks first.
+  const latestData = useRef<Data | null>(null)
+  const [keptHere, setKeptHere] = useState(true)
+  const keep = () => {
     window.clearTimeout(saveTimer.current)
+    const data = latestData.current
+    if (!data) return
     const json = JSON.stringify(data)
-    saveTimer.current = window.setTimeout(() => {
-      if (json === clean.current) removeLocal(localKey(p.slug, 'unsaved'))
-      else writeLocal(localKey(p.slug, 'unsaved'), data)
-    }, 400)
+    if (json === clean.current) { removeLocal(localKey(p.slug, 'unsaved')); setKeptHere(true) }
+    else setKeptHere(writeLocal(localKey(p.slug, 'unsaved'), data))
   }
+  const onChange = (data: Data) => {
+    latestData.current = data
+    window.clearTimeout(saveTimer.current)
+    saveTimer.current = window.setTimeout(keep, 400)
+  }
+  useEffect(() => {
+    const now = () => keep()
+    const hidden = () => { if (document.visibilityState === 'hidden') keep() }
+    window.addEventListener('pagehide', now)
+    document.addEventListener('visibilitychange', hidden)
+    return () => { window.removeEventListener('pagehide', now); document.removeEventListener('visibilitychange', hidden) }
+  })
+  // The same page open in another tab of this browser: both keep their unsaved work in one place,
+  // so say so rather than let one tab quietly replace the other's.
+  const [elsewhere, setElsewhere] = useState(false)
+  useEffect(() => {
+    const other = (e: StorageEvent) => { if (e.key === localKey(p.slug, 'unsaved') && e.newValue) setElsewhere(true) }
+    window.addEventListener('storage', other)
+    return () => window.removeEventListener('storage', other)
+  }, [p.slug])
+  useEffect(() => { if (elsewhere) setNotice('This page was also changed in another tab of this browser. Keep working in one tab: the last tab to change it is the one kept if you reload.') }, [elsewhere])
 
   useEffect(labelPuckControls, [])
 
@@ -119,13 +145,15 @@ function EditorApp() {
     setLogin('')
     setNotice('Signed out of both editors in this browser. If the website editor (/admin) is open in another tab, close or reload it too. To cancel the sign-in at GitHub as well, open GitHub, Settings, Applications, and revoke "Zafran website editor (Sveltia CMS)".')
   }
-  const actions = useMemo(() => ({ p, token, setToken, setNotice, notice, markClean: () => { clean.current = '' }, clean, login, shared: !!account?.shared, expire, signOut }), [p, token, notice, login, account])
+  const actions = useMemo(() => ({ p, token, setToken, setNotice, notice, markClean: () => { clean.current = '' }, clean, login, shared: !!account?.shared, expire, signOut, keptHere }), [p, token, notice, login, account, keptHere])
   return (
     <SessionContext.Provider value={actions}>
       <SelectionProvider>
       <Puck
         config={config}
         data={start.data}
+        // The page as opened is the first step of Undo, also when it was restored from last time.
+        initialHistory={{ histories: [{ state: { data: start.data } }], index: 0, appendData: false }}
         onChange={onChange}
         headerTitle="Design editor"
         dictionary={{ 'outline-header-title': 'Page navigator', 'plugin-outline': 'Page navigator' }}
@@ -147,7 +175,7 @@ function EditorApp() {
 }
 
 type Notice = { text: string; undo?: boolean }
-type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string, undo?: boolean) => void; notice: Notice; markClean: () => void; clean: { current: string | null }; login: string; shared: boolean; expire: (t: string) => boolean; signOut: () => void }
+type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string, undo?: boolean) => void; notice: Notice; markClean: () => void; clean: { current: string | null }; login: string; shared: boolean; expire: (t: string) => boolean; signOut: () => void; keptHere: boolean }
 
 // The left-hand tools, named for what they do.
 const PLUGINS = [{ ...blocksPlugin(), label: 'Add section', icon: <PlusIcon /> }, outlinePlugin({ label: 'Page navigator', icon: <LayersIcon /> }), { ...fieldsPlugin(), label: 'Settings', icon: <SlidersIcon /> }]
@@ -184,12 +212,13 @@ function SidePanel({ fields }: { children: React.ReactNode; fields: Partial<Reco
 const SCREEN_NAME = { desktop: 'Desktop', tablet: 'Tablet', phone: 'Phone' } as const
 const SCREENS_BAR: [string, number][] = [['Desktop', 1440], ['Tablet', 1024], ['Phone', 390]]
 const DESKTOP_WIDTHS = [1280, 1440, 1920]
-const time = () => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+// "23 Nov, 14:40": the day is included because the status is remembered across reloads.
+const time = () => new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 // The top bar: the project, the screen size being edited, undo and redo, where the work stands,
 // and the three steps that matter: preview, save a draft, publish.
 function Actions() {
-  const { p, token, setToken, setNotice, notice, markClean, clean, login, shared, expire, signOut } = useContext(SessionContext)!
+  const { p, token, setToken, setNotice, notice, markClean, clean, login, shared, expire, signOut, keptHere } = useContext(SessionContext)!
   const data = usePuck((s) => s.appState.data)
   const history = usePuck((s) => s.history)
   // What one step back or forward changes, in words (shown on the buttons and after undoing).
@@ -207,8 +236,18 @@ function Actions() {
     else if (history.index === was.index + 1) setUndone(`Redone: ${describeStep(pageAt(history.index - 1), pageAt(history.index))}.`)
   }, [history.index, history.histories.length])
   useEffect(() => { if (!undone) return; const t = setTimeout(() => setUndone(''), 4000); return () => clearTimeout(t) }, [undone])
-  const [saved, setSaved] = useState<{ json: string; text: string } | null>(null)
+  // The last confirmed save, remembered across reloads so a saved draft is not shown as unsaved.
+  const [saved, setSavedState] = useState<{ json: string; text: string } | null>(() => readLocal(localKey(p.slug, 'saved'), null))
+  const setSaved = (v: { json: string; text: string }) => { setSavedState(v); writeLocal(localKey(p.slug, 'saved'), v) }
   const [failed, setFailed] = useState('') // the page as it was when a save or publish failed
+  const [online, setOnline] = useState(navigator.onLine)
+  useEffect(() => {
+    const on = () => setOnline(true)
+    const off = () => setOnline(false)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
+  }, [])
   const [preview, setPreview] = useState(false)
   const { select, selected } = useContext(Selection)
   const selectedItem = usePuck((s) => s.selectedItem)
@@ -267,22 +306,32 @@ function Actions() {
   const unpublished = clean.current !== '' && json !== clean.current
   const unsaved = unpublished && json !== saved?.json
   // One clear save state: failed, saving, saved (draft or published), not saved yet, or up to date.
-  const state: 'failed' | 'busy' | 'saved' | 'unsaved' | 'clean' =
-    busy ? 'busy' : failed && failed === json ? 'failed' : saved && json === saved.json ? 'saved' : unsaved ? 'unsaved' : 'clean'
+  const state: 'failed' | 'busy' | 'saved' | 'unsaved' | 'clean' | 'unkept' =
+    busy ? 'busy' : failed && failed === json ? 'failed' : saved && json === saved.json ? 'saved' : unsaved ? (keptHere ? 'unsaved' : 'unkept') : 'clean'
   const status = {
     failed: 'Not saved: see the message',
     busy: `${busy}…`,
     saved: saved?.text ?? '',
-    unsaved: 'Not saved yet',
+    unsaved: online ? 'Not saved yet' : 'Offline: kept in this browser',
+    unkept: 'Not saved, and not kept here',
     clean: unpublished ? 'Draft saved, not published' : 'Same as the website',
   }[state]
   const statusHint = {
     failed: 'The last save did not work. Nothing was changed on the website. Try again, or read the message for why.',
     busy: undefined,
     saved: undefined,
-    unsaved: 'Your changes are kept safely in this browser. Save a draft or publish when ready.',
+    unsaved: online ? 'Your changes are kept safely in this browser. Save a draft or publish when ready.' : 'You are offline. Your changes are kept in this browser; save a draft when you are back online.',
+    unkept: 'This browser would not keep a copy (its storage is full or blocked). Save a draft now; closing the tab would lose these changes.',
     clean: undefined,
   }[state]
+  // Closing the tab asks first only when work could be lost: nothing kept in this browser, or a
+  // save still on its way.
+  useEffect(() => {
+    if (state !== 'unkept' && state !== 'busy') return
+    const ask = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', ask)
+    return () => window.removeEventListener('beforeunload', ask)
+  }, [state])
   const showWidth = (width: number) => dispatch({ type: 'setUi', ui: { viewports: { ...ui.viewports, current: { width, height: 'auto' } } } })
   // Preview hides every editing mark and panel, so the page looks exactly as visitors see it.
   const before = useRef<{ left: boolean; right: boolean } | null>(null)
@@ -313,7 +362,9 @@ function Actions() {
       if (/\b401\b|Bad credentials/i.test(message) && token) {
         const wasShared = expire(token)
         setNotice(`${label} did not work because your sign-in has expired. Nothing was changed. ${wasShared ? 'Open the website editor (/admin) in another tab to renew it, or choose Sign in, then try again.' : 'Choose Sign in, then try again.'}`)
-      } else setNotice(`${label} did not work: ${message} Nothing was changed.`)
+      } else if (e instanceof TypeError || !navigator.onLine) {
+        setNotice(`${label} did not work: the connection to GitHub was lost. Nothing was changed on the website, and your changes are still kept in this browser. Try again when you are back online.`)
+      } else setNotice(`${label} did not work: ${message} Nothing was changed on the website, and your changes are still kept in this browser.`)
     } finally { setBusy('') }
   }
   const needToken = () => { if (!token) throw new Error('Sign in first.'); return token }
@@ -327,9 +378,10 @@ function Actions() {
   })
 
   const saveDraft = () => run('Saving the draft', async () => {
-    if (DEMO) { try { localStorage.setItem(localKey(p.slug, 'draft'), JSON.stringify(data)) } catch { throw new Error('This browser would not keep the draft (its storage is full or blocked).') } setSaved({ json: JSON.stringify(data), text: `Draft saved at ${time()}` }); return `Draft saved in this browser (${stamp()}). In the real editor it is saved to the drafts branch; nothing is published.` }
+    if (saved && JSON.stringify(data) === saved.json) return `Already saved: nothing has changed since the ${saved.text.toLowerCase()}.`
+    if (DEMO) { try { localStorage.setItem(localKey(p.slug, 'draft'), JSON.stringify(data)) } catch { throw new Error('This browser would not keep the draft (its storage is full or blocked).') } setSaved({ json: JSON.stringify(data), text: `Draft saved ${time()}` }); return `Draft saved in this browser (${stamp()}). In the real editor it is saved to the drafts branch; nothing is published.` }
     await github.writeLayout(needToken(), p.slug, data, github.DRAFTS, `Design editor: draft for ${p.slug}`)
-    setSaved({ json: JSON.stringify(data), text: `Draft saved at ${time()}` })
+    setSaved({ json: JSON.stringify(data), text: `Draft saved ${time()}` })
     return `Draft saved (${stamp()}). Nothing is published until you choose Publish.`
   })
 
@@ -340,7 +392,7 @@ function Actions() {
       writeLocal(localKey(p.slug, 'versions'), [{ id: String(Date.now()), date: new Date().toISOString(), message: 'Published (demo)', layout: data }, ...list].slice(0, 30))
       removeLocal(localKey(p.slug, 'unsaved'))
       clean.current = JSON.stringify(data)
-      setSaved({ json: clean.current, text: `Published at ${time()}` })
+      setSaved({ json: clean.current, text: `Published ${time()}` })
       return 'Published in this demo only. In the real editor this saves the page and the test site updates in about a minute, after the usual checks.'
     }
     // Words, shared category names and the layout are saved together, all or nothing.
@@ -360,7 +412,7 @@ function Actions() {
     await github.publishTogether(needToken(), changes, `Design editor: publish ${p.slug}`)
     removeLocal(localKey(p.slug, 'unsaved'))
     clean.current = JSON.stringify(data)
-    setSaved({ json: clean.current, text: `Published at ${time()}` })
+    setSaved({ json: clean.current, text: `Published ${time()}` })
     return 'Published. The test site updates in about a minute, after the usual checks. If a check fails, the site stays as it was and you get the usual email.'
   })
 
@@ -376,22 +428,32 @@ function Actions() {
   const loadVersion = (v: Version) => run('Loading that version', async () => {
     const layout = DEMO ? v.layout : (await github.readLayout(needToken(), p.slug, v.id))?.layout
     if (!layout) throw new Error('That version has no layout (the standard layout was in use).')
-    dispatch({ type: 'setData', data: layout as Data })
+    dispatch({ type: 'setData', recordHistory: true, data: layout as Data })
     setPanel('')
     return `Loaded the version from ${new Date(v.date).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}. Nothing is published until you choose Publish; Undo takes you back.`
   })
 
   const loadStandard = () => {
-    dispatch({ type: 'setData', data: standardCaseLayout() as Data })
+    dispatch({ type: 'setData', recordHistory: true, data: standardCaseLayout() as Data })
     setPanel('')
     setNotice('The standard layout is loaded. Publish to use it on the website; Undo takes you back.')
   }
 
+  // Discarding keeps a copy of what was discarded, and the message's Undo puts exactly that back,
+  // so nothing is ever thrown away by one click.
+  const discarded = useRef<Data | null>(null)
   const discardUnsaved = () => {
+    discarded.current = JSON.parse(JSON.stringify(data)) as Data
     removeLocal(localKey(p.slug, 'unsaved'))
     markClean()
-    dispatch({ type: 'setData', data: (savedLayoutFor(p) ?? standardCaseLayout()) as Data })
-    setNotice('Unsaved changes discarded. The page is as last published.')
+    dispatch({ type: 'setData', recordHistory: true, data: (savedLayoutFor(p) ?? standardCaseLayout()) as Data })
+    setNotice('Changes discarded. The page is as last published. Undo brings them back.', true)
+  }
+  const undoNotice = () => {
+    if (discarded.current && notice.text.startsWith('Changes discarded')) dispatch({ type: 'setData', recordHistory: true, data: discarded.current })
+    else history.back()
+    discarded.current = null
+    setNotice('')
   }
 
   return (
@@ -451,7 +513,7 @@ function Actions() {
       {notice.text && (
         <div className="editor-notice" role="status">
           <p>{notice.text}</p>
-          {notice.undo && <button type="button" onClick={() => { history.back(); setNotice('') }}>Undo</button>}
+          {notice.undo && <button type="button" onClick={undoNotice}>Undo</button>}
           <button type="button" onClick={() => setNotice('')}>Close</button>
         </div>
       )}

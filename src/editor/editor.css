@@ -121,6 +121,8 @@ html[data-el-active] [class*='DraggableComponent--isSelected'] [class*='Draggabl
 .editor-status.is-unsaved .editor-status-mark { background: #c9822b; }
 .editor-status.is-saved .editor-status-mark, .editor-status.is-clean .editor-status-mark { background: #6f8f4e; }
 .editor-status.is-busy .editor-status-mark { border: 2px solid #b9b7a3; border-top-color: var(--olive, #484527); animation: editor-spin 0.8s linear infinite; box-sizing: border-box; }
+.editor-status.is-unkept { color: var(--terra, #9a3f24); font-weight: 600; }
+.editor-status.is-unkept .editor-status-mark { background: var(--terra, #9a3f24); }
 .editor-status.is-failed { color: var(--terra, #9a3f24); font-weight: 600; }
 .editor-status.is-failed .editor-status-mark { background: var(--terra, #9a3f24); }
 @keyframes editor-spin { to { transform: rotate(360deg); } }

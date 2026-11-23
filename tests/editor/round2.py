@@ -147,14 +147,14 @@ with sync_playwright() as p:
     click(pg, f, "[data-el='line']"); pg.locator(".ctx button[aria-label='Bold']").click(); pg.wait_for_timeout(500)
     check("A change shows Not saved yet", status() == "Not saved yet")
     pg.locator(".editor-save").click(); pg.wait_for_timeout(600)
-    check("Save draft shows Draft saved", status().startswith("Draft saved at"), status())
+    check("Save draft shows Draft saved", status().startswith("Draft saved "), status())
     pg.locator(".ctx button[aria-label='Bold']").click(); pg.wait_for_timeout(300)
     pg.evaluate("() => { Storage.prototype._set = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (k.endsWith(':draft')) throw new Error('Storage is full.'); return this._set(k, v) } }")
     pg.locator(".editor-save").click(); pg.wait_for_timeout(600)
     check("A failed save says so, in the status", status() == "Not saved: see the message" and pg.locator(".editor-status.is-failed").count() == 1, status())
     pg.evaluate("() => { Storage.prototype.setItem = Storage.prototype._set }")
     pg.locator(".editor-save").click(); pg.wait_for_timeout(600)
-    check("Saving again clears it", status().startswith("Draft saved at"), status())
+    check("Saving again clears it", status().startswith("Draft saved "), status())
     pg.close()
 
     # 6. Touch: turning the image with a finger on a phone-sized screen.
