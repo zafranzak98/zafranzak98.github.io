@@ -4,7 +4,7 @@ import { createUsePuck } from '@puckeditor/core'
 import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { SCREENS, TEXT_SIZES, lookAt, type ElementLook, type ElementStyle, type Elements, type Screen, type TextSize } from '#/layout/elements'
 import type { Project } from '#/lib/site'
-import { IMAGES, Selection, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
+import { IMAGES, Selection, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
 
 // The editing controls: the side panel for the selected element or section, and a small toolbar
 // that floats above the selected element. Both change the same settings, per screen size.
@@ -111,6 +111,8 @@ export function ElementPanel({ value, onChange, p }: { value: Elements | undefin
   if (!key) return <Parts blockId={item?.props.id as string | undefined} />
 
   const isImage = IMAGES.test(key)
+  const el = selectedEl()
+  const width = shown.width ?? (el ? widthNow(el) : 100)
   const ratio = shown.colour && !isImage ? contrast(shown.colour, background) : null
   const changed = Object.keys(own).length > 0
   const reset = (...keys: (keyof ElementLook)[]) => setLook(Object.fromEntries(keys.map((k) => [k, undefined])))
@@ -134,8 +136,8 @@ export function ElementPanel({ value, onChange, p }: { value: Elements | undefin
       {isImage ? (
         <Group title="Image">
           <Row label="Width" from={from('width')} onReset={() => reset('width')}>
-            <input type="range" min={20} max={100} step={5} value={shown.width ?? 100} aria-valuetext={`${shown.width ?? 100}%`} onChange={(e) => setLook({ width: Number(e.target.value) })} />
-            <output>{shown.width ?? 100}%</output>
+            <input type="range" min={20} max={100} step={5} value={width} aria-label="Width" aria-valuetext={`${width}%`} onChange={(e) => setLook({ width: Number(e.target.value) })} />
+            <output>{width}%</output>
           </Row>
           <Row label="Crop focus" from={from('focusX') === 'design' ? from('focusY') : from('focusX')} onReset={() => reset('focusX', 'focusY')}>
             <FocusGrid x={shown.focusX ?? 50} y={shown.focusY ?? 50} onChange={(focusX, focusY) => setLook({ focusX, focusY })} />
@@ -324,6 +326,8 @@ function FloatingToolbar({ look, canType }: { look: ReturnType<typeof useLook>; 
   useEffect(() => setColours(false), [key])
   if (!key) return null
   const isImage = IMAGES.test(key)
+  const el = selectedEl()
+  const width = shown.width ?? (el ? widthNow(el) : 100)
   const type = () => {
     const el = selectedEl()
     el?.ownerDocument.defaultView?.focus()
@@ -334,9 +338,9 @@ function FloatingToolbar({ look, canType }: { look: ReturnType<typeof useLook>; 
       {canType && <button type="button" onClick={type}>Edit words</button>}
       {isImage ? (
         <>
-          <button type="button" aria-label="Narrower" title="Narrower" onClick={() => setLook({ width: Math.max(20, (shown.width ?? 100) - 10) })}>−</button>
-          <span className="el-toolbar-value">Width {shown.width ?? 100}%</span>
-          <button type="button" aria-label="Wider" title="Wider" onClick={() => setLook({ width: Math.min(100, (shown.width ?? 100) + 10) })}>+</button>
+          <button type="button" aria-label="Narrower" title="Narrower" onClick={() => setLook({ width: Math.max(20, width - 5) })}>−</button>
+          <span className="el-toolbar-value">Width {width}%</span>
+          <button type="button" aria-label="Wider" title="Wider" onClick={() => setLook({ width: Math.min(100, width + 5) })}>+</button>
         </>
       ) : (
         <>

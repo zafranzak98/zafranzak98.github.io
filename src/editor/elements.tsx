@@ -145,6 +145,19 @@ export const setSnapOn = (on: boolean) => { try { localStorage.setItem(SNAP_KEY,
 export const round = (n: number) => Math.round(n * 100) / 100
 const shift = (b: Box, dx: number, dy: number): Box => ({ left: b.left + dx, right: b.right + dx, top: b.top + dy, bottom: b.bottom + dy, baseline: b.baseline === undefined ? undefined : b.baseline + dy })
 
+// The width an element would have at 100%: image widths are a share of the space they sit in,
+// which for a grid item is its grid area, so it is measured rather than worked out.
+export function fullWidth(el: HTMLElement) {
+  const { width, maxWidth } = el.style
+  el.style.width = '100%'
+  el.style.maxWidth = 'none'
+  const full = el.getBoundingClientRect().width
+  el.style.width = width
+  el.style.maxWidth = maxWidth
+  return full || 1
+}
+export const widthNow = (el: HTMLElement) => Math.round((el.getBoundingClientRect().width / fullWidth(el)) * 20) * 5
+
 // ---- On the page: hovering, selecting, editing words, moving
 
 // Image widths changed by dragging the handle reach the panel the same way as moves.
@@ -354,7 +367,7 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       const [left, top] = offsetOf(el)
       const start = boxOf(el)
       const lines = linesFor(el, nameOf)
-      const space = el.parentElement?.getBoundingClientRect().width || 1
+      const space = fullWidth(el)
       const startWidth = el.getBoundingClientRect().width
       let moved = false
       let last = { dx: 0, dy: 0, s: snap(start, { across: [], down: [] }, 0) }
