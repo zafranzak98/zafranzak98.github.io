@@ -56,7 +56,7 @@ const NAMES: [RegExp, string][] = [
   [/^heading$/, 'Heading'],
   [/^caption$/, 'Caption'],
 ]
-const nameOf = (key: string) => {
+export const nameOf = (key: string) => {
   const fact = key.match(/^(label|value)-(role|type|when|deliverables|tools)$/)
   if (fact) return fact[1] === 'label' ? `"${LABELS[fact[2] as LabelKey]}" label` : `${LABELS[fact[2] as LabelKey]} fact`
   const match = NAMES.find(([re]) => re.test(key))

@@ -9,7 +9,8 @@ import { caseStudies, type Project } from '#/lib/site'
 import { savedLayoutFor, standardCaseLayout } from '#/layout/render'
 import { editorConfig, layoutWarnings } from './config'
 import * as github from './github'
-import { SelectionProvider, wordsOf, type Edits } from './elements'
+import { SelectionProvider, nameOf, wordsOf, type Edits } from './elements'
+import { checkPage, type Finding } from './checks'
 
 // The design editor at /admin/design/. Arrange and restyle a page with its real blocks, then
 // save a draft or publish. Undo and redo cover every change; unsaved work is kept in this
@@ -108,6 +109,23 @@ function Actions() {
   const dispatch = usePuck((s) => s.dispatch)
   const [busy, setBusy] = useState('')
   const [panel, setPanel] = useState<'' | 'publish' | 'history' | 'reset'>('')
+  const ui = usePuck((s) => s.appState.ui)
+  const [findings, setFindings] = useState<Finding[] | null>(null)
+
+  // Before publishing, the page is checked at each screen size, then the preview goes back to where it was.
+  const openPublish = async () => {
+    setPanel('publish')
+    setFindings(null)
+    const found: Finding[] = []
+    for (const [screen, width] of [['Desktop', 1440], ['Tablet', 1024], ['Phone', 390]] as const) {
+      dispatch({ type: 'setUi', ui: { viewports: { ...ui.viewports, current: { width, height: 'auto' } } } })
+      await new Promise((r) => setTimeout(r, 700))
+      const doc = (document.getElementById('preview-frame') as HTMLIFrameElement | null)?.contentDocument
+      if (doc) found.push(...checkPage(doc, screen, nameOf))
+    }
+    dispatch({ type: 'setUi', ui: { viewports: ui.viewports } })
+    setFindings(found)
+  }
   const [versions, setVersions] = useState<Version[]>([])
   const [more, setMore] = useState(false)
   const choose = (action: () => void) => () => { setMore(false); action() }
@@ -198,14 +216,24 @@ function Actions() {
         <button type="button" onClick={choose(discardUnsaved)} disabled={!!busy}>Discard unsaved changes</button>
       </div>
       <button type="button" onClick={saveDraft} disabled={!!busy}>Save draft</button>
-      <button type="button" className="editor-primary" onClick={() => setPanel('publish')} disabled={!!busy}>Publish</button>
+      <button type="button" className="editor-primary" onClick={openPublish} disabled={!!busy}>Publish</button>
       {busy && <span className="editor-flag" role="status">{busy}…</span>}
 
       {panel === 'publish' && (
         <Panel title="Publish this page?" onClose={() => setPanel('')}>
           <p>The test site will show this layout for {p.title} in about a minute, after the usual checks. The current version stays in Versions, so you can bring it back at any time.</p>
           {warnings.map((w) => <p key={w} className="editor-warning-text">{w}</p>)}
-          <button type="button" className="editor-primary" onClick={publish}>Publish</button>
+          {findings === null ? (
+            <p role="status">Checking Desktop, Tablet and Phone…</p>
+          ) : findings.length ? (
+            <>
+              <p>Worth a look before publishing (it can still be published):</p>
+              <ul className="editor-findings">{findings.map((f) => <li key={`${f.screen}${f.text}`}><b>{f.screen}:</b> {f.text}</li>)}</ul>
+            </>
+          ) : (
+            <p role="status">Checked on Desktop, Tablet and Phone: nothing overlaps, runs off the screen, is too small or is hard to read.</p>
+          )}
+          <button type="button" className="editor-primary" onClick={publish} disabled={findings === null}>{findings?.length ? 'Publish anyway' : 'Publish'}</button>
         </Panel>
       )}
       {panel === 'reset' && (
@@ -236,11 +264,12 @@ function Panel({ title, onClose, children }: { title: string; onClose: () => voi
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null
-    ref.current?.querySelector('button')?.focus()
+    // The first usable button, or the dialog itself while a button is still waiting (checks running).
+    ;(ref.current?.querySelector<HTMLElement>('button:not(:disabled)') ?? ref.current)?.focus()
     return () => opener?.focus()
   }, [])
   return (
-    <div ref={ref} className="editor-panel" role="dialog" aria-label={title} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
+    <div ref={ref} tabIndex={-1} className="editor-panel" role="dialog" aria-label={title} onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }}>
       <h2>{title}</h2>
       {children}
       <button type="button" onClick={onClose}>Cancel</button>
