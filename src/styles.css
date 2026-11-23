@@ -223,6 +223,14 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .about-portrait .ph { background: var(--sage); color: var(--olive); border: 0; }
 .about-portrait figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 0.75rem; white-space: nowrap; margin-top: 0.625rem; font-size: var(--t-meta); line-height: 1.4; color: var(--olive); }
 .about-portrait figcaption b, .about-caption b { font-weight: 600; }
+/* The portrait is a print clipped to the page: tilted slightly, with a paperclip over its
+   top-right corner (see components/paper-clip.tsx). The tilt is a transform, so the layout
+   around it does not move. Offsets are percentages of the photo's width. */
+.about-photo { position: relative; transform: rotate(1.5deg); }
+.about-photo .media { position: relative; z-index: 1; display: block; box-shadow: 0 1px 2px rgb(0 0 0 / 0.14), 0 6px 16px rgb(0 0 0 / 0.12); }
+.paper-clip { position: absolute; top: 0; right: 7%; width: 16%; margin-top: -13%; overflow: visible; transform: rotate(-15deg); transform-origin: 50% 20%; pointer-events: none; }
+.paper-clip-back { z-index: 0; filter: drop-shadow(0.5px 1px 1px rgb(0 0 0 / 0.25)); }
+.paper-clip-front { z-index: 2; filter: drop-shadow(0.6px 1.4px 0.8px rgb(0 0 0 / 0.38)); }
 /* The portrait hangs 4vw below the hero; the first section clears it and its caption. */
 .about-hero + .about-caption + .ix-sec { margin-top: calc(4vw + 5.5rem); }
 .about-statement { margin: 0; font-size: var(--t-statement); line-height: 1.36; font-weight: 500; letter-spacing: -0.015em; }

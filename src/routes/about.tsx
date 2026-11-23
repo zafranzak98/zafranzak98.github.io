@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
+import { PaperClip } from '#/components/paper-clip'
 import { Media } from '#/components/media'
 import { Rich } from '#/components/rich'
 import { about, site } from '#/lib/site'
@@ -34,7 +35,15 @@ function About() {
         <span className="about-kicker">About</span>
         <div className="about-title-clip"><h1 className="c">About <br className="m-only" />me</h1></div>
         <figure className="about-portrait">
-          <Media img={about.portrait} ratio="4/5" label="Needed: portrait photograph" sizes="(max-width: 899px) 140px, 20vw" />
+          {about.portrait?.image ? (
+            <div className="about-photo">
+              <PaperClip layer="back" />
+              <Media img={about.portrait} ratio="4/5" sizes="(max-width: 899px) 140px, 20vw" />
+              <PaperClip layer="front" />
+            </div>
+          ) : (
+            <Media img={about.portrait} ratio="4/5" label="Needed: portrait photograph" sizes="(max-width: 899px) 140px, 20vw" />
+          )}
           <figcaption className="d-only"><b>{site.name}</b><span>{about.portrait_caption}</span></figcaption>
         </figure>
       </section>
