@@ -1,3 +1,4 @@
+import { kindName } from './sections'
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { createUsePuck } from '@puckeditor/core'
@@ -154,8 +155,7 @@ const isCover = (type: string | undefined, key: string) => type === 'Opening' &&
 const COVER_OPTIONS = COVER_SIZES.map((c) => [c, COVER_NAMES[c]] as [string, string])
 const sizeName = (look: ElementLook) => TEXT_SIZES[SIZES[currentSize(look)]][0]
 
-const LABELS: Record<string, string> = { Opening: 'Opening', Facts: 'Facts', Overview: 'Overview', Research: 'Research & thinking', Work: 'The work', Outcomes: 'Outcomes', AlsoIn: 'Also in this category', PrevNext: 'Previous and next', CategoryNav: 'Category list', SectionNav: 'Section bar', Gap: 'Gap', Text: 'Text', Image: 'Image', Grid: 'Grid', Cell: 'Grid column', Spacer: 'Spacer' }
-export const sectionName = (type: string) => LABELS[type] ?? type
+export const sectionName = kindName
 
 // ---- The contextual bar: under the top bar, it changes with what is selected.
 

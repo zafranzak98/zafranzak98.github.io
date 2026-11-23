@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { Puck, blocksPlugin, createUsePuck, fieldsPlugin, outlinePlugin, type Data } from '@puckeditor/core'
+import { Puck, createUsePuck, fieldsPlugin, type Data } from '@puckeditor/core'
 import '@puckeditor/core/no-external.css'
 import '@fontsource-variable/instrument-sans/wdth.css'
 import '../styles.css'
@@ -16,7 +16,8 @@ import { checkPage, noteId, type Finding } from './checks'
 import { describeStep } from './history'
 import { LayoutNotes, checkOptions, settled, type Intended } from './notes'
 import { ContextBar, screenFor } from './panel'
-import { EyeIcon, LayersIcon, PlusIcon, RedoIcon, SlidersIcon, UndoIcon } from './icons'
+import { SectionsPanel, openSections } from './sections'
+import { EyeIcon, LayersIcon, RedoIcon, SlidersIcon, UndoIcon } from './icons'
 
 // The design editor at /admin/design/. Arrange and restyle a page with its real blocks, then
 // save a draft or publish. Undo and redo cover every change; unsaved work is kept in this
@@ -156,7 +157,6 @@ function EditorApp() {
         initialHistory={{ histories: [{ state: { data: start.data } }], index: 0, appendData: false }}
         onChange={onChange}
         headerTitle="Design editor"
-        dictionary={{ 'outline-header-title': 'Page navigator', 'plugin-outline': 'Page navigator' }}
         viewports={[
           { width: 390, label: 'Phone', icon: 'Smartphone' },
           { width: 1024, label: 'Tablet', icon: 'Tablet' },
@@ -178,7 +178,9 @@ type Notice = { text: string; undo?: boolean }
 type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string, undo?: boolean) => void; notice: Notice; markClean: () => void; clean: { current: string | null }; login: string; shared: boolean; expire: (t: string) => boolean; signOut: () => void; keptHere: boolean }
 
 // The left-hand tools, named for what they do.
-const PLUGINS = [{ ...blocksPlugin(), label: 'Add section', icon: <PlusIcon /> }, outlinePlugin({ label: 'Page navigator', icon: <LayersIcon /> }), { ...fieldsPlugin(), label: 'Settings', icon: <SlidersIcon /> }]
+// Puck's own Blocks and Outline panels are replaced by one Sections panel, which takes the
+// "blocks" slot; the "outline" slot is filled with nothing and its rail button is hidden (editor.css).
+const PLUGINS = [{ name: 'blocks', label: 'Sections', icon: <LayersIcon />, render: SectionsPanel }, { name: 'outline', label: 'Outline', render: () => <></> }, { ...fieldsPlugin(), label: 'Settings', icon: <SlidersIcon /> }]
 
 const SessionContext = createContext<Session | null>(null)
 const OVERRIDES = { header: () => <Actions />, fields: SidePanel }
@@ -194,7 +196,8 @@ function SidePanel({ fields }: { children: React.ReactNode; fields: Partial<Reco
       <div className="el-panel el-welcome">
         <h2>Page settings</h2>
         <p className="el-note">Select something on the page to see all its settings here.</p>
-        <button type="button" onClick={() => dispatch({ type: 'setUi', ui: { leftSideBarVisible: true } })}>Add or rearrange sections</button>
+        <button type="button" onClick={() => { dispatch({ type: 'setUi', ui: { leftSideBarVisible: true, plugin: { current: 'blocks' } } }); openSections('add') }}>Add a section</button>
+        <button type="button" onClick={() => { dispatch({ type: 'setUi', ui: { leftSideBarVisible: true, plugin: { current: 'blocks' } } }); openSections('page') }}>Find or reorder sections</button>
       </div>
     )
   }
@@ -262,6 +265,20 @@ function Actions() {
   const [busy, setBusy] = useState('')
   const [panel, setPanel] = useState<'' | 'publish' | 'history' | 'reset'>('')
   const ui = usePuck((s) => s.appState.ui)
+  // Undo and Redo bring back the page, not the editor's own layout: Puck stores both in each step,
+  // so after a step back or forward the open panels and the screen size being edited are put back
+  // as they were. Without this, Undo could close the Sections panel or switch from Phone to Desktop.
+  const layout = (u: typeof ui) => ({ leftSideBarVisible: u.leftSideBarVisible, rightSideBarVisible: u.rightSideBarVisible, plugin: u.plugin, viewports: u.viewports })
+  const kept = useRef(layout(ui))
+  const seenStep = useRef(history.index)
+  useEffect(() => {
+    if (history.index !== seenStep.current) {
+      seenStep.current = history.index
+      if (JSON.stringify(layout(ui)) !== JSON.stringify(kept.current)) dispatch({ type: 'setUi', ui: kept.current })
+      return
+    }
+    kept.current = layout(ui)
+  }, [ui, history.index])
   const [findings, setFindings] = useState<Finding[] | null>(null)
 
   // Check the page at the given screen sizes, then put the preview back where it was. Used before

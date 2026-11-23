@@ -15,9 +15,12 @@ with sync_playwright() as p:
     check("Clicking elsewhere closes More", pg.locator(".editor-more.open").count() == 0)
 
     # 2. The navigator is called the same thing everywhere.
-    pg.get_by_text("Page navigator").first.click(); pg.wait_for_timeout(600)
+    # (Round 4: one Sections panel replaced Add section and Page navigator; the same check now asks
+    # that it is named the same everywhere and that Puck's own "Outline" and "Blocks" never show.)
+    if not pg.locator(".sec-panel:visible").count(): pg.locator("[class*='_Nav-list'] [class*='_NavItem-link']").first.click(); pg.wait_for_timeout(600)
+    shown = pg.evaluate("[...document.querySelectorAll('[class*=_NavItem]')].filter(e => getComputedStyle(e).display !== 'none' && e.offsetParent).map(e => e.innerText.trim())")
     heads = pg.evaluate("[...document.querySelectorAll('h2, [class*=SidebarSection-title], [class*=SidebarSection-heading]')].map(e => e.textContent.trim()).filter(Boolean)")
-    check("Navigator panel is titled Page navigator, not Outline", "Outline" not in heads and any("Page navigator" in h for h in heads), str(heads))
+    check("The left panel is called Sections everywhere, never Outline or Blocks", "Sections" in shown and not any(h in ("Outline", "Blocks") for h in heads + shown) and pg.locator(".sec-panel:visible").count() == 1, f"{shown} {heads}")
 
     # 3. Per-size dot: a Tablet-only change marks Tablet, not Desktop.
     pg.get_by_role("button", name="Tablet").first.click(); pg.wait_for_timeout(1200); f = frame(pg)

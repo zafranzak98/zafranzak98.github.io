@@ -2,6 +2,7 @@
 // it: "move Summary line", "turn Opening image", "add a section". Used for the Undo and Redo labels
 // and the short message after undoing. When the difference is unclear it says "the last change".
 import { nameOf } from './elements'
+import { kindName } from './sections'
 
 type Look = Record<string, unknown>
 type Item = { type: string; props: Record<string, unknown> & { id?: string; elements?: Record<string, Record<string, Look>> } }
@@ -22,9 +23,15 @@ export function describeStep(before: Page | undefined, after: Page | undefined):
   if (!before || !after) return 'the last change'
   const a = before.content ?? []
   const b = after.content ?? []
-  if (a.length < b.length) return 'add a section'
-  if (a.length > b.length) return 'remove a section'
-  if (!same(a.map((i) => i.props.id), b.map((i) => i.props.id))) return 'rearrange sections'
+  const ids = (l: Item[]) => l.map((i) => i.props.id)
+  if (a.length < b.length) { const added = b.find((i) => !ids(a).includes(i.props.id)); return added ? `add ${kindName(added.type)}` : 'add a section' }
+  if (a.length > b.length) { const gone = a.find((i) => !ids(b).includes(i.props.id)); return gone ? `remove ${kindName(gone.type)}` : 'remove a section' }
+  if (!same(ids(a), ids(b))) {
+    // The section that travelled furthest is the one moved; two neighbours swapping are named together.
+    const shift = b.map((i, k) => ({ i, d: Math.abs(ids(a).indexOf(i.props.id) - k) })).filter((x) => x.d > 0).sort((x, y) => y.d - x.d)
+    if (shift.length === 2 && shift[0].d === 1) return `swap ${kindName(shift[0].i.type)} and ${kindName(shift[1].i.type)}`
+    return shift[0] && shift[0].d > (shift[1]?.d ?? 0) ? `move ${kindName(shift[0].i.type)}` : 'rearrange sections'
+  }
   const parts: string[] = []
   let verb = ''
   for (let i = 0; i < a.length; i++) {
@@ -45,7 +52,12 @@ export function describeStep(before: Page | undefined, after: Page | undefined):
     if (!parts.length) {
       const { elements: _a, ...pa } = a[i].props
       const { elements: _b, ...pb } = b[i].props
-      if (!same(pa, pb)) return 'edit the words'
+      if (!same(pa, pb)) {
+        const { design: da, ...wa } = pa
+        const { design: db, ...wb } = pb
+        if (same(wa, wb) && !same(da, db)) return (da as { show?: string } | undefined)?.show !== (db as { show?: string } | undefined)?.show ? `show or hide ${kindName(a[i].type)}` : `change the look of ${kindName(a[i].type)}`
+        return 'edit the words'
+      }
     }
   }
   if (parts.length === 1) return `${verb} ${nameOf(parts[0])}`

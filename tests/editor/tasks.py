@@ -70,9 +70,10 @@ with sync_playwright() as p:
     pg.keyboard.press("ControlOrMeta+z"); pg.wait_for_timeout(800)
     check("10 Undo a mistake (Cmd+Z)", len((unsaved(pg) or {}).get("content",[]))==before, 1)
     # 9 reorder via page navigator
-    pg.get_by_text("Page navigator").first.click(); pg.wait_for_timeout(800)
-    nav=pg.locator("[class*='Outline'], [class*='LayerTree']").first
-    check("9 Page navigator opens with sections listed", nav.count()>0 and "Outcomes" in nav.inner_text(), 1)
+    # (Round 4: the Page navigator became the Sections panel's "On this page" list.)
+    if not pg.locator(".sec-panel:visible").count(): pg.locator("[class*='_Nav-list'] [class*='_NavItem-link']").first.click(); pg.wait_for_timeout(800)
+    nav=pg.locator(".sec-list").first
+    check("9 Sections panel opens with the page's sections listed", nav.count()>0 and "Outcomes" in nav.inner_text(), 1)
     # 11 preview
     pg.get_by_role("button",name="Preview").click(); pg.wait_for_timeout(800)
     marks=f.evaluate("()=>[...document.querySelectorAll('.el-frame,.el-hover')].filter(e=>getComputedStyle(e).display!=='none').length")
