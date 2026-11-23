@@ -56,7 +56,14 @@ export function describeStep(before: Page | undefined, after: Page | undefined):
         const { design: da, ...wa } = pa
         const { design: db, ...wb } = pb
         if ((wa as { image?: unknown }).image !== (wb as { image?: unknown }).image) return `choose a photo for ${kindName(a[i].type)}`
-        if (same(wa, wb) && !same(da, db)) return (da as { show?: string } | undefined)?.show !== (db as { show?: string } | undefined)?.show ? `show or hide ${kindName(a[i].type)}` : `change the look of ${kindName(a[i].type)}`
+        if (same(wa, wb) && !same(da, db)) {
+          const width = (x: unknown) => (x as { width?: string } | undefined)?.width
+          if (a[i].type === 'Image' && width(da) !== width(db)) return 'resize Photo'
+          return (da as { show?: string } | undefined)?.show !== (db as { show?: string } | undefined)?.show ? `show or hide ${kindName(a[i].type)}` : `change the look of ${kindName(a[i].type)}`
+        }
+        // The photo's shape and fit: settings of the Image section, not its words.
+        const only = (keys: string[]) => Object.keys({ ...wa, ...wb }).every((k) => keys.includes(k) || same((wa as Record<string, unknown>)[k], (wb as Record<string, unknown>)[k]))
+        if (a[i].type === 'Image' && only(['ratio', 'fit'])) return (wa as { ratio?: unknown }).ratio !== (wb as { ratio?: unknown }).ratio ? 'change the shape of Photo' : 'change how Photo fits'
         return 'edit the words'
       }
     }

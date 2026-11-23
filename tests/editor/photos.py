@@ -131,8 +131,10 @@ with sync_playwright() as p:
     over = pg.evaluate("document.documentElement.scrollWidth > innerWidth")
     tap = pg.locator(".ph-pick").first.bounding_box()
     check("Phone: the picker fills the screen with three photos a row; targets are large", d["width"] >= 389 and cols == 3 and not over and tap["width"] >= 44, f"{d['width']} {cols} {tap['width']}")
-    vis = [pg.locator(dialog).get_by_role("button", name=n, exact=True).is_visible() for n in ("Use this photo", "Cancel")]
-    check("Phone: Use this photo and Cancel are on screen", all(vis), str(vis))
+    vis = [(lambda b: bool(b) and b["y"] >= 0 and b["y"] + b["height"] <= 844)(pg.locator(dialog).get_by_role("button", name=n, exact=True).bounding_box()) for n in ("Use this photo", "Cancel")]
+    check("Phone: Use this photo and Cancel are on screen, inside the phone's height", all(vis), str(vis))
+    fb = pg.locator(".ph-alt input").bounding_box()
+    check("Phone: the description box is on screen too", fb and fb["y"] + fb["height"] <= 844, str(fb))
     pg.close()
 
     check("No script errors", not errors, str(errors[:2]))

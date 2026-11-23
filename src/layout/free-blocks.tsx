@@ -33,13 +33,20 @@ export function TextBlock({ kicker, heading, headingLevel = 'h2', text, size = '
   )
 }
 
-export function ImageBlock({ image, alt, caption, ratio = 'auto', focusX = 50, focusY = 50, design, elements }: {
-  image?: string; alt?: string; caption?: string; ratio?: string; focusX?: number; focusY?: number; design?: Design; elements?: Elements
+// The shapes an Image section's frame can take; 'auto' keeps the photo's own proportions.
+export const ratioOptions = [{ label: 'Its own shape', value: 'auto' }, { label: 'Square', value: '1/1' }, { label: 'Portrait 4:5', value: '4/5' }, { label: 'Portrait 3:4', value: '3/4' }, { label: 'Tall 9:16', value: '9/16' }, { label: 'Landscape 16:9', value: '16/9' }, { label: 'Wide 21:9', value: '21/9' }]
+
+export function ImageBlock({ image, alt, caption, ratio = 'auto', fit = 'cover', focusX = 50, focusY = 50, design, elements }: {
+  image?: string; alt?: string; caption?: string; ratio?: string; fit?: 'cover' | 'contain'; focusX?: number; focusY?: number; design?: Design; elements?: Elements
 }) {
   const el = useElement(elements)
+  // Showing the whole photo only means something in a frame of a fixed shape.
+  const contain = fit === 'contain' && ratio !== 'auto'
   return (
-    <figure {...designProps(design, 'free-block free-image')}>
-      <Media img={{ image, alt }} ratio={ratio} focus={`${focusX}% ${focusY}%`} label={alt || 'image'} sizes="(max-width: 899px) 100vw, 75vw" />
+    <figure {...designProps(design, contain ? 'free-block free-image free-fit-contain' : 'free-block free-image')}>
+      <div {...el('photo', { className: 'free-photo' })}>
+        <Media img={{ image, alt }} ratio={ratio} focus={`${focusX}% ${focusY}%`} label={alt || 'image'} sizes="(max-width: 899px) 100vw, 75vw" />
+      </div>
       {caption && <figcaption {...el('caption', { className: 'cap', field: 'prop:caption' })}><Rich text={caption} /></figcaption>}
     </figure>
   )

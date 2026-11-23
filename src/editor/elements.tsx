@@ -41,6 +41,7 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
 }
 
 const NAMES: [RegExp, string][] = [
+  [/^photo$/, 'Photo'],
   [/^title$/, 'Title'],
   [/^sub$/, 'Category and year line'],
   [/^line$/, 'Summary line'],
@@ -81,7 +82,7 @@ export const nameOf = (key: string) => {
   const n = key.match(/(\d+)$/)
   return match ? `${match[1]}${n ? ` ${Number(n[1]) + 1}` : ''}` : key
 }
-export const IMAGES = /^(image|image-\d+|moodboard|key|context|film)$/
+export const IMAGES = /^(image|image-\d+|moodboard|key|context|film|photo)$/
 
 // ---- Words
 
