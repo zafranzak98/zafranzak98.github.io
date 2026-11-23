@@ -259,3 +259,11 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
 .editor-impact p { margin: 0 0 0.375rem; }
 .editor-impact ul { margin: 0; padding-left: 1.1rem; }
 .el-frame[data-cover] .el-handle { right: auto; left: calc(var(--ui, 1px) * -10); }
+/* Hidden parts stay visible in the editor, faded, so they can be found and shown again. */
+@media (min-width: 1280px) { [data-el-hidden~='d'] { opacity: 0.3; } }
+@media (min-width: 900px) and (max-width: 1279px) { [data-el-hidden~='t'] { opacity: 0.3; } }
+@media (max-width: 899px) { [data-el-hidden~='p'] { opacity: 0.3; } }
+@media (min-width: 1280px) { html[data-preview] [data-el-hidden~='d'] { display: none !important; } }
+@media (min-width: 900px) and (max-width: 1279px) { html[data-preview] [data-el-hidden~='t'] { display: none !important; } }
+@media (max-width: 899px) { html[data-preview] [data-el-hidden~='p'] { display: none !important; } }
+.ctx-btn[aria-pressed='true'].ctx-hide { border-color: var(--terra); color: var(--terra); }

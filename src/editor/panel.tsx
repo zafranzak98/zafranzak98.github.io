@@ -4,7 +4,7 @@ import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { COVER_NAMES, COVER_SIZES, TEXT_SIZES, lookAt, type ElementLook, type ElementStyle, type Elements, type Screen, type TextSize } from '#/layout/elements'
 import type { Project } from '#/lib/site'
 import { IMAGES, Selection, coverListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
-import { AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, PlusIcon, ResetIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
+import { EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, PlusIcon, ResetIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
 
 // The editing controls. The contextual bar under the top bar holds what you use most for the
 // selected text, image or section; the side panel ("More settings") holds everything, grouped.
@@ -19,7 +19,7 @@ const SPACING = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4]
 const SWATCH: Record<Colour, string> = { Olive: 'var(--olive)', Sage: 'var(--sage)', 'Light sage': 'var(--lsage)', 'Off-white': 'var(--off)', Terracotta: 'var(--terra)' }
 const WEIGHTS: [number, string][] = [[400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold']]
 const ALIGN: [NonNullable<ElementLook['align']>, string, () => ReactNode][] = [['left', 'Left', AlignLeftIcon], ['center', 'Centre', AlignCentreIcon], ['right', 'Right', AlignRightIcon]]
-const LOOKS: (keyof ElementLook)[] = ['cover', 'x', 'y', 'size', 'weight', 'colour', 'align', 'width', 'focusX', 'focusY', 'above', 'below']
+const LOOKS: (keyof ElementLook)[] = ['hidden', 'cover', 'x', 'y', 'size', 'weight', 'colour', 'align', 'width', 'focusX', 'focusY', 'above', 'below']
 const px = (rem: number) => `${Math.round(rem * 16)} px`
 
 export const canvas = () => (document.getElementById('preview-frame') as HTMLIFrameElement | null)?.contentDocument ?? null
@@ -208,6 +208,8 @@ export function ContextBar() {
     target.ownerDocument.defaultView?.focus()
     target.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, clientX: r.left + 2, clientY: r.top + 2 }))
   }
+  // Hiding applies to this screen size and the smaller ones, unless shown again there.
+  const toggleHidden = () => setLook({ hidden: shown.hidden ? (screen === 'desktop' ? undefined : false) : true })
   return (
     <div className="ctx" role="toolbar" aria-label={`${nameOf(key)} tools`}>
       <span className="ctx-name">{nameOf(key)}</span>
@@ -245,6 +247,7 @@ export function ContextBar() {
           </span>
         </>
       )}
+      <button type="button" className="ctx-btn ctx-hide" aria-pressed={!!shown.hidden} onClick={toggleHidden} title={shown.hidden ? `Show it again on ${SCREEN_LABEL[screen]}` : `Leave it out on ${SCREEN_LABEL[screen]}${screen === 'phone' ? '' : ' (and smaller screens)'}`}><EyeOffIcon /><span className="ctx-reset-word">{shown.hidden ? `Hidden on ${SCREEN_LABEL[screen]}` : `Hide on ${SCREEN_LABEL[screen]}`}</span></button>
       <button type="button" className="ctx-btn" disabled={from(...LOOKS) !== 'here'} onClick={resetAll} title={`Undo every change to this at ${SCREEN_LABEL[screen]} size`}><ResetIcon /><span className="ctx-reset-word">Reset</span></button>
       <span className="ctx-gap" />
       {where}
@@ -327,6 +330,10 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
           </Row>
         </Group>
       )}
+
+      <Group title="Visibility">
+        <label className="el-switch"><input type="checkbox" checked={!!shown.hidden} onChange={(e) => setLook({ hidden: e.target.checked ? true : screen === 'desktop' ? undefined : false })} /> Hide on {SCREEN_LABEL[screen]}{screen !== 'phone' && ' (and smaller screens unless shown there)'}</label>
+      </Group>
 
       <Group title="Position">
         <Row label="Across" from={from('x')} onReset={() => reset('x')}>

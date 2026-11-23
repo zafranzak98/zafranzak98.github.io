@@ -530,6 +530,10 @@ h3.free-heading { font-size: var(--h3); }
 
 /* Single-element settings from the design editor (src/layout/elements.ts). Tablet and Phone
    follow the larger size unless set, because their rules come later. */
+/* Parts hidden at one screen size in the design editor. */
+@media (min-width: 1280px) { .el-hidden-d { display: none !important; } }
+@media (min-width: 900px) and (max-width: 1279px) { .el-hidden-t { display: none !important; } }
+@media (max-width: 899px) { .el-hidden-p { display: none !important; } }
 /* A project's opening cover at one of four sizes, chosen in the design editor. Each size takes
    more of the grid, and the text beside it gives way; phones keep the stacked layout. */
 .el-cover-d-small { grid-column: 10 / span 3 !important; max-width: 20vw !important; }

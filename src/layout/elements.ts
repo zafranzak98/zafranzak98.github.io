@@ -33,6 +33,7 @@ export type ElementLook = {
   width?: number // per cent of the space it sits in (images)
   focusX?: number // crop focus in per cent (images)
   focusY?: number
+  hidden?: boolean // left out at this screen size (and smaller ones, unless shown there)
   cover?: CoverSize // a project's opening cover: a step on the grid, so the text beside it reflows
 }
 export const COVER_SIZES = ['small', 'standard', 'large', 'xl'] as const
@@ -71,6 +72,9 @@ export function useElement(elements: Elements | undefined) {
   return (key: string, { className, style, field }: ElementOptions = {}) => {
     const classes = className ? [className] : []
     const vars: Record<string, string> = {}
+    // Hidden at a size: the website leaves it out there; the editor shows it faded, so it can be shown again.
+    const hiddenAt = SCREENS.filter((screen) => lookAt(elements?.[key], screen).hidden)
+    if (!editing) for (const screen of hiddenAt) classes.push(`el-hidden-${SHORT[screen]}`)
     for (const screen of SCREENS) {
       const cover = elements?.[key]?.[screen]?.cover
       if (cover && COVER_SIZES.includes(cover)) classes.push(`el-cover-${SHORT[screen]}-${cover}`)
@@ -83,7 +87,7 @@ export function useElement(elements: Elements | undefined) {
     return {
       className: classes.length ? classes.join(' ') : undefined,
       style: Object.keys(merged).length ? merged : undefined,
-      ...(editing && { 'data-el': key, ...(field && { 'data-edit': field }) }),
+      ...(editing && { 'data-el': key, ...(field && { 'data-edit': field }), ...(hiddenAt.length && { 'data-el-hidden': hiddenAt.map((s) => SHORT[s]).join(' ') }) }),
     }
   }
 }
