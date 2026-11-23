@@ -2,7 +2,7 @@
 # phone (390), tablet (768) and desktop (1440) widths, in each selection state: nothing selected, a
 # section, a text part, a photo, and several parts together. Also runs axe on the editor at each step.
 # Run from the repository root after `bun run build` and `python3 tests/editor/serve.py dist 4302 &`.
-import json, os
+import re, json, os
 from playwright.sync_api import sync_playwright
 res = []
 def check(n, ok, d=""): ok = bool(ok); res.append(ok); print(("PASS " if ok else "FAIL ") + n + (f"  [{d}]" if d else ""), flush=True)
@@ -53,7 +53,7 @@ with sync_playwright() as p:
 
         tap(pg, "[data-el='title']")
         state(pg, w, "a text part")
-        s = pg.get_by_role("button", name="Settings").or_(pg.get_by_role("button", name="More settings")).first
+        s = pg.get_by_role("button", name=re.compile("^(All )?[Ss]ettings$")).first
         check(f"{w}px: the settings button is announced by name, with its on/off state", s.count() and s.get_attribute("aria-pressed") in ("true", "false"))
 
         tap(pg, "#outcomes [data-el='skills-label']", edge=True)

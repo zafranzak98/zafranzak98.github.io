@@ -60,7 +60,7 @@ const newId = (type: string) => `${type}-${Date.now().toString(36)}${(nextId++).
 type Option = { id: string; name: string; text: string; picture: React.ReactNode; make: () => Item }
 const text = (props: Record<string, unknown> = {}): Item => ({ type: 'Text', props: { id: newId('Text'), heading: 'Heading', text: 'Write here.', headingLevel: 'h2', size: 'body', ...props } })
 // A single Image section starts as wide as the text column, so a photo is never page-wide by
-// default; the width can be changed in More settings, Section design. In columns it fills its column.
+// default; the width can be changed in All settings, Section design. In columns it fills its column.
 const image = (alone = false): Item => ({ type: 'Image', props: { id: newId('Image'), image: '', ratio: 'auto', focusX: 50, focusY: 50, ...(alone && { design: { width: 'text' } }) } })
 const cell = (start: number, span: number, content: Item[]): Item => ({ type: 'Cell', props: { id: newId('Cell'), start, span, content } })
 const grid = (cells: Item[]): Item => ({ type: 'Grid', props: { id: newId('Grid'), gap: 'normal', align: 'start', cells } })
@@ -307,7 +307,7 @@ function AddSection({ onAdded, announce }: { onAdded: () => void; announce: (s: 
           ))}
         </section>
       )}
-      <p className="sec-intro sec-after">After adding, choose words or a photo in <b>More settings</b>, or double-click the words on the page.</p>
+      <p className="sec-intro sec-after">After adding, choose words or a photo in <b>All settings</b>, or double-click the words on the page.</p>
     </div>
   )
 }

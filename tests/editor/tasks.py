@@ -61,7 +61,7 @@ with sync_playwright() as p:
     # 8 duplicate a section
     before=len((unsaved(pg) or {}).get("content",[]))
     o=el("#overview"); x,y=centre(o); pg.mouse.click(o.bounding_box()["x"]+o.bounding_box()["width"]-20, o.bounding_box()["y"]+10); pg.wait_for_timeout(700)
-    dup=pg.locator(".ctx button", has_text="Duplicate")
+    pg.locator(".ctx .ctx-more").first.click(); pg.wait_for_timeout(300); dup=pg.locator(".ctx-more-menu button", has_text="Duplicate section")
     ok = dup.count()>0
     if ok: dup.first.click(); pg.wait_for_timeout(800)
     after=len((unsaved(pg) or {}).get("content",[]))

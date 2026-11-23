@@ -15,6 +15,9 @@ def click(pg,f,sel,shift=False):
     pg.mouse.click(b["x"]+6,b["y"]+b["height"]/2)
     if shift: pg.keyboard.up("Shift")
     pg.wait_for_timeout(500)
+def more(pg, item):
+    pg.locator(".ctx .ctx-more").first.click(); pg.wait_for_timeout(300)
+    pg.locator(".ctx-more-menu button", has_text=item).first.click(); pg.wait_for_timeout(500)
 with sync_playwright() as p:
     br=p.chromium.launch()
     for w,h,scr,key in ((1440,900,"Desktop","desktop"),(1024,768,"Tablet","tablet"),(390,844,"Phone","phone")):
@@ -25,7 +28,7 @@ with sync_playwright() as p:
         click(pg,f,TARGETS[0][1])
         if touch:
             # touchscreen route: "Select more", then taps
-            pg.locator(".ctx button[aria-label='Select more']").click(); pg.wait_for_timeout(300)
+            more(pg,"Select more parts")
             for _,sel,_ in TARGETS[1:]: click(pg,f,sel)
         else:
             for _,sel,_ in TARGETS[1:]: click(pg,f,sel,shift=True)

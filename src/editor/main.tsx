@@ -214,6 +214,19 @@ function SidePanel({ fields }: { children: React.ReactNode; fields: Partial<Reco
 }
 
 const SCREEN_NAME = { desktop: 'Desktop', tablet: 'Tablet', phone: 'Phone' } as const
+// While editing Tablet or Phone, a steady strip says where changes apply (Desktop needs none: its
+// changes reach every size unless a smaller size has its own setting, which Layout notes explain).
+function ScreenStrip({ width }: { width: number }) {
+  const screen = screenFor(width)
+  if (screen === 'desktop') return null
+  return (
+    <p className={`editor-strip is-${screen}`}>
+      <b>Editing {SCREEN_NAME[screen]}.</b>{' '}
+      {screen === 'tablet' ? 'Changes here apply to tablets, and to phones unless Phone has its own setting.' : 'Changes here apply to phones only.'}
+      <span className="editor-strip-more"> Anything not changed here follows {screen === 'tablet' ? 'Desktop' : 'Tablet and Desktop'}. A dot on a size button means the selected part has its own settings there.</span>
+    </p>
+  )
+}
 const SCREENS_BAR: [string, number][] = [['Desktop', 1440], ['Tablet', 1024], ['Phone', 390]]
 const DESKTOP_WIDTHS = [1280, 1440, 1920]
 // "23 Nov, 14:40": the day is included because the status is remembered across reloads.
@@ -539,10 +552,10 @@ function Actions() {
           </div>
         </div>
         {!DEMO && !token && <button type="button" className="editor-signin" onClick={signIn} disabled={!!busy}>Sign in</button>}
-        <button type="button" className="editor-save" onClick={saveDraft} disabled={!!busy} title="Saves without changing the website">Save<span className="editor-long"> draft</span></button>
+        <button type="button" className="editor-save" onClick={saveDraft} disabled={!!busy} title="Saves without changing the website">Save draft</button>
         <button type="button" className="editor-primary" onClick={openPublish} disabled={!!busy} title="Checks the page, then updates the website">Publish</button>
       </div>
-      <div className="editor-bar-ctx" onKeyDown={(e) => { if (e.key === 'Escape' && !e.defaultPrevented && !(e.target as HTMLElement).closest('input, textarea, select, .ctx-menu')) select(null) }}>{!preview && <MoreTools />}{preview ? <p className="ctx ctx-hint">Previewing the page exactly as visitors see it. Nothing here can be changed until you go back to editing.</p> : <ContextBar />}</div>
+      <div className="editor-bar-ctx" onKeyDown={(e) => { if (e.key === 'Escape' && !e.defaultPrevented && !(e.target as HTMLElement).closest('input, textarea, select, .ctx-menu')) select(null) }}>{!preview && <MoreTools />}{!preview && <ScreenStrip width={Number(ui.viewports.current.width) || 1440} />}{preview ? <p className="ctx ctx-hint">Previewing the page exactly as visitors see it. Nothing here can be changed until you go back to editing.</p> : <ContextBar />}</div>
       {warnings.length > 0 && <p className="editor-demo editor-checks">{warnings.join(' ')}</p>}
       {undone && <p className="editor-undone" role="status">{undone}</p>}
       {notice.text && (

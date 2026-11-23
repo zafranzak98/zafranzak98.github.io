@@ -13,15 +13,18 @@ def arrange(pg,label):
     pg.locator(".ctx .ctx-arrange > button").click(); pg.wait_for_timeout(200)
     pg.locator(".ctx-menu button",has_text=label).click(); pg.wait_for_timeout(700)
 near=lambda xs: max(xs)-min(xs)<=1.5
+def more(pg, item):
+    pg.locator(".ctx .ctx-more").first.click(); pg.wait_for_timeout(300)
+    pg.locator(".ctx-more-menu button", has_text=item).first.click(); pg.wait_for_timeout(500)
 with sync_playwright() as p:
     br=p.chromium.launch()
     for w,h,scr in ((1440,900,"Desktop"),(1024,768,"Tablet"),(390,844,"Phone")):
         pg=br.new_page(viewport={"width":w,"height":h}); errs=[]; pg.on("pageerror",lambda e: errs.append(str(e)))
         pg.goto(ED,wait_until="networkidle"); pg.evaluate("localStorage.clear()"); pg.reload(wait_until="networkidle"); pg.wait_for_timeout(2500)
         f=frame(pg)
-        click(pg,f,TARGETS[0]); pg.locator(".ctx button[aria-label='Select more']").click()
+        click(pg,f,TARGETS[0]); more(pg,"Select more parts")
         for s in TARGETS[1:]: click(pg,f,s)
-        pg.locator(".ctx button[aria-label='Select more']").click()
+        pg.locator(".ctx .ctx-more-sel").click()
         check(f"{scr}: three selected", pg.locator(".ctx .ctx-name").first.inner_text().strip()=="3 selected")
         before=rects(f)
         for label,idx,fn in (("Align left edges",0,None),("Align right edges",1,None),("Align centres",None,lambda r:(r[0]+r[1])/2)):
