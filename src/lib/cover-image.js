@@ -5,9 +5,24 @@
 // browser starts downloading it straight away instead of after the page's script has run. Keeping
 // them here means the two always ask for the same file. Plain JavaScript so the build can use it.
 
-// The frame: width / height as 'w/h', or 'auto' to show the artwork at its own proportions.
-export const coverFrame = (design) =>
+// The frame each design was given: width / height as 'w/h', or 'auto' for the artwork's own proportions.
+const designedFrame = (design) =>
   design === 'about-face' || design === 'fc-yeah' ? 'auto' : design === 'bersih' ? '4/5' : '3/4'
+
+// A cover is never cropped by more than this share of its width or height. A frame that would cut
+// more is not used: the cover is shown whole, at its own proportions (Portfolio standards, cover rule).
+const MAX_CROP = 0.02
+export const fitsFrame = (size, frame) => {
+  if (!size || frame === 'auto') return true
+  const [w, h] = frame.split('/').map(Number)
+  return Math.abs(size.width / size.height - w / h) / (w / h) <= MAX_CROP
+}
+// The frame actually used for a cover of this size: the given one if the cover fits it, otherwise 'auto'.
+export const frameFor = (frame, size) => (fitsFrame(size, frame) ? frame : 'auto')
+
+// The frame for a project's cover on its page and in the Projects bands. `size` is the image's
+// pixel size; without it (no image yet) the designed frame shapes the placeholder.
+export const coverFrame = (design, size) => frameFor(designedFrame(design), size)
 
 // How wide the cover is shown: in a band on a Projects page (15vw, Evoke 24.5vw; most of the
 // width on a phone) or in a case study opening (up to 26vw; 250px on a phone). Evoke shows its

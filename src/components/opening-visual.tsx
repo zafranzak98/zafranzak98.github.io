@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { Media } from '#/components/media'
 import { coverFrame, coverSizes } from '#/lib/cover-image.js'
-import type { Project } from '#/lib/site'
+import { photoSize, type Project } from '#/lib/site'
 
 // Each original case study keeps its own approved opening composition; new projects use the standard one.
 // Shared by the case-study opening and the Projects lookbook, so both show the same visual.
@@ -14,23 +14,29 @@ const Tilt = ({ deg, children }: { deg: number; children: ReactNode }) => <div c
 export default function OpeningVisual({ p, inBand = false, priority = !inBand }: { p: Project; inBand?: boolean; priority?: boolean }) {
   // Frame shapes and widths come from src/lib/cover-image.js, shared with the build.
   const sizes = coverSizes(p.design, inBand)
-  const frame = coverFrame(p.design)
+  // Each image keeps its design's frame only if that frame would not crop it; otherwise it is shown
+  // whole (src/lib/cover-image.js). Without an image yet, the placeholder uses a 3:4 frame.
+  const frameOf = (img?: { image?: string }) => {
+    const f = coverFrame(p.design, photoSize(img?.image))
+    return f === 'auto' && !img?.image ? '3/4' : f
+  }
+  const frame = frameOf(p.cover)
   switch (p.design) {
     case 'cancel-me-not':
       return <div className="tilt"><Media priority={priority} img={p.cover} ratio={frame} sizes={sizes} /></div>
     case 'evoke':
       return (
         <div className="pair">
-          <Tilt deg={-1.5}><Media priority={priority} img={p.cover_before} ratio={frame} label="before" sizes={sizes} /></Tilt>
+          <Tilt deg={-1.5}><Media priority={priority} img={p.cover_before} ratio={frameOf(p.cover_before)} label="before" sizes={sizes} /></Tilt>
           <Tilt deg={1.75}><Media priority={priority} img={p.cover} ratio={frame} label="after" sizes={sizes} /></Tilt>
         </div>
       )
     case 'about-face':
-      // The cover artwork keeps its own proportions (no crop).
-      return <Tilt deg={-1.25}><Media priority={priority} img={p.cover} ratio={p.cover?.image ? frame : '3/4'} label="AR filter on a face" sizes={sizes} /></Tilt>
+      // The cover artwork keeps its own proportions (no crop) whatever its shape.
+      return <Tilt deg={-1.25}><Media priority={priority} img={p.cover} ratio={frame} label="AR filter on a face" sizes={sizes} /></Tilt>
     case 'fc-yeah':
       // The mouth artwork is a cut-out drawing, so it is shown whole rather than cropped.
-      return <Tilt deg={-2.5}><Media priority={priority} img={p.cover} ratio={p.cover?.image ? frame : '3/4'} label="strongest image" sizes={sizes} /></Tilt>
+      return <Tilt deg={-2.5}><Media priority={priority} img={p.cover} ratio={frame} label="strongest image" sizes={sizes} /></Tilt>
     case 'bersih':
       return <Tilt deg={1.25}><Media priority={priority} img={p.cover} ratio={frame} label="poster" sizes={sizes} /></Tilt>
     default:
