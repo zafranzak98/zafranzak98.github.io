@@ -1,4 +1,5 @@
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { createUsePuck } from '@puckeditor/core'
 import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { COVER_NAMES, COVER_SIZES, TEXT_SIZES, lookAt, type ElementLook, type ElementStyle, type Elements, type Screen, type TextSize } from '#/layout/elements'
@@ -218,7 +219,7 @@ export function ContextBar() {
   )
   const live = <span className="sr-only" role="status" aria-live="polite">{message}</span>
 
-  if (grouping.members.length > 1) return <GroupBar {...grouping} where={where} more={more} live={live} onDone={() => select(null)} />
+  if (grouping.members.length > 1) return <GroupBar {...grouping} where={where} more={more} live={live} onDone={() => select(null)} announce={setMessage} />
 
   // Nothing selected: what to do first, and the two ways to change the page's structure.
   if (!item) {
@@ -362,10 +363,56 @@ export function ContextBar() {
 
 // ---- Several elements selected (Shift-click): the settings they can share, applied to all at once.
 
+// Lining up a group: each part keeps its place in the page's layout and is offset (its position
+// setting, per screen size) so that its edge, centre or spacing matches the others. Shared parts
+// (category names) cannot move, so they are left out.
+type Arrange = 'left' | 'centre' | 'right' | 'top' | 'middle' | 'bottom' | 'across' | 'down'
+const ARRANGE: [Arrange, string][] = [['left', 'Align left edges'], ['centre', 'Align centres'], ['right', 'Align right edges'], ['top', 'Align tops'], ['middle', 'Align middles'], ['bottom', 'Align bottoms'], ['across', 'Space evenly across'], ['down', 'Space evenly down']]
+function arrangeMoves(members: Picked[], how: Arrange): { m: Picked; x?: number; y?: number }[] {
+  const parts = members.map((m) => ({ m, el: elOfPick(m) })).filter((x): x is { m: Picked; el: HTMLElement } => !!x.el && !x.el.hasAttribute('data-shared'))
+  if (parts.length < 2) return []
+  const view = parts[0].el.ownerDocument.defaultView!
+  const root = parseFloat(view.getComputedStyle(parts[0].el.ownerDocument.documentElement).fontSize) || 16
+  const boxes = parts.map(({ m, el }) => {
+    const r = el.getBoundingClientRect()
+    const look = view.getComputedStyle(el)
+    return { m, r, left: parseFloat(look.left) || 0, top: parseFloat(look.top) || 0 }
+  })
+  const rem = (px: number) => Math.round((px / root) * 100) / 100
+  const across = (dx: (b: (typeof boxes)[number]) => number) => boxes.map((b) => ({ m: b.m, x: rem(b.left + dx(b)) }))
+  const down = (dy: (b: (typeof boxes)[number]) => number) => boxes.map((b) => ({ m: b.m, y: rem(b.top + dy(b)) }))
+  const minL = Math.min(...boxes.map((b) => b.r.left)), maxR = Math.max(...boxes.map((b) => b.r.right))
+  const minT = Math.min(...boxes.map((b) => b.r.top)), maxB = Math.max(...boxes.map((b) => b.r.bottom))
+  switch (how) {
+    case 'left': return across((b) => minL - b.r.left)
+    case 'right': return across((b) => maxR - b.r.right)
+    case 'centre': return across((b) => (minL + maxR) / 2 - (b.r.left + b.r.right) / 2)
+    case 'top': return down((b) => minT - b.r.top)
+    case 'bottom': return down((b) => maxB - b.r.bottom)
+    case 'middle': return down((b) => (minT + maxB) / 2 - (b.r.top + b.r.bottom) / 2)
+    case 'across':
+    case 'down': {
+      // The first and last stay where they are; the ones between get equal gaps.
+      const h = how === 'across'
+      const sorted = [...boxes].sort((a, b) => (h ? a.r.left - b.r.left : a.r.top - b.r.top))
+      const size = (b: (typeof boxes)[number]) => (h ? b.r.width : b.r.height)
+      const start = h ? sorted[0].r.left : sorted[0].r.top
+      const end = h ? sorted.at(-1)!.r.right : sorted.at(-1)!.r.bottom
+      const gap = (end - start - sorted.reduce((t, b) => t + size(b), 0)) / (sorted.length - 1)
+      let at = start
+      return sorted.map((b) => {
+        const shift = at - (h ? b.r.left : b.r.top)
+        at += size(b) + gap
+        return h ? { m: b.m, x: rem(b.left + shift) } : { m: b.m, y: rem(b.top + shift) }
+      })
+    }
+  }
+}
+
 const elOfPick = (m: Picked) => [...(canvas()?.querySelectorAll<HTMLElement>('[data-el]') ?? [])].find((n) => n.dataset.el === m.key && n.closest('[data-puck-component]')?.getAttribute('data-puck-component') === m.blockId) ?? null
 const allSame = <T,>(values: T[]) => values.every((v) => v === values[0])
 
-function GroupBar({ members, screen, apply, where, more, live, onDone }: ReturnType<typeof useGroup> & { where: ReactNode; more: ReactNode; live: ReactNode; onDone: () => void }) {
+function GroupBar({ members, screen, apply, where, more, live, onDone, announce }: ReturnType<typeof useGroup> & { where: ReactNode; more: ReactNode; live: ReactNode; onDone: () => void; announce: (text: string) => void }) {
   const looks = members.map((m) => m.shown)
   const text = members.every((m) => !IMAGES.test(m.key))
   const sizes = members.map((m) => currentSize(m.shown, elOfPick(m)))
@@ -377,6 +424,21 @@ function GroupBar({ members, screen, apply, where, more, live, onDone }: ReturnT
   const hidden = looks.every((l) => l.hidden)
   const changed = members.some((m) => Object.keys(m.own).length)
   const step = (by: number) => apply((m) => ({ size: SIZES[Math.max(0, Math.min(SIZES.length - 1, currentSize(m.shown, elOfPick(m)) + by))] }))
+  const [arranging, setArranging] = useState<{ left: number; top: number } | null>(null)
+  // A tap or click anywhere else closes the menu.
+  useEffect(() => {
+    if (!arranging) return
+    const close = (e: PointerEvent) => { if (!(e.target as HTMLElement).closest('.ctx-menu, .ctx-arrange')) setArranging(null) }
+    document.addEventListener('pointerdown', close)
+    return () => document.removeEventListener('pointerdown', close)
+  }, [arranging])
+  const movable = members.filter((m) => !elOfPick(m)?.hasAttribute('data-shared')).length
+  const arrange = (how: Arrange, label: string) => {
+    setArranging(null)
+    const moves = arrangeMoves(members, how)
+    apply((m) => { const to = moves.find((v) => v.m.key === m.key && v.m.blockId === m.blockId); return to ? { ...(to.x !== undefined && { x: to.x }), ...(to.y !== undefined && { y: to.y }) } : null })
+    announce(`${label}: ${moves.length} parts.`)
+  }
   return (
     <div className="ctx" role="toolbar" aria-label={`${members.length} selected parts tools`}>
       <span className="ctx-name">{members.length} selected</span>
@@ -411,6 +473,16 @@ function GroupBar({ members, screen, apply, where, more, live, onDone }: ReturnT
           </span>
         </span>
       )}
+      <span className="ctx-arrange" onKeyDown={(e) => { if (e.key === 'Escape') setArranging(null) }}>
+        <button type="button" className="ctx-btn" aria-expanded={!!arranging} aria-haspopup="true" disabled={movable < 2} title="Line the selected parts up, or space them evenly" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setArranging(arranging ? null : { left: r.left, top: r.bottom + 4 }) }}>Arrange <span aria-hidden="true">▾</span></button>
+        {/* Drawn at the top level of the page, so no editor panel or control can cover it. */}
+        {arranging && createPortal(
+          <span className="ctx-menu" role="group" aria-label="Arrange" style={{ left: Math.min(arranging.left, window.innerWidth - 200), top: arranging.top }} onKeyDown={(e) => { if (e.key === 'Escape') setArranging(null) }}>
+            {ARRANGE.map(([how, label]) => <button key={how} type="button" disabled={(how === 'across' || how === 'down') && movable < 3} title={(how === 'across' || how === 'down') && movable < 3 ? 'Select three or more parts to space them evenly' : undefined} onClick={() => arrange(how, label)}>{label}</button>)}
+          </span>,
+          document.body,
+        )}
+      </span>
       <button type="button" className="ctx-btn ctx-hide" aria-pressed={hidden} aria-label={hidden ? `All hidden on ${SCREEN_LABEL[screen]}: show them` : `Hide all on ${SCREEN_LABEL[screen]}`} onClick={() => apply(() => ({ hidden: hidden ? (screen === 'desktop' ? undefined : false) : true }))}><EyeOffIcon /><span className="ctx-reset-word">{hidden ? 'Hidden here' : 'Hide here'}</span></button>
       <button type="button" className="ctx-btn ctx-reset" aria-label="Reset changes, all selected" disabled={!changed} title={`Reset: undo every change to these at ${SCREEN_LABEL[screen]} size`} onClick={() => apply((m) => Object.fromEntries(Object.keys(m.own).map((k) => [k, undefined])))}><ResetIcon /><span className="ctx-reset-word">Reset</span></button>
       <SelectMore />
