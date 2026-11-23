@@ -15,6 +15,9 @@ export default function ProjectBand({ p, number, first = false }: { p: Project; 
   const colour = colourOf(p)
   const className = `band band-${p.design ?? 'standard'}${colour === 'Off-white' ? ' band-rule' : ''}${highlightOnSage(p) ? ' on-sage' : ''}`
   const style: CSSProperties = { background: o.bg, color: o.fg }
+  // What the project produced, from its Deliverables, as one short line. Entries still holding a
+  // [placeholder] are left out, so unfinished content never shows on the Projects page.
+  const format = (p.deliverables ?? []).filter((d) => d && !d.includes('[')).join(' · ')
   const content = (
     <>
       <div className="band-top">
@@ -25,6 +28,7 @@ export default function ProjectBand({ p, number, first = false }: { p: Project; 
         <span>My role: {p.role}{hasPage && <> <span className="band-arrow" aria-hidden="true">→</span></>}</span>
       </div>
       <p className="band-line"><span><Rich text={p.summary} /></span></p>
+      {format && <p className="band-format"><span>{format}</span></p>}
       <div className="band-visual"><OpeningVisual p={p} inBand priority={first} /></div>
       <b className="c band-title">{p.title}</b>
     </>
