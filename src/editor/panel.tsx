@@ -5,7 +5,7 @@ import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { COVER_NAMES, COVER_SIZES, TEXT_SIZES, lookAt, type ElementLook, type ElementStyle, type Elements, type Screen, type TextSize } from '#/layout/elements'
 import type { Project } from '#/lib/site'
 import { IMAGES, Selection, type Picked, groupMoveListeners, coverListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
-import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, PlusIcon, ResetIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
+import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, PlusIcon, ResetIcon, SelectMoreIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
 
 // The editing controls. The contextual bar under the top bar holds what you use most for the
 // selected text, image or section; the side panel ("More settings") holds everything, grouped.
@@ -156,7 +156,7 @@ export const sectionName = (type: string) => LABELS[type] ?? type
 // "Select more": the touchscreen way to Shift-click. On, each tap adds or removes a part.
 function SelectMore() {
   const { adding, setAdding } = useContext(Selection)
-  return <button type="button" className="ctx-btn ctx-more-sel" aria-label="Select more" aria-pressed={adding} title="Tap more parts to change them together (or Shift-click)" onClick={() => setAdding(!adding)}><PlusIcon /><span className="ctx-reset-word">Select more</span></button>
+  return <button type="button" className="ctx-btn ctx-more-sel" aria-label="Select more" aria-pressed={adding} title="Tap more parts to change them together (or Shift-click)" onClick={() => setAdding(!adding)}><SelectMoreIcon /><span className="ctx-reset-word">Select more</span></button>
 }
 
 export function ContextBar() {
@@ -473,11 +473,11 @@ function GroupBar({ members, screen, apply, where, more, live, onDone, announce 
           </span>
         </span>
       )}
-      <span className="ctx-arrange" onKeyDown={(e) => { if (e.key === 'Escape') setArranging(null) }}>
+      <span className="ctx-arrange" onKeyDown={(e) => { if (e.key === 'Escape' && arranging) { e.preventDefault(); setArranging(null) } }}>
         <button type="button" className="ctx-btn" aria-expanded={!!arranging} aria-haspopup="true" disabled={movable < 2} title="Line the selected parts up, or space them evenly" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setArranging(arranging ? null : { left: r.left, top: r.bottom + 4 }) }}>Arrange <span aria-hidden="true">▾</span></button>
         {/* Drawn at the top level of the page, so no editor panel or control can cover it. */}
         {arranging && createPortal(
-          <span className="ctx-menu" role="group" aria-label="Arrange" style={{ left: Math.min(arranging.left, window.innerWidth - 200), top: arranging.top }} onKeyDown={(e) => { if (e.key === 'Escape') setArranging(null) }}>
+          <span className="ctx-menu" role="group" aria-label="Arrange" style={{ left: Math.min(arranging.left, window.innerWidth - 200), top: arranging.top }} onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); setArranging(null) } }}>
             {ARRANGE.map(([how, label]) => <button key={how} type="button" disabled={(how === 'across' || how === 'down') && movable < 3} title={(how === 'across' || how === 'down') && movable < 3 ? 'Select three or more parts to space them evenly' : undefined} onClick={() => arrange(how, label)}>{label}</button>)}
           </span>,
           document.body,

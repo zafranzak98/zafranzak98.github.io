@@ -12,8 +12,9 @@ import * as github from './github'
 import { SHARED_KEY, currentAccount, forgetOwn, keepOwn, sharedToken, signOutHere, type Account } from './signin'
 import { CATEGORY_FIELD, Selection, SelectionProvider, categoryEdits, nameOf, wordsOf, type Edits } from './elements'
 import { categoryName } from '#/lib/site'
-import { checkPage, type Finding } from './checks'
-import { ContextBar } from './panel'
+import { checkPage, noteId, type Finding } from './checks'
+import { LayoutNotes, checkOptions, settled, type Intended } from './notes'
+import { ContextBar, screenFor } from './panel'
 import { EyeIcon, LayersIcon, PlusIcon, RedoIcon, SlidersIcon, UndoIcon } from './icons'
 
 // The design editor at /admin/design/. Arrange and restyle a page with its real blocks, then
@@ -126,6 +127,7 @@ function EditorApp() {
         data={start.data}
         onChange={onChange}
         headerTitle="Design editor"
+        dictionary={{ 'outline-header-title': 'Page navigator', 'plugin-outline': 'Page navigator' }}
         viewports={[
           { width: 390, label: 'Phone', icon: 'Smartphone' },
           { width: 1024, label: 'Tablet', icon: 'Tablet' },
@@ -147,7 +149,7 @@ type Notice = { text: string; undo?: boolean }
 type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string, undo?: boolean) => void; notice: Notice; markClean: () => void; clean: { current: string | null }; login: string; shared: boolean; expire: (t: string) => boolean; signOut: () => void }
 
 // The left-hand tools, named for what they do.
-const PLUGINS = [{ ...blocksPlugin(), label: 'Add section', icon: <PlusIcon /> }, { ...outlinePlugin(), label: 'Page navigator', icon: <LayersIcon /> }, { ...fieldsPlugin(), label: 'Settings', icon: <SlidersIcon /> }]
+const PLUGINS = [{ ...blocksPlugin(), label: 'Add section', icon: <PlusIcon /> }, outlinePlugin({ label: 'Page navigator', icon: <LayersIcon /> }), { ...fieldsPlugin(), label: 'Settings', icon: <SlidersIcon /> }]
 
 const SessionContext = createContext<Session | null>(null)
 const OVERRIDES = { header: () => <Actions />, fields: SidePanel }
@@ -178,6 +180,7 @@ function SidePanel({ fields }: { children: React.ReactNode; fields: Partial<Reco
   )
 }
 
+const SCREEN_NAME = { desktop: 'Desktop', tablet: 'Tablet', phone: 'Phone' } as const
 const SCREENS_BAR: [string, number][] = [['Desktop', 1440], ['Tablet', 1024], ['Phone', 390]]
 const DESKTOP_WIDTHS = [1280, 1440, 1920]
 const time = () => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
@@ -190,7 +193,14 @@ function Actions() {
   const history = usePuck((s) => s.history)
   const [saved, setSaved] = useState<{ json: string; text: string } | null>(null)
   const [preview, setPreview] = useState(false)
-  const { select } = useContext(Selection)
+  const { select, selected } = useContext(Selection)
+  const selectedItem = usePuck((s) => s.selectedItem)
+  // Which sizes the selected part has its own settings on (shown as a dot on that size's button).
+  const ownAt = (() => {
+    const els = (selectedItem?.props as { elements?: Record<string, Record<string, object>> } | undefined)?.elements
+    const style = selected && selectedItem && selected.blockId === selectedItem.props.id ? els?.[selected.key] : undefined
+    return new Set(Object.entries(style ?? {}).filter(([, v]) => v && Object.keys(v).length).map(([k]) => k))
+  })()
   useEffect(() => { if (clean.current === '') clean.current = JSON.stringify(data) }, [data, clean])
   const dispatch = usePuck((s) => s.dispatch)
   const [busy, setBusy] = useState('')
@@ -198,23 +208,41 @@ function Actions() {
   const ui = usePuck((s) => s.appState.ui)
   const [findings, setFindings] = useState<Finding[] | null>(null)
 
-  // Before publishing, the page is checked at each screen size, then the preview goes back to where it was.
-  const openPublish = async () => {
-    setPanel('publish')
-    setFindings(null)
+  // Check the page at the given screen sizes, then put the preview back where it was. Used before
+  // publishing (all three sizes) and by "Check Tablet and Phone" in the layout notes.
+  const checkSizes = async (sizes: [string, number][]) => {
     const found: Finding[] = []
-    for (const [screen, width] of [['Desktop', 1440], ['Tablet', 1024], ['Phone', 390]] as const) {
+    for (const [screen, width] of sizes) {
       dispatch({ type: 'setUi', ui: { viewports: { ...ui.viewports, current: { width, height: 'auto' } } } })
       await new Promise((r) => setTimeout(r, 700))
       const doc = (document.getElementById('preview-frame') as HTMLIFrameElement | null)?.contentDocument
-      if (doc) found.push(...checkPage(doc, screen, nameOf))
+      if (doc) { await settled(doc); found.push(...checkPage(doc, screen, nameOf, checkOptions(p))) }
     }
     dispatch({ type: 'setUi', ui: { viewports: ui.viewports } })
-    setFindings(found)
+    // Notes marked "This is intended" stay quiet here too.
+    const intended = new Set((((data.root.props ?? {}) as { intended?: Intended[] }).intended ?? []).map((i) => i.id))
+    return found.filter((f) => !intended.has(noteId(f)))
+  }
+  const openPublish = async () => {
+    setPanel('publish')
+    setFindings(null)
+    setFindings(await checkSizes([['Desktop', 1440], ['Tablet', 1024], ['Phone', 390]]))
   }
   const [versions, setVersions] = useState<Version[]>([])
   const [more, setMore] = useState(false)
   const choose = (action: () => void) => () => { setMore(false); action() }
+  const moreRef = useRef<HTMLDivElement>(null)
+  // The More menu closes like other menus: Escape (focus goes back to More) or a click elsewhere.
+  useEffect(() => {
+    if (!more) return
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { setMore(false); moreRef.current?.querySelector('button')?.focus() } }
+    const away = (e: PointerEvent) => { if (!moreRef.current?.contains(e.target as Node)) setMore(false) }
+    const blur = () => setMore(false) // a click inside the page preview (its own frame) blurs this window
+    document.addEventListener('keydown', key)
+    document.addEventListener('pointerdown', away)
+    window.addEventListener('blur', blur)
+    return () => { document.removeEventListener('keydown', key); document.removeEventListener('pointerdown', away); window.removeEventListener('blur', blur) }
+  }, [more])
   const warnings = layoutWarnings(data.content as never)
   const renames = categoryEdits(((data.root.props as { edits?: Edits } | undefined)?.edits) ?? {}).map(([field, to]) => [field.match(CATEGORY_FIELD)![1], to] as const)
   const json = JSON.stringify(data)
@@ -347,7 +375,8 @@ function Actions() {
           {SCREENS_BAR.map(([name, width]) => {
             const current = Number(ui.viewports.current.width)
             const on = name === 'Desktop' ? current >= 1280 : name === 'Tablet' ? current >= 900 && current < 1280 : current < 900
-            return <button key={name} type="button" aria-pressed={on} onClick={() => showWidth(width)}>{name}</button>
+            const own = ownAt.has(name.toLowerCase())
+            return <button key={name} type="button" aria-pressed={on} title={own ? `The selected part has its own settings on ${name}` : undefined} onClick={() => showWidth(width)}>{name}{own && <span className="editor-own-dot"><span className="sr-only"> (selected part set here)</span></span>}</button>
           })}
         </div>
         {Number(ui.viewports.current.width) >= 1280 && (
@@ -365,8 +394,9 @@ function Actions() {
           <button type="button" onClick={history.forward} disabled={!history.hasFuture} title="Redo (Cmd+Shift+Z)" aria-label="Redo"><RedoIcon /><span className="editor-word">Redo</span></button>
         </div>
         <span className={`editor-status${unsaved ? ' is-unsaved' : ''}`} role="status" title={unsaved ? 'Kept safely in this browser. Save a draft or publish when ready.' : undefined}>{busy ? `${busy}…` : status}</span>
+        <LayoutNotes p={p} screen={SCREEN_NAME[screenFor(Number(ui.viewports.current.width) || 1440)]} preview={preview} checkSizes={checkSizes} />
         <button type="button" className="editor-quiet editor-preview" aria-pressed={preview} onClick={togglePreview}><EyeIcon /><span>{preview ? 'Back to editing' : 'Preview'}</span></button>
-        <div className="editor-more-wrap">
+        <div className="editor-more-wrap" ref={moreRef}>
           <button type="button" className="editor-quiet" aria-expanded={more} aria-haspopup="true" onClick={() => setMore(!more)}>More <span aria-hidden="true">▾</span></button>
           <div className={more ? 'editor-more open' : 'editor-more'}>
             <button type="button" onClick={choose(openHistory)} disabled={!!busy}>Versions <small>bring back an earlier version</small></button>
@@ -379,7 +409,7 @@ function Actions() {
         <button type="button" className="editor-save" onClick={saveDraft} disabled={!!busy} title="Saves without changing the website">Save<span className="editor-long"> draft</span></button>
         <button type="button" className="editor-primary" onClick={openPublish} disabled={!!busy} title="Checks the page, then updates the website">Publish</button>
       </div>
-      <div className="editor-bar-ctx">{preview ? <p className="ctx ctx-hint">Previewing the page exactly as visitors see it. Nothing here can be changed until you go back to editing.</p> : <ContextBar />}</div>
+      <div className="editor-bar-ctx" onKeyDown={(e) => { if (e.key === 'Escape' && !e.defaultPrevented && !(e.target as HTMLElement).closest('input, textarea, select, .ctx-menu')) select(null) }}>{!preview && <MoreTools />}{preview ? <p className="ctx ctx-hint">Previewing the page exactly as visitors see it. Nothing here can be changed until you go back to editing.</p> : <ContextBar />}</div>
       {warnings.length > 0 && <p className="editor-demo editor-checks">{warnings.join(' ')}</p>}
       {notice.text && (
         <div className="editor-notice" role="status">
@@ -454,3 +484,34 @@ function Panel({ title, onClose, children }: { title: string; onClose: () => voi
 }
 
 createRoot(document.getElementById('editor')!).render(<EditorApp />)
+
+// On narrow screens the editing tools scroll sideways. These arrows show that more tools are
+// there and scroll to them; keyboard users reach the same tools with Tab.
+function MoreTools() {
+  const [edge, setEdge] = useState({ left: false, right: false })
+  useEffect(() => {
+    let bar: HTMLElement | null = null
+    const measure = () => {
+      const next = document.querySelector<HTMLElement>('.editor-bar-ctx .ctx')
+      if (next !== bar) { bar?.removeEventListener('scroll', measure); bar = next; bar?.addEventListener('scroll', measure, { passive: true }) }
+      const left = !!bar && bar.scrollLeft > 4
+      const right = !!bar && bar.scrollLeft + bar.clientWidth < bar.scrollWidth - 4
+      setEdge((e) => (e.left === left && e.right === right ? e : { left, right }))
+    }
+    measure()
+    const watch = new MutationObserver(measure)
+    watch.observe(document.querySelector('.editor-bar-ctx')!, { childList: true, subtree: true })
+    window.addEventListener('resize', measure)
+    return () => { watch.disconnect(); window.removeEventListener('resize', measure); bar?.removeEventListener('scroll', measure) }
+  }, [])
+  const go = (dir: number) => {
+    const bar = document.querySelector<HTMLElement>('.editor-bar-ctx .ctx')
+    bar?.scrollBy({ left: dir * bar.clientWidth * 0.6, behavior: 'smooth' })
+  }
+  return (
+    <>
+      {edge.left && <button type="button" className="ctx-scroll ctx-scroll-left" tabIndex={-1} aria-hidden="true" title="Earlier tools" onClick={() => go(-1)}>‹</button>}
+      {edge.right && <button type="button" className="ctx-scroll ctx-scroll-right" tabIndex={-1} aria-hidden="true" title="More tools" onClick={() => go(1)}>›</button>}
+    </>
+  )
+}

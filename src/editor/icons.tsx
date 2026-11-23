@@ -33,3 +33,5 @@ export const EyeOffIcon = () => <Icon><path d="M3 3l18 18" /><path d="M10.6 5.1A
 export const BoxStartIcon = () => <Icon><path d="M4 4v16" /><rect x="7" y="8" width="9" height="8" rx="1.5" /></Icon>
 export const BoxCentreIcon = () => <Icon><path d="M12 4v4M12 16v4" /><rect x="7.5" y="8" width="9" height="8" rx="1.5" /></Icon>
 export const BoxEndIcon = () => <Icon><path d="M20 4v16" /><rect x="8" y="8" width="9" height="8" rx="1.5" /></Icon>
+// Two boxes, one dashed: "select more than one".
+export const SelectMoreIcon = () => <Icon><rect x="3" y="3" width="11" height="11" rx="1.5" /><rect x="10" y="10" width="11" height="11" rx="1.5" strokeDasharray="2.5 2.5" /></Icon>

@@ -276,7 +276,7 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
 .editor-bar-ctx { min-width: 0; max-width: calc(100% + 2rem); overflow: hidden; }
 /* Keep the selection bar in one row at desktop widths: Hide and Reset are named icons, spacing is tighter. */
 @media (max-width: 1919px) { .ctx { gap: 0.5rem; } .ctx-hide .ctx-reset-word, .ctx-reset .ctx-reset-word, .ctx-more-sel .ctx-reset-word { display: none; } .ctx-stepper output { min-width: 4.5rem; } .ctx-name { max-width: 10rem; } }
-@media (max-width: 1439px) { .ctx-label-plain { display: none; } }
+@media (max-width: 1599px) { .ctx-label-plain { display: none; } }
 /* On tablets, Box position lives in More settings, and Edit words is a named icon. */
 @media (max-width: 1279px) { .ctx-box, .ctx-edit-word { display: none; } }
 @media (max-width: 1023px) { .ctx { mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent); } }
@@ -289,3 +289,33 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
 .ctx-menu button:hover:not(:disabled), .ctx-menu button:focus-visible { background: #f0efec; }
 .ctx-menu button:focus-visible { outline: 2px solid var(--terra, #9a3f24); outline-offset: -2px; }
 .ctx-menu button:disabled { color: #8a887a; cursor: default; }
+
+/* Layout notes: a quiet count in the top bar, a short list on request, a faint dashed mark on the page. */
+.editor-notes { position: fixed; left: 1rem; bottom: 1rem; z-index: 70; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 0.5rem; max-width: min(30rem, calc(100vw - 2rem)); }
+.editor-bar .editor-notes .editor-notes-btn { background: #fff; box-shadow: 0 2px 10px rgb(0 0 0 / 0.14); border-radius: 999px; padding: 0.375rem 0.875rem; }
+.editor-notes-btn.has-notes { color: var(--terra, #9a3f24); font-weight: 600; }
+/* The Tablet and Phone reminder floats in a corner, so showing it never moves the page under the pointer. */
+.editor-notes-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem 0.625rem; padding: 0.625rem 0.875rem; border-radius: 8px; background: #fff; box-shadow: 0 4px 18px rgb(0 0 0 / 0.14); font-size: 13px; color: #3f3d2a; }
+.editor-notes-hint button { all: unset; cursor: pointer; color: var(--olive, #484527); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.editor-notes-hint button:focus-visible, .editor-notes-list button:focus-visible { outline: 2px solid var(--terra, #9a3f24); outline-offset: 2px; }
+.editor-notes-list { position: absolute; bottom: calc(100% + 0.5rem); left: 0; z-index: 60; width: min(26rem, 90vw); max-height: 60vh; overflow: auto; padding: 0.75rem; border-radius: 8px; background: #fff; box-shadow: 0 6px 24px rgb(0 0 0 / 0.16); font-size: 14px; }
+.editor-notes-list ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.5rem; }
+.editor-notes-list li { display: grid; gap: 0.25rem; padding-bottom: 0.5rem; border-bottom: 1px solid #ecebe6; }
+.editor-notes-actions { display: flex; gap: 0.75rem; }
+.editor-notes-list button { all: unset; cursor: pointer; color: var(--olive, #484527); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.editor-notes-intro, .editor-notes-empty { margin: 0 0 0.5rem; color: #5c5a45; }
+.editor-notes-intended { margin-top: 0.5rem; }
+.editor-notes-intended summary { cursor: pointer; color: #5c5a45; }
+[data-el-note] { outline: 1px dashed rgb(154 63 36 / 0.75); outline-offset: 2px; }
+html[data-preview] [data-el-note] { outline: none; }
+@media (max-width: 637px) { .editor-notes { bottom: 6.5rem; } } /* above the phone layout's bottom tabs */
+
+/* Arrows at the ends of the editing tools when they scroll sideways (narrow screens). */
+.editor-bar-ctx { position: relative; }
+.editor-bar .ctx-scroll { position: absolute; top: 50%; z-index: 2; transform: translateY(-50%); width: 2rem; height: 2rem; padding: 0; border: 0; border-radius: 999px; background: #fff; box-shadow: 0 1px 6px rgb(0 0 0 / 0.18); color: var(--olive, #484527); font-size: 20px; line-height: 1; cursor: pointer; }
+.editor-bar .ctx-scroll-left { left: 0.25rem; }
+.editor-bar .ctx-scroll-right { right: 0.25rem; }
+
+/* Dot on a size button: the selected part has its own settings on that size. */
+.editor-own-dot { display: inline-block; width: 6px; height: 6px; margin-left: 0.375rem; border-radius: 50%; background: var(--terra, #9a3f24); vertical-align: 0.15em; }
+.editor-screens button[aria-pressed="true"] .editor-own-dot { background: #f1c8b8; }
