@@ -9,6 +9,7 @@ import { caseStudies, type Project } from '#/lib/site'
 import { savedLayoutFor, standardCaseLayout } from '#/layout/render'
 import { editorConfig, layoutWarnings } from './config'
 import * as github from './github'
+import { SelectionProvider, wordsOf, type Edits } from './elements'
 
 // The design editor at /admin/design/. Arrange and restyle a page with its real blocks, then
 // save a draft or publish. Undo and redo cover every change; unsaved work is kept in this
@@ -74,6 +75,7 @@ function EditorApp() {
   const actions = useMemo(() => ({ p, token, setToken, setNotice, markClean: () => { clean.current = '' }, clean }), [p, token])
   return (
     <SessionContext.Provider value={actions}>
+      <SelectionProvider>
       <Puck
         config={config}
         data={start.data}
@@ -87,6 +89,7 @@ function EditorApp() {
         overrides={OVERRIDES}
       />
       {notice && <div className="editor-notice" role="status"><p>{notice}</p><button type="button" onClick={() => setNotice('')}>Close</button></div>}
+      </SelectionProvider>
     </SessionContext.Provider>
   )
 }
@@ -137,9 +140,13 @@ function Actions() {
       clean.current = JSON.stringify(data)
       return 'Published in this demo only. In the real editor this saves the page and the test site updates in about a minute, after the usual checks.'
     }
+    const edits = (data.root.props as { edits?: Edits } | undefined)?.edits ?? {}
+    if (Object.keys(edits).length) await github.writeWords(needToken(), p.slug, edits, (field) => wordsOf(p, field))
+    const { edits: _words, ...rootProps } = (data.root.props ?? {}) as { edits?: Edits }
+    const layout = { ...data, root: { ...data.root, props: rootProps } }
     const standard = JSON.stringify(data.content) === JSON.stringify(standardCaseLayout().content)
     if (standard) await github.removeLayout(needToken(), p.slug, `Design editor: back to the standard layout for ${p.slug}`)
-    else await github.writeLayout(needToken(), p.slug, data, github.MAIN, `Design editor: publish layout for ${p.slug}`)
+    else await github.writeLayout(needToken(), p.slug, layout, github.MAIN, `Design editor: publish layout for ${p.slug}`)
     removeLocal(localKey(p.slug, 'unsaved'))
     clean.current = JSON.stringify(data)
     return 'Published. The test site updates in about a minute, after the usual checks. If a check fails, the site stays as it was and you get the usual email.'

@@ -526,3 +526,40 @@ h3.free-heading { font-size: var(--h3); }
   .d-shift { left: 0; top: 0; }
   .d-w-wide, .d-w-text, .d-w-narrow { max-width: none; }
 }
+
+/* Single-element settings from the design editor (src/layout/elements.ts). Tablet and Phone
+   follow the larger size unless set, because their rules come later. */
+.el-x-d { position: relative !important; left: var(--el-x-d) !important; }
+.el-y-d { position: relative !important; top: var(--el-y-d) !important; }
+.el-above-d { margin-top: var(--el-above-d) !important; }
+.el-below-d { margin-bottom: var(--el-below-d) !important; }
+.el-align-d { text-align: var(--el-align-d) !important; }
+.el-size-d { font-size: var(--el-size-d) !important; }
+.el-weight-d { font-weight: var(--el-weight-d) !important; }
+.el-colour-d { color: var(--el-colour-d) !important; }
+.el-width-d { width: var(--el-width-d) !important; max-width: none !important; }
+.el-focus-d img { object-position: var(--el-focus-d) !important; }
+@media (max-width: 1279px) {
+  .el-x-t { position: relative !important; left: var(--el-x-t) !important; }
+  .el-y-t { position: relative !important; top: var(--el-y-t) !important; }
+  .el-above-t { margin-top: var(--el-above-t) !important; }
+  .el-below-t { margin-bottom: var(--el-below-t) !important; }
+  .el-align-t { text-align: var(--el-align-t) !important; }
+  .el-size-t { font-size: var(--el-size-t) !important; }
+  .el-weight-t { font-weight: var(--el-weight-t) !important; }
+  .el-colour-t { color: var(--el-colour-t) !important; }
+  .el-width-t { width: var(--el-width-t) !important; max-width: none !important; }
+  .el-focus-t img { object-position: var(--el-focus-t) !important; }
+}
+@media (max-width: 899px) {
+  .el-x-p { position: relative !important; left: var(--el-x-p) !important; }
+  .el-y-p { position: relative !important; top: var(--el-y-p) !important; }
+  .el-above-p { margin-top: var(--el-above-p) !important; }
+  .el-below-p { margin-bottom: var(--el-below-p) !important; }
+  .el-align-p { text-align: var(--el-align-p) !important; }
+  .el-size-p { font-size: var(--el-size-p) !important; }
+  .el-weight-p { font-weight: var(--el-weight-p) !important; }
+  .el-colour-p { color: var(--el-colour-p) !important; }
+  .el-width-p { width: var(--el-width-p) !important; max-width: none !important; }
+  .el-focus-p img { object-position: var(--el-focus-p) !important; }
+}

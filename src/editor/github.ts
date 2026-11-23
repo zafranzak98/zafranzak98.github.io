@@ -8,6 +8,9 @@
 //                  publishes nothing.
 //   History     -> every published version of the page, from the save history of main.
 
+import { parseDocument } from 'yaml'
+import { toFileValue, wordsFromValue, type Edits } from './elements'
+
 const OWNER = 'zafranzak98'
 const REPO = 'zafranzak98.github.io'
 const AUTH = 'https://sveltia-cms-auth.zafranzak98.workers.dev'
@@ -91,4 +94,40 @@ export async function removeLayout(token: string, slug: string, message: string)
   const current = await readLayout(token, slug, MAIN)
   if (!current) return
   await api(token, `/contents/${layoutPath(slug)}`, { method: 'DELETE', body: JSON.stringify({ message, branch: MAIN, sha: current.sha }) })
+}
+
+// Writes changed words into the project's content file on main, the file the website editor
+// (Sveltia) also edits. Each changed field is compared with what the editor started from: if
+// someone has changed the same words in the website editor since, nothing is written.
+export async function writeWords(token: string, slug: string, edits: Edits, startedWith: (field: string) => string) {
+  const path = `content/projects/${slug}.md`
+  const file = await api(token, `/contents/${path}?ref=${MAIN}`)
+  if (!file) throw new Error('The project file was not found.')
+  const text = fromBase64(file.content)
+  const parts = text.match(/^---\n([\s\S]*?\n)---\n?([\s\S]*)$/)
+  if (!parts) throw new Error('The project file is not in the expected format.')
+  const doc = parseDocument(parts[1])
+  const keysOf = (field: string) => field.split(':').map((k) => (/^\d+$/.test(k) ? Number(k) : k))
+  const clashes = Object.keys(edits).filter((field) => {
+    const node = doc.getIn(keysOf(field))
+    const now = wordsFromValue(field, node && typeof node === 'object' && 'toJSON' in node ? (node as { toJSON: () => unknown }).toJSON() : node)
+    return now !== startedWith(field) && now !== edits[field]
+  })
+  const describe = (field: string) => {
+    const [name, index, part] = field.split(':')
+    if (name === 'results') return `figure ${Number(index) + 1}${part === 'label' ? ' label' : ''}`
+    return ({ outcomes_title: 'the Outcomes title', results_label: 'the results heading', outcome_note: 'the outcome note', skills_label: 'the skills heading', skills: 'the skills line' } as Record<string, string>)[name] ?? name
+  }
+  if (clashes.length) throw new Error(`These words were changed in the website editor after this page was opened: ${clashes.map(describe).join(', ')}. Nothing was saved. Reload the editor to see that change, then make yours again.`)
+  for (const [field, words] of Object.entries(edits)) doc.setIn(keysOf(field), doc.createNode(toFileValue(field, words)))
+  const updated = `---\n${doc.toString({ lineWidth: 0 })}---\n${parts[2]}`
+  if (updated === text) return false
+  const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}`, {
+    method: 'PUT',
+    headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28' },
+    body: JSON.stringify({ message: `Design editor: words for ${slug}`, branch: MAIN, content: toBase64(updated), sha: file.sha }),
+  })
+  if (res.status === 409) throw new Error('The project file changed a moment ago. Nothing was saved; publish again.')
+  if (!res.ok) throw new Error(`GitHub answered ${res.status}. Nothing was saved.`)
+  return true
 }

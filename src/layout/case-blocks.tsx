@@ -7,6 +7,7 @@ import OpeningVisual from '#/components/opening-visual'
 import { Rich } from '#/components/rich'
 import { caseStudies, categoryName, highlightOnSage, openingOf, yearOf, type Img, type Project } from '#/lib/site'
 import { designProps, type Design } from './design'
+import { useElement, type Elements } from './elements'
 
 // The parts of a case study page, as blocks the design editor can arrange and restyle.
 // Each one renders exactly the markup the page always had; design settings, when present,
@@ -43,7 +44,7 @@ const useCase = () => {
   return c
 }
 
-type BlockProps = { design?: Design }
+type BlockProps = { design?: Design; elements?: Elements }
 
 // ---- Opening, facts and navigation
 
@@ -52,8 +53,9 @@ export function CategoryNav({ design }: BlockProps) {
   return <div {...designProps(design, 'cs-index')}><CategoryIndex current={p.category} /></div>
 }
 
-export function Opening({ design }: BlockProps) {
+export function Opening({ design, elements }: BlockProps) {
   const { p } = useCase()
+  const el = useElement(elements)
   const o = openingOf(p)
   const idx = caseStudies.findIndex((x) => x.slug === p.slug)
   return (
@@ -67,7 +69,7 @@ export function Opening({ design }: BlockProps) {
           <h1 className="c cs-title">{p.title}</h1>
           <p className="cs-line"><span><Rich text={p.summary} /></span></p>
         </div>
-        <div className="cs-open-visual"><OpeningVisual p={p} /></div>
+        <div {...el('image', { className: 'cs-open-visual' })}><OpeningVisual p={p} /></div>
       </div>
     </section>
   )
@@ -117,23 +119,27 @@ export function Gap({ design }: BlockProps) {
 
 // ---- The four numbered sections
 
-function Sec({ id, title, children, wide, design }: { id: string; title: string; children: ReactNode; wide?: boolean; design?: Design }) {
+type SecProps = { id: string; title: string; children: ReactNode; wide?: boolean; design?: Design; titleProps?: Record<string, unknown> }
+function Sec({ id, title, children, wide, design, titleProps = { className: 'c' } }: SecProps) {
   const { shown } = useCase()
   const n = String(shown.indexOf(id) + 1).padStart(2, '0')
   return (
     <section id={id} {...designProps(design, wide ? 'cs-sec cs-sec-wide' : 'cs-sec')}>
-      <div className="cs-label"><span className="lab">{n}</span><h2 className="c">{title}</h2></div>
+      <div className="cs-label"><span className="lab">{n}</span><h2 {...titleProps}>{title}</h2></div>
       <div className="cs-body">{children}</div>
     </section>
   )
 }
 
-const Figures = ({ items, big }: { items: { figure: string; label: string }[]; big?: boolean }) => (
+type ElementFn = ReturnType<typeof useElement>
+const plain: ElementFn = (_key, { className, style } = {}) => ({ className, style })
+
+const Figures = ({ items, big, el = plain, field }: { items: { figure: string; label: string }[]; big?: boolean; el?: ElementFn; field?: string }) => (
   <div className={big ? 'figures figures-big' : 'figures'}>
     {items.map((f, i) => (
       <div key={i}>
-        <b className="c" style={{ '--chars': Math.max(3, [...f.figure].length) } as CSSProperties}>{f.figure}</b>
-        <span><Rich text={f.label} /></span>
+        <b {...el(`figure-${i}`, { className: 'c', style: { '--chars': Math.max(3, [...f.figure].length) } as CSSProperties, field: field && `${field}:${i}:figure` })}>{f.figure}</b>
+        <span {...el(`figure-label-${i}`, { field: field && `${field}:${i}:label` })}><Rich text={f.label} /></span>
       </div>
     ))}
   </div>
@@ -271,18 +277,19 @@ export function Work({ design }: BlockProps) {
   )
 }
 
-export function Outcomes({ design }: BlockProps) {
+export function Outcomes({ design, elements }: BlockProps) {
   const { p, shown } = useCase()
+  const el = useElement(elements)
   if (!shown.includes('outcomes')) return null
   return (
-    <Sec id="outcomes" title="Outcomes" design={design}>
-      {p.results_label && <span className="lab"><Rich text={p.results_label} /></span>}
-      {p.results?.length ? <Figures items={p.results} big /> : null}
-      {p.outcome_note && <p className="body-text outcome-note"><Rich text={p.outcome_note} /></p>}
+    <Sec id="outcomes" title={p.outcomes_title || 'Outcomes'} design={design} titleProps={el('title', { className: 'c', field: 'outcomes_title' })}>
+      {p.results_label && <span {...el('results-label', { className: 'lab', field: 'results_label' })}><Rich text={p.results_label} /></span>}
+      {p.results?.length ? <Figures items={p.results} big el={el} field="results" /> : null}
+      {p.outcome_note && <p {...el('note', { className: 'body-text outcome-note', field: 'outcome_note' })}><Rich text={p.outcome_note} /></p>}
       {p.skills?.length ? (
         <div className="skills">
-          <span className="lab">Skills shown</span>
-          <p>{p.skills.map((skill, i) => <Fragment key={skill}>{i > 0 && ' / '}<span>{skill}</span></Fragment>)}</p>
+          <span {...el('skills-label', { className: 'lab', field: 'skills_label' })}>{p.skills_label || 'Skills shown'}</span>
+          <p {...el('skills', { field: 'skills' })}>{p.skills.map((skill, i) => <Fragment key={skill}>{i > 0 && ' / '}<span>{skill}</span></Fragment>)}</p>
         </div>
       ) : null}
       {p.link && <a href={p.link.url} target="_blank" rel="noreferrer" className="text-link ext-link">{p.link.label} ↗</a>}
