@@ -1,8 +1,8 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Rich } from '#/components/rich'
-import { croppedSizes, imageProps, projects, site, yearOf } from '#/lib/site'
-import { coverFrame } from '#/lib/cover-image.js'
+import { croppedSizes, imageProps, photoSize, projects, site, yearOf } from '#/lib/site'
+import { frameFor } from '#/lib/cover-image.js'
 import { useTitle } from '#/lib/title'
 
 export const Route = createFileRoute('/')({ component: Home })
@@ -59,9 +59,9 @@ function Home() {
       <div className="home-preview" aria-hidden="true">
         {preview && (
           <figure>
-            {/* Covers that are shown whole on their own page (coverFrame 'auto': cut-out or full artwork)
-                are shown whole here too; the others keep the 4:5 crop of this preview. */}
-            {coverFrame(preview.design) === 'auto'
+            {/* The preview's 4:5 frame is used only for covers it would not crop; any other cover is
+                shown whole, by the same rule as the project pages (src/lib/cover-image.js). */}
+            {frameFor('4/5', photoSize(preview.cover?.image)) === 'auto'
               ? <img {...imageProps(preview.cover?.image, '17vw')} className="whole" alt="" />
               : <img {...imageProps(preview.cover?.image, croppedSizes('17vw', preview.cover?.image, 4 / 5))} alt="" />}
             <figcaption><span>{preview.title}</span><span className="terra">View case study</span></figcaption>

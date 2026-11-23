@@ -114,7 +114,7 @@ const coverPreload = async (p, inBand) => {
   if (!path || !existsSync(file)) return ''
   if (!isPhoto(path)) return `<link rel="preload" as="image" href="${encodeURI(path)}" fetchpriority="high" />`
   const { width, height } = await sharp(file).metadata()
-  const [fw, fh] = coverFrame(p.design).split('/').map(Number)
+  const [fw, fh] = coverFrame(p.design, { width, height }).split('/').map(Number)
   const sizes = croppedSizesFor(coverSizes(p.design, inBand), { width, height }, fh ? fw / fh : undefined)
   const srcset = [...widthsFor(width).map((w) => `${encodeURI(variantPath(path, w))} ${w}w`), `${encodeURI(path)} ${width}w`].join(', ')
   return `<link rel="preload" as="image" href="${encodeURI(path)}" imagesrcset="${srcset}" imagesizes="${sizes}" fetchpriority="high" />`
