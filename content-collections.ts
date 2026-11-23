@@ -70,9 +70,11 @@ const projects = defineCollection({
     context: z.object({ image: z.string().optional(), alt: z.string().optional(), text: z.string().optional() }).optional(),
     gallery: z.array(image).optional(),
     gallery_note: z.string().optional(),
+    outcomes_title: z.string().optional(),
     results_label: z.string().optional(),
     results: z.array(figure).max(4).optional(),
     outcome_note: z.string().optional(),
+    skills_label: z.string().optional(),
     skills: z.array(z.string()).optional(),
     link: z.object({ label: z.string(), url: z.string() }).optional(),
     // Search and sharing. Each one falls back to the title, summary or cover image when empty.

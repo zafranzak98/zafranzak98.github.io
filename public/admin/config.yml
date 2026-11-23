@@ -223,9 +223,11 @@ collections:
       - { name: gallery_note, label: Gallery note, widget: string, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
 
       # ---- Results
+      - { name: outcomes_title, label: Outcomes section title, widget: string, required: false, hint: 'Leave empty for "Outcomes".' }
       - { name: results_label, label: Results heading, widget: string, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
       - { name: results, label: Results, widget: list, required: false, max: 4, fields: *figure }
       - { name: outcome_note, label: Outcome note, widget: text, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
+      - { name: skills_label, label: Skills heading, widget: string, required: false, hint: 'Leave empty for "Skills shown".' }
       - { name: skills, label: Skills shown, widget: list, required: false, hint: One per line. }
       - name: link
         label: External link

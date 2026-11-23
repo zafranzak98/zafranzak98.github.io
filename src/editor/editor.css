@@ -23,3 +23,23 @@ body.design-editor { background: #fff; }
 .editor-warning { position: relative; z-index: 5; margin: 0 var(--m); padding: 0.5rem 0.75rem; background: var(--terra); color: var(--off); font-size: var(--t-meta); line-height: 1.4; }
 .editor-warning p { margin: 0; }
 @media (max-width: 1023px) { .editor-flag { max-width: 7rem; } }
+/* Single elements on the page: outline on hover, solid outline when selected, a frame while typing. */
+[data-el] { cursor: pointer; }
+[data-el]:hover { outline: 1px dashed var(--terra); outline-offset: 3px; }
+[data-el][data-el-selected] { outline: 2px solid var(--terra); outline-offset: 3px; }
+[data-el][data-el-editing] { visibility: hidden; }
+.el-typing { position: absolute; z-index: 10; outline: 2px solid var(--olive); outline-offset: 3px; background: var(--off); cursor: text; white-space: pre-wrap; }
+.el-hint { margin: 0; font-size: 14px; line-height: 1.45; color: #555; }
+.el-panel { display: grid; gap: 0.75rem; font-size: 14px; }
+.el-name { margin: 0; font-weight: 700; color: var(--olive); }
+.el-note { margin: 0; font-size: 13px; color: #555; }
+.el-screens { display: flex; gap: 0.25rem; }
+.el-screens button, .el-stepper button, .el-reset { padding: 0.25rem 0.625rem; border: 1px solid var(--olive); border-radius: 4px; background: var(--off); color: var(--olive); font: inherit; cursor: pointer; }
+.el-screens button[aria-pressed='true'] { background: var(--olive); color: var(--off); }
+.el-row { display: grid; gap: 0.25rem; margin: 0; padding: 0; border: 0; }
+.el-row legend { padding: 0; margin-bottom: 0.25rem; }
+.el-row select, .el-row textarea { font: inherit; padding: 0.375rem; border: 1px solid #bbb; border-radius: 4px; }
+.el-row small, .el-stepper small { color: #555; }
+.el-stepper { display: grid; grid-template-columns: 1fr auto 4.5rem auto; align-items: center; gap: 0.375rem; }
+.el-stepper output { text-align: center; }
+.el-reset { justify-self: start; }
