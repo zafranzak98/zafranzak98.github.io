@@ -24,6 +24,7 @@ On `localhost` the editor runs as a demo, so nothing reaches GitHub. `signin.py`
 | `place.py` | Box position (left, centre, right) per screen size, separate from text alignment, with undo |
 | `hide.py` | Hiding a part on one screen size only, and showing it again |
 | `multi.py` | Multi-selection: Shift-click or "Select more", outlines, moving together, shared settings as one undo step, removing a member, at Desktop, Tablet and Phone |
+| `align.py` | Arrange for a group: align edges, centres and middles, and space evenly, each one undo step, at Desktop, Tablet and Phone |
 | `signin.py` | The sign-in shared with the website editor: renewal in another tab, expiry, missing or unexpected data, fallback to the editor's own sign-in, sign-out from either editor |
 
 A failure names the check and what it found. Fix the cause, rebuild, and run the file again; then run the others, because a fix in one part of the editor can affect another.
