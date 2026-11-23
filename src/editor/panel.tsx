@@ -5,7 +5,8 @@ import { createPortal } from 'react-dom'
 import { createUsePuck } from '@puckeditor/core'
 import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { COVER_NAMES, COVER_SIZES, TEXT_SIZES, lookAt, type ElementLook, type ElementStyle, type Elements, type Screen, type TextSize } from '#/layout/elements'
-import type { Project } from '#/lib/site'
+import { photoSize, type Project } from '#/lib/site'
+import { ratioOptions } from '#/layout/free-blocks'
 import { IMAGES, Selection, type Picked, angleOf, groupMoveListeners, coverListeners, rotateListeners, stackListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
 import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, ResetIcon, RotateIcon, SelectMoreIcon, ImageIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
 
@@ -61,11 +62,17 @@ function useLook() {
     if (!Object.keys(nextStyle).length) delete all[key]
     dispatch({ type: 'replace', destinationIndex: at.index, destinationZone: at.zone, data: { ...item, props: { ...item.props, elements: all } } as never })
   }
+  // Settings of the whole section (an Image section's shape and fit), the same on every screen size.
+  const setProps = (patch: Record<string, unknown>) => {
+    const at = item && getSelectorForId(item.props.id as string)
+    if (!item || !at) return
+    dispatch({ type: 'replace', destinationIndex: at.index, destinationZone: at.zone, data: { ...item, props: { ...item.props, ...patch } } as never })
+  }
   // Set at this size, following a larger size, or as designed.
   const from = (...k: (keyof ElementLook)[]) => (k.some((x) => own[x] !== undefined) ? 'here' : k.some((x) => shown[x] !== undefined) ? 'larger' : 'design')
   const resetAll = () => setLook(Object.fromEntries(Object.keys(own).map((k) => [k, undefined])))
   const background = ((item?.props as { design?: { background?: Colour } })?.design?.background ?? 'Off-white') as Colour
-  return { key, item, selected, screen, own, shown, setLook, from, resetAll, background }
+  return { key, item, selected, screen, own, shown, setLook, setProps, from, resetAll, background }
 }
 
 // Several elements, in any sections, change together as one change: one step to undo.
@@ -519,7 +526,7 @@ function GroupBar({ members, screen, apply, where, more, live, onDone, announce 
 // ---- The side panel ("More settings"): everything for the selection, grouped and labelled.
 
 export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements) => void; p: Project }) {
-  const { key, item, selected, screen, own, shown, setLook, from, resetAll, background } = useLook()
+  const { key, item, selected, screen, own, shown, setLook, setProps, from, resetAll, background } = useLook()
   const words = useWords(p)
   const [snapping, setSnapping] = useState(snapOn)
   const { group } = useContext(Selection)
@@ -571,6 +578,18 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
           </Row>
           {angleRow}
         </Group>
+      ) : isSectionPhoto(item?.type, key) ? (
+        <PhotoGroup
+          props={item!.props as PhotoProps}
+          width={width}
+          shown={shown}
+          from={from}
+          setLook={setLook}
+          setProps={setProps}
+          reset={reset}
+          measure={() => elFor(selected?.blockId, key)?.getBoundingClientRect().width ?? 0}
+          angleRow={angleRow}
+        />
       ) : isImage ? (
         <Group title="Image">
           <Row label="Width" from={from('width')} onReset={() => reset('width')}>
@@ -666,6 +685,58 @@ const nextSpace = (now: number | undefined, dir: 1 | -1) => {
 }
 
 // ---- Small controls, shared by the bar and the panel
+
+// The photo in an Image section: its size on each screen, the shape of its frame, and, in a frame of
+// a fixed shape, whether it fills the frame (cropped, with a crop focus) or shows whole. Shape and fit
+// are the same on every screen size; the width can differ. The photo file itself is never changed.
+type PhotoProps = { image?: string; ratio?: string; fit?: 'cover' | 'contain'; design?: { width?: string } & Record<string, unknown> }
+export const isSectionPhoto = (type: string | undefined, key: string | null) => type === 'Image' && key === 'photo'
+const SIZE_PRESETS: [string, string][] = [['narrow', 'Narrow'], ['text', 'Text column'], ['wide', 'Wide'], ['full', 'Full']]
+const SHAPES = ratioOptions.map((o) => [o.value, o.label] as [string, string])
+const FITS: [string, string][] = [['cover', 'Fill the frame'], ['contain', 'Show the whole photo']]
+function PhotoGroup({ props, width, shown, from, setLook, setProps, reset, measure, angleRow }: {
+  props: PhotoProps; width: number; shown: ElementLook; from: (...k: (keyof ElementLook)[]) => string
+  setLook: (patch: Partial<ElementLook>) => void; setProps: (patch: Record<string, unknown>) => void
+  reset: (...k: (keyof ElementLook)[]) => void; measure: () => number; angleRow: ReactNode
+}) {
+  const ratio = props.ratio ?? 'auto'
+  const setSize = (w: string) => { const design = { ...(props.design ?? {}) }; if (w === 'full') delete design.width; else design.width = w; setProps({ design }) }
+  const fit = ratio === 'auto' ? 'cover' : props.fit ?? 'cover'
+  // A photo shown wider than its original looks soft; say so rather than let it happen unnoticed.
+  const original = photoSize(props.image)?.width ?? 0
+  // Measured once the page has drawn the latest change, so the note never lags a step behind.
+  const [displayed, setDisplayed] = useState(0)
+  useEffect(() => { const id = requestAnimationFrame(() => requestAnimationFrame(() => setDisplayed(Math.round(measure())))); return () => cancelAnimationFrame(id) })
+  const soft = original > 0 && displayed > original
+  return (
+    <Group title="Photo">
+      <Row label="Size" hint="The space the photo can fill on larger screens. Phones use their full width unless you set Phone below." from="design" onReset={() => {}}>
+        <Segments label="Size" value={props.design?.width ?? 'full'} options={SIZE_PRESETS} onChange={setSize} />
+      </Row>
+      <Row label="Width on this screen" hint="A share of that space, for this screen size only." from={from('width')} onReset={() => reset('width')}>
+        <input type="range" min={20} max={100} step={5} value={width} aria-label="Width" aria-valuetext={`${width}%`} onChange={(e) => setLook({ width: Number(e.target.value) })} />
+        <NumberField label="Width in per cent" value={width} unit="%" step={5} min={20} max={100} onCommit={(w) => setLook({ width: w })} />
+      </Row>
+      {soft && <p className="el-warning" role="note">Shown wider than the original photo ({original} px), so it may look soft. Choose a smaller size.</p>}
+      <Row label="Shape" hint="The same on every screen size." from={ratio === 'auto' ? 'design' : 'here'} onReset={() => setProps({ ratio: 'auto', fit: 'cover' })}>
+        <select className="el-select" aria-label="Shape" value={ratio} onChange={(e) => setProps({ ratio: e.target.value })}>
+          {SHAPES.map(([v, name]) => <option key={v} value={v}>{name}</option>)}
+        </select>
+      </Row>
+      {ratio !== 'auto' && (
+        <Row label="Fit" hint={fit === 'cover' ? 'The photo fills the frame; the edges that do not fit are hidden.' : 'All of the photo shows; the background fills the rest of the frame.'} from={fit === 'cover' ? 'design' : 'here'} onReset={() => setProps({ fit: 'cover' })}>
+          <Segments label="Fit" value={fit} options={FITS} onChange={(f) => setProps({ fit: f })} />
+        </Row>
+      )}
+      {ratio !== 'auto' && fit === 'cover' && (
+        <Row label="Crop focus" hint="The part of the photo kept in view." from={from('focusX', 'focusY')} onReset={() => reset('focusX', 'focusY')}>
+          <FocusGrid x={shown.focusX ?? 50} y={shown.focusY ?? 50} onChange={(focusX, focusY) => setLook({ focusX, focusY })} />
+        </Row>
+      )}
+      {angleRow}
+    </Group>
+  )
+}
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return <section className="el-group" aria-label={title}><h3>{title}</h3>{children}</section>

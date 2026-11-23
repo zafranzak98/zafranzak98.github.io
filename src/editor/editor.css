@@ -429,7 +429,7 @@ html[data-preview] [data-el-note] { outline: none; }
 .ph-close { all: unset; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 8px; font-size: 18px; cursor: pointer; }
 .ph-close:hover { background: #f0efec; }
 .ph-note { margin: 0 1.25rem 0.75rem; font-size: 13px; color: #5d5b45; }
-.ph-groups { overflow: auto; padding: 0 1.25rem 0.75rem; border-top: 1px solid #eceee6; border-bottom: 1px solid #eceee6; }
+.ph-groups { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 1.25rem 0.75rem; border-top: 1px solid #eceee6; border-bottom: 1px solid #eceee6; }
 .ph-groups h3 { margin: 1rem 0 0.5rem; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #6b6955; }
 .ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 0.5rem; }
 .ph-pick { all: unset; position: relative; box-sizing: border-box; aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: #eef1ed; cursor: pointer; box-shadow: inset 0 0 0 1px #dfe3d6; }
@@ -449,10 +449,14 @@ html[data-preview] [data-el-note] { outline: none; }
 .ph-actions .editor-primary { border-color: var(--olive, #484527); background: var(--olive, #484527); color: var(--off, #eef1ed); }
 @media (max-width: 600px) {
   .ph-backdrop { padding: 0; place-items: stretch; }
-  .ph-dialog { max-height: none; height: 100%; border-radius: 0; }
+  /* The whole picker fits the phone's screen: the photos scroll, the description and buttons stay in view. */
+  .ph-dialog { height: 100vh; height: 100dvh; max-height: none; border-radius: 0; }
   .ph-grid { grid-template-columns: repeat(3, 1fr); }
 }
 .editor-blocked { margin: 0 0 0.75rem; padding: 0.75rem 0.875rem; border-radius: 8px; background: #f9ece7; color: #5b2412; }
 .editor-blocked p { margin: 0 0 0.5rem; }
 .editor-blocked ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .editor-blocked button { min-height: 40px; padding: 0 0.875rem; border: 1px solid currentColor; border-radius: 6px; background: #fff; color: inherit; font: inherit; font-weight: 600; cursor: pointer; margin: 0 !important; }
+/* The Shape list for an Image section's photo. */
+.el-select { width: 100%; min-height: 2.25rem; padding: 0.375rem 0.5rem; border: 1px solid #b9bea9; border-radius: 6px; background: #fff; color: var(--olive); font: inherit; }
+.el-select:focus-visible { outline: 2px solid var(--terra); outline-offset: 1px; }

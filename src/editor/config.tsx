@@ -3,7 +3,7 @@ import imageWidths from 'virtual:image-widths'
 import type { Project } from '#/lib/site'
 import * as caseBlocks from '#/layout/case-blocks'
 import { COLOURS, SPACES, designProps, designWarnings, type Design } from '#/layout/design'
-import { CellBlock, GridBlock, ImageBlock, SpacerBlock, TextBlock } from '#/layout/free-blocks'
+import { CellBlock, GridBlock, ImageBlock, SpacerBlock, TextBlock, ratioOptions } from '#/layout/free-blocks'
 import { CaseFrame } from '#/layout/render'
 import { Editing, type Elements } from '#/layout/elements'
 import { CategoryNames } from '#/components/category-index'
@@ -75,7 +75,6 @@ const elementsField = (p: Project) => ({
 })
 
 const photos = Object.keys(imageWidths).sort()
-const ratioOptions = [{ label: 'Its own shape', value: 'auto' }, { label: 'Square', value: '1/1' }, { label: 'Portrait 4:5', value: '4/5' }, { label: 'Portrait 3:4', value: '3/4' }, { label: 'Tall 9:16', value: '9/16' }, { label: 'Landscape 16:9', value: '16/9' }, { label: 'Wide 21:9', value: '21/9' }]
 const SIZES = [['Small', 'small'], ['Medium', 'medium'], ['Large', 'large'], ['Extra large', 'xlarge']].map(([label, value]) => ({ label, value }))
 const percent = (label: string) => ({ type: 'number' as const, label, min: 0, max: 100, step: 5 })
 
@@ -120,10 +119,11 @@ export function editorConfig(p: Project): Config {
           alt: { type: 'text', label: 'Description (what the photo shows)' },
           caption: { type: 'text', label: 'Caption' },
           ratio: { type: 'select', label: 'Shape', options: ratioOptions },
+          fit: { type: 'radio', label: 'Fit', options: [{ label: 'Fill the frame', value: 'cover' }, { label: 'Show the whole photo', value: 'contain' }] },
           focusX: percent('Crop focus across (%)'),
           focusY: percent('Crop focus down (%)'),
         } as never,
-        defaultProps: { image: '', ratio: 'auto', focusX: 50, focusY: 50 } as never,
+        defaultProps: { image: '', ratio: 'auto', fit: 'cover', focusX: 50, focusY: 50 } as never,
         // No photo yet: an empty frame with "Choose a photo", only in the editor.
         whileEditing: (props: Record<string, unknown>) => (props.image ? null : <EmptyImage id={props.id as string} {...designProps(props.design as Design, 'free-block free-image')} />),
       }),
