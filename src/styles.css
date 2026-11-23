@@ -130,8 +130,10 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .footer-bottom a:hover { color: var(--off); }
 .footer-credit { background: var(--lsage); padding: 1.25rem var(--m); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1.5rem; }
 .footer-credit p { margin: 0; font-size: var(--t-meta); color: var(--olive); }
-.credit-link { color: var(--olive); font-weight: 700; text-decoration: underline; }
-.credit-link:hover { color: var(--terra); }
+.footer-credit .credit { font-size: 0.75rem; }
+.credit-link { color: var(--olive); text-decoration: none; }
+.credit-link span { text-decoration: underline; text-underline-offset: 0.15em; }
+.credit-link:hover, .credit-link:focus-visible { text-decoration: underline; text-underline-offset: 0.15em; } /* olive stays readable on light sage; terracotta would fall just short */
 @media (max-width: 899px) {
   .footer-main { padding: 2rem 1.5rem 1.5rem; gap: 2.25rem; }
   .footer-title { font-size: 6rem; }
