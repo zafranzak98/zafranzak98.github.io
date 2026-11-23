@@ -11,6 +11,9 @@ TOK = "ghu_" + "A" * 36
 ENTRY = json.dumps({"backendName": "github", "id": 1, "login": "zafranzak98", "token": TOK, "refreshToken": "ghr_" + "R" * 60})
 mode = {"put": "ok", "delay": 0, "patch": "ok", "hold": False}
 held = []
+# An earlier published version (the standard layout as saved on 22 Nov), offered in Versions for check 13.
+import base64, os
+VERSION = {"on": False, "b64": base64.b64encode(open(os.path.join(os.path.dirname(__file__), "fixtures", "about-face-beauty-version.json"), "rb").read()).decode()}
 calls = []
 def api(route):
     req = route.request; path = req.url.split("api.github.com")[1]; method = req.method
@@ -18,6 +21,11 @@ def api(route):
     if path == "/user": return route.fulfill(status=200, json={"login": "zafranzak98"})
     repo = path.split("/repos/zafranzak98/zafranzak98.github.io")[-1]
     if method == "GET" and repo.startswith("/branches/"): return route.fulfill(status=200, json={"name": "design-drafts"})
+    if method == "GET" and repo.startswith("/commits"):
+        if "sha=main" in path and VERSION["on"]: return route.fulfill(status=200, json=[{"sha": "v1", "commit": {"message": "Design editor: publish layout for about-face-beauty", "author": {"date": "2026-11-22T23:18:00Z"}}}])
+        return route.fulfill(status=200, json=[])
+    if method == "GET" and repo.startswith("/contents/") and "ref=v1" in path:
+        return route.fulfill(status=200, json={"sha": "f1", "encoding": "base64", "content": VERSION["b64"]})
     if method == "GET" and repo.startswith("/contents/"): return route.fulfill(status=404, json={"message": "Not Found"})
     if method == "PUT" and repo.startswith("/contents/"):
         if mode["hold"]: held.append(route); return
@@ -197,6 +205,21 @@ with sync_playwright() as p:
         weight = [fr for fr in pg2.frames if fr != pg2.main_frame][0].evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontWeight")
         check(f"Tab {how} 30 ms after a change: the change is still there in a new tab", weight in ("700", "bold"), weight)
         ctx.close()
+
+    # 13. Loading an earlier version can be undone: Undo names the step and brings the page back.
+    VERSION["on"] = True
+    ctx, pg = fresh(); change(pg)
+    pg.locator(".editor-more-wrap > button").click(); pg.get_by_role("button", name="Versions").click(); pg.wait_for_timeout(1500)
+    pg.locator(".editor-panel button", has_text="Load into editor").first.click(); pg.wait_for_timeout(900)
+    w = lambda: frame(pg).evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontWeight")
+    loaded = w()
+    check("Loading an earlier version replaces the page in the editor", loaded not in ("700", "bold"), loaded)
+    check("The message says nothing is published and Undo goes back", "Undo takes you back" in notice(pg), notice(pg)[:120])
+    pg.locator(".editor-history button").first.click(); pg.wait_for_timeout(800)
+    check("Undo after loading a version brings the page back exactly", w() in ("700", "bold"), w())
+    pg.locator(".editor-history button").nth(1).click(); pg.wait_for_timeout(800)
+    check("Redo loads the version again", w() not in ("700", "bold"), w())
+    ctx.close(); VERSION["on"] = False
 
     check("No script errors", not errors, str(errors[:2]))
     print(f"{sum(res)} of {len(res)} passed")
