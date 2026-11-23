@@ -43,3 +43,7 @@ body.design-editor { background: #fff; }
 .el-stepper { display: grid; grid-template-columns: 1fr auto 4.5rem auto; align-items: center; gap: 0.375rem; }
 .el-stepper output { text-align: center; }
 .el-reset { justify-self: start; }
+
+.editor-project { max-width: 11rem; padding: 0.375rem 0.5rem; border: 1px solid var(--olive); border-radius: 4px; background: var(--off); color: var(--olive); font: inherit; font-weight: 600; }
+@media (max-width: 1023px) { .editor-project { max-width: 7.5rem; } }
+@media (max-width: 1023px) { [class*='PuckHeader-title'] { display: none; } }

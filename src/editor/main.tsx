@@ -80,7 +80,7 @@ function EditorApp() {
         config={config}
         data={start.data}
         onChange={onChange}
-        headerTitle={`Design editor · ${p.title}`}
+        headerTitle="Design editor"
         viewports={[
           { width: 390, label: 'Phone', icon: 'Smartphone' },
           { width: 1024, label: 'Tablet', icon: 'Tablet' },
@@ -184,6 +184,9 @@ function Actions() {
 
   return (
     <div className="editor-actions">
+      <select className="editor-project" aria-label="Project to edit" value={p.slug} onChange={(e) => { location.search = `?project=${e.target.value}` }}>
+        {caseStudies.map((x) => <option key={x.slug} value={x.slug}>{x.title}</option>)}
+      </select>
       {warnings.length > 0 && <span className="editor-flag" title={warnings.join(' ')}>{warnings.length} check{warnings.length > 1 ? 's' : ''} to look at</span>}
       {DEMO ? <span className="editor-flag">Demo: saves in this browser only</span> : !token && <button type="button" onClick={signIn} disabled={!!busy}>Sign in with GitHub</button>}
       <button type="button" className="editor-more-toggle" aria-expanded={more} onClick={() => setMore(!more)}>More</button>
