@@ -9,7 +9,7 @@
 //   History     -> every published version of the page, from the save history of main.
 
 import { parseDocument } from 'yaml'
-import { toFileValue, wordsFromValue, type Edits } from './elements'
+import { wordsAt, writesFor, type Edits } from './elements'
 
 const OWNER = 'zafranzak98'
 const REPO = 'zafranzak98.github.io'
@@ -99,6 +99,13 @@ export async function removeLayout(token: string, slug: string, message: string)
 // Writes changed words into the project's content file on main, the file the website editor
 // (Sveltia) also edits. Each changed field is compared with what the editor started from: if
 // someone has changed the same words in the website editor since, nothing is written.
+const describe = (field: string) => {
+  const [name, index, part] = field.split(':')
+  if (name === 'labels') return `the "${index.replace(/_/g, ' ')}" label`
+  if (index !== undefined && /^\d+$/.test(index)) return `${name.replace(/_/g, ' ')} ${Number(index) + 1}${part ? ` ${part}` : ''}`
+  return `the ${name.replace(/_/g, ' ')}`
+}
+
 export async function writeWords(token: string, slug: string, edits: Edits, startedWith: (field: string) => string) {
   const path = `content/projects/${slug}.md`
   const file = await api(token, `/contents/${path}?ref=${MAIN}`)
@@ -107,19 +114,21 @@ export async function writeWords(token: string, slug: string, edits: Edits, star
   const parts = text.match(/^---\n([\s\S]*?\n)---\n?([\s\S]*)$/)
   if (!parts) throw new Error('The project file is not in the expected format.')
   const doc = parseDocument(parts[1])
-  const keysOf = (field: string) => field.split(':').map((k) => (/^\d+$/.test(k) ? Number(k) : k))
+  const get = (path: (string | number)[]) => {
+    const node = doc.getIn(path)
+    return node && typeof node === 'object' && 'toJSON' in node ? (node as { toJSON: () => unknown }).toJSON() : node
+  }
   const clashes = Object.keys(edits).filter((field) => {
-    const node = doc.getIn(keysOf(field))
-    const now = wordsFromValue(field, node && typeof node === 'object' && 'toJSON' in node ? (node as { toJSON: () => unknown }).toJSON() : node)
+    const now = wordsAt(field, get)
     return now !== startedWith(field) && now !== edits[field]
   })
-  const describe = (field: string) => {
-    const [name, index, part] = field.split(':')
-    if (name === 'results') return `figure ${Number(index) + 1}${part === 'label' ? ' label' : ''}`
-    return ({ outcomes_title: 'the Outcomes title', results_label: 'the results heading', outcome_note: 'the outcome note', skills_label: 'the skills heading', skills: 'the skills line' } as Record<string, string>)[name] ?? name
-  }
   if (clashes.length) throw new Error(`These words were changed in the website editor after this page was opened: ${clashes.map(describe).join(', ')}. Nothing was saved. Reload the editor to see that change, then make yours again.`)
-  for (const [field, words] of Object.entries(edits)) doc.setIn(keysOf(field), doc.createNode(toFileValue(field, words)))
+  for (const [field, words] of Object.entries(edits)) {
+    for (const [at, value] of writesFor(field, words)) {
+      if (value === undefined) doc.deleteIn(at)
+      else doc.setIn(at, doc.createNode(value))
+    }
+  }
   const updated = `---\n${doc.toString({ lineWidth: 0 })}---\n${parts[2]}`
   if (updated === text) return false
   const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}`, {

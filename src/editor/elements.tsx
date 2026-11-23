@@ -3,6 +3,7 @@ import { createUsePuck } from '@puckeditor/core'
 import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { SCREENS, TEXT_SIZES, lookAt, type TextSize, type ElementLook, type ElementStyle, type Elements, type Screen } from '#/layout/elements'
 import type { Project } from '#/lib/site'
+import { LABELS, type LabelKey } from '#/layout/labels'
 
 // Editing single elements on the page: click one to select it, double-click its words to change
 // them, then style it in the "Selected element" panel or move it with the arrow keys.
@@ -23,48 +24,78 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
 }
 
 const NAMES: [RegExp, string][] = [
-  [/^title$/, 'Section title'],
+  [/^title$/, 'Title'],
+  [/^sub$/, 'Category and year line'],
+  [/^line$/, 'Summary line'],
+  [/^image$/, 'Opening image'],
+  [/^label-(role|type|when|deliverables|tools)$/, 'Label'],
+  [/^value-(role|type|when|deliverables|tools)$/, 'Fact'],
+  [/^lead$/, 'Opening paragraph'],
+  [/^label-did$/, '"What I did" label'],
+  [/^did$/, 'What I did'],
+  [/^label-team$/, '"What the team did" label'],
+  [/^team$/, 'What the team did'],
+  [/^text$/, 'Research text'],
+  [/^extra$/, 'Further research text'],
+  [/^moodboard$/, 'Moodboard'],
+  [/^key$/, 'Key image'],
+  [/^key-caption$/, 'Key image caption'],
+  [/^image-(\d+)$/, 'Image'],
+  [/^caption-(\d+)$/, 'Image caption'],
+  [/^context$/, 'Context image'],
+  [/^context-text$/, 'Context text'],
+  [/^film$/, 'Film'],
   [/^results-label$/, 'Results heading'],
-  [/^figure-(\d+)$/, 'Figure $1'],
-  [/^figure-label-(\d+)$/, 'Figure $1 label'],
-  [/^note$/, 'Outcome note'],
+  [/^figure-(\d+)$/, 'Figure'],
+  [/^figure-label-(\d+)$/, 'Figure label'],
+  [/^note$/, 'Note'],
   [/^skills-label$/, 'Skills heading'],
   [/^skills$/, 'Skills line'],
-  [/^image$/, 'Opening image'],
+  [/^label$/, 'Label'],
 ]
 const nameOf = (key: string) => {
-  for (const [re, name] of NAMES) if (re.test(key)) return key.replace(re, name).replace(/Figure (\d+)/, (_, n) => `Figure ${Number(n) + 1}`)
-  return key
+  const match = NAMES.find(([re]) => re.test(key))
+  const n = key.match(/(\d+)$/)
+  return match ? `${match[1]}${n ? ` ${Number(n[1]) + 1}` : ''}` : key
 }
+const IMAGES = /^(image|image-\d+|moodboard|key|context|film)$/
 
 // ---- Words
 
-const DEFAULTS: Record<string, string> = { outcomes_title: 'Outcomes', skills_label: 'Skills shown' }
+// Fields that show differently from how they are stored: lists, and "Type", which joins two fields.
+const SEPARATOR: Record<string, string> = { skills: ' / ', deliverables: ', ', tools: ', ' }
+type Get = (path: (string | number)[]) => unknown
+const keysOf = (field: string) => field.split(':').map((k) => (/^\d+$/.test(k) ? Number(k) : k))
+const fromObject = (obj: unknown): Get => (path) => path.reduce<unknown>((o, k) => (o == null ? undefined : (o as Record<string, unknown>)[k]), obj)
 
-function getPath(obj: unknown, path: string): unknown {
-  return path.split(':').reduce<unknown>((o, k) => (o == null ? undefined : (o as Record<string, unknown>)[k]), obj)
+// The words a field shows, read with `get` from either the project or its content file.
+export function wordsAt(field: string, get: Get) {
+  const value = field === 'type' ? [get(['project_type']), get(['type_detail'])].filter(Boolean).join(' · ') : get(keysOf(field))
+  if (Array.isArray(value)) return value.join(SEPARATOR[field] ?? ', ')
+  if (value != null && value !== '') return String(value)
+  return field.startsWith('labels:') ? LABELS[field.slice(7) as LabelKey] : ''
 }
+export const wordsOf = (p: Project, field: string, edits: Edits = {}) => (field in edits ? edits[field] : wordsAt(field, fromObject(p)))
 
-// The words as they are written in the content file, for editing.
-export function wordsFromValue(field: string, value: unknown) {
-  if (Array.isArray(value)) return value.join(' / ')
-  return value == null || value === '' ? (DEFAULTS[field] ?? '') : String(value)
+// Where changed words are written: one or more paths in the content file and their values.
+export function writesFor(field: string, words: string): [(string | number)[], unknown][] {
+  if (field === 'type') {
+    const [kind, ...detail] = words.split(' · ')
+    return [[['project_type'], kind.trim()], [['type_detail'], detail.join(' · ').trim() || undefined]]
+  }
+  if (SEPARATOR[field]) return [[[field], words.split(SEPARATOR[field].trim()).map((s) => s.trim()).filter(Boolean)]]
+  return [[keysOf(field), words]]
 }
-export function wordsOf(p: Project, field: string, edits: Edits = {}) {
-  return field in edits ? edits[field] : wordsFromValue(field, getPath(p, field))
-}
-
-// Lists written as "A / B / C" go back into the file as separate entries.
-export const toFileValue = (field: string, words: string) => (field === 'skills' ? words.split('/').map((s) => s.trim()).filter(Boolean) : words)
 
 export function applyEdits(p: Project, edits: Edits = {}): Project {
   if (!Object.keys(edits).length) return p
   const copy = structuredClone(p) as Record<string, unknown>
   for (const [field, words] of Object.entries(edits)) {
-    const keys = field.split(':')
-    let target = copy as Record<string, unknown>
-    for (const k of keys.slice(0, -1)) target = target[k] as Record<string, unknown>
-    if (target) target[keys[keys.length - 1]] = toFileValue(field, words)
+    for (const [path, value] of writesFor(field, words)) {
+      let target = copy as Record<string | number, unknown>
+      for (const k of path.slice(0, -1)) target = (target[k] ??= {}) as Record<string | number, unknown>
+      target[path[path.length - 1]] = value
+    }
   }
   return copy as Project
 }
@@ -241,13 +272,13 @@ export function ElementPanel({ value, onChange, p }: { value: Elements | undefin
 
   // Text colours are checked against the block's background (Off-white unless the block sets one).
   const background = ((item?.props as { design?: { background?: Colour } })?.design?.background ?? 'Off-white') as Colour
-  const ratio = shown.colour && key !== 'image' ? contrast(shown.colour, background) : null
+  const ratio = key && shown.colour && !IMAGES.test(key) ? contrast(shown.colour, background) : null
   const hardToRead = ratio !== null && ratio < 4.5
 
   if (!key) return <p className="el-hint">Click a heading, number, label or image on the page to change it on its own. Double-click words to edit them.</p>
 
   const edits = (root.props as { edits?: Edits })?.edits ?? {}
-  const isImage = key === 'image'
+  const isImage = IMAGES.test(key)
   const showScreen = (s: Screen) => dispatch({ type: 'setUi', ui: { viewports: { ...ui.viewports, current: { width: SCREEN_WIDTH[s], height: 'auto' } } } })
   const inherited = (k: keyof ElementLook) => own[k] === undefined && shown[k] !== undefined && screen !== 'desktop'
 

@@ -8,6 +8,7 @@ import { Rich } from '#/components/rich'
 import { caseStudies, categoryName, highlightOnSage, openingOf, yearOf, type Img, type Project } from '#/lib/site'
 import { designProps, type Design } from './design'
 import { useElement, type Elements } from './elements'
+import { label } from './labels'
 
 // The parts of a case study page, as blocks the design editor can arrange and restyle.
 // Each one renders exactly the markup the page always had; design settings, when present,
@@ -62,12 +63,12 @@ export function Opening({ design, elements }: BlockProps) {
     <section {...designProps(design, highlightOnSage(p) ? 'cs-open on-sage' : 'cs-open', { background: o.bg, color: o.fg })}>
       <div className="cs-open-grid">
         <div className="cs-open-text">
-          <span className="cs-sub" style={{ color: o.sub }}>
+          <span {...el('sub', { className: 'cs-sub', style: { color: o.sub } })}>
             {categoryName(p.category)} · {yearOf(p)} · Project {idx + 1} of {caseStudies.length}
             {p.status === 'Draft' && <span className="draft-badge">Draft</span>}
           </span>
-          <h1 className="c cs-title">{p.title}</h1>
-          <p className="cs-line"><span><Rich text={p.summary} /></span></p>
+          <h1 {...el('title', { className: 'c cs-title', field: 'title' })}>{p.title}</h1>
+          <p {...el('line', { className: 'cs-line', field: 'summary' })}><span><Rich text={p.summary} /></span></p>
         </div>
         <div {...el('image', { className: 'cs-open-visual' })}><OpeningVisual p={p} /></div>
       </div>
@@ -75,31 +76,40 @@ export function Opening({ design, elements }: BlockProps) {
   )
 }
 
-export function Facts({ design }: BlockProps) {
+export function Facts({ design, elements }: BlockProps) {
   const { p } = useCase()
+  const el = useElement(elements)
   const type = [p.project_type, p.type_detail].filter(Boolean).join(' · ')
-  const facts = [
-    ['My role', p.role],
-    ['Type', type],
-    ['When', p.when],
-    ['Deliverables', p.deliverables?.join(', ')],
-    ['Tools', p.tools?.join(', ')],
-  ].filter(([, v]) => v)
+  const facts = ([
+    ['role', p.role],
+    ['type', type],
+    ['when', p.when],
+    ['deliverables', p.deliverables?.join(', ')],
+    ['tools', p.tools?.join(', ')],
+  ] as const).filter(([, v]) => v)
+  const fact = ([k, v]: (typeof facts)[number]) => (
+    <div key={k}>
+      <span {...el(`label-${k}`, { className: 'lab', field: `labels:${k}` })}>{label(p, k)}</span>
+      <span {...el(`value-${k}`, { className: 'fact-val', field: k })}>{v}</span>
+    </div>
+  )
   return (
     <section {...designProps(design, 'facts')}>
-      {facts.slice(0, 1).map(([k, v]) => <div key={k}><span className="lab">{k}</span><span className="fact-val">{v}</span></div>)}
-      <div className="facts-rest">{facts.slice(1).map(([k, v]) => <div key={k}><span className="lab">{k}</span><span className="fact-val">{v}</span></div>)}</div>
+      {facts.slice(0, 1).map(fact)}
+      <div className="facts-rest">{facts.slice(1).map(fact)}</div>
     </section>
   )
 }
 
 export function SectionNav({ design }: BlockProps) {
-  const { shown, active } = useCase()
+  const { p, shown, active } = useCase()
   if (shown.length < 2) return null
   return (
     <nav aria-label="On this page" {...designProps(design, 'secnav c')}>
       {shown.map((id, i) => {
-        const [, t, short] = SECTIONS.find(([s]) => s === id)!
+        const [, standard, standardShort] = SECTIONS.find(([s]) => s === id)!
+        const t = label(p, id as 'overview')
+        const short = t === standard ? standardShort : undefined
         return (
           <Fragment key={id}>
             {i > 0 && <span className="cat-index-sep" aria-hidden="true">/</span>}
@@ -145,35 +155,37 @@ const Figures = ({ items, big, el = plain, field }: { items: { figure: string; l
   </div>
 )
 
-export function Overview({ design }: BlockProps) {
+export function Overview({ design, elements }: BlockProps) {
   const { p, shown } = useCase()
+  const el = useElement(elements)
   if (!shown.includes('overview')) return null
   return (
-    <Sec id="overview" title="Overview" design={design}>
-      {p.objective && <p className="lead"><Rich text={p.objective} highlight /></p>}
+    <Sec id="overview" title={label(p, 'overview')} design={design} titleProps={el('title', { className: 'c', field: 'labels:overview' })}>
+      {p.objective && <p {...el('lead', { className: 'lead', field: 'objective' })}><Rich text={p.objective} highlight /></p>}
       <div className={p.what_team_did ? 'did did-two' : 'did'}>
-        {p.what_i_did && <div><span className="lab">What I did</span><p><Rich text={p.what_i_did} highlight /></p></div>}
-        {p.what_team_did && <div><span className="lab">What the team did</span><p><Rich text={p.what_team_did} highlight /></p></div>}
+        {p.what_i_did && <div><span {...el('label-did', { className: 'lab', field: 'labels:what_i_did' })}>{label(p, 'what_i_did')}</span><p {...el('did', { field: 'what_i_did' })}><Rich text={p.what_i_did} highlight /></p></div>}
+        {p.what_team_did && <div><span {...el('label-team', { className: 'lab', field: 'labels:what_team_did' })}>{label(p, 'what_team_did')}</span><p {...el('team', { field: 'what_team_did' })}><Rich text={p.what_team_did} highlight /></p></div>}
       </div>
     </Sec>
   )
 }
 
-export function Research({ design }: BlockProps) {
+export function Research({ design, elements }: BlockProps) {
   const { p, shown } = useCase()
+  const el = useElement(elements)
   if (!shown.includes('research')) return null
   const r = p.research
   return (
-    <Sec id="research" title="Research & thinking" design={design}>
-      {r?.stats?.length ? <Figures items={r.stats} /> : null}
-      {r?.text && <p className="lead"><Rich text={r.text} /></p>}
-      {r?.extra && <p className="body-text"><Rich text={r.extra} /></p>}
-      {r?.moodboard && <div className="mood"><Media img={r.moodboard} ratio="21/9" label="moodboard" sizes="(max-width: 899px) 100vw, 67vw" /></div>}
+    <Sec id="research" title={label(p, 'research')} design={design} titleProps={el('title', { className: 'c', field: 'labels:research' })}>
+      {r?.stats?.length ? <Figures items={r.stats} el={el} field="research:stats" /> : null}
+      {r?.text && <p {...el('text', { className: 'lead', field: 'research:text' })}><Rich text={r.text} /></p>}
+      {r?.extra && <p {...el('extra', { className: 'body-text', field: 'research:extra' })}><Rich text={r.extra} /></p>}
+      {r?.moodboard && <div {...el('moodboard', { className: 'mood' })}><Media img={r.moodboard} ratio="21/9" label="moodboard" sizes="(max-width: 899px) 100vw, 67vw" /></div>}
     </Sec>
   )
 }
 
-const caption = (img?: Img) => img?.caption && <p className="cap"><Rich text={img.caption} /></p>
+const caption = (img: Img | undefined, el: ElementFn, key: string, field: string) => img?.caption && <p {...el(key, { className: 'cap', field })}><Rich text={img.caption} /></p>
 
 // How wide supporting images are shown: one, two or three across (two across on a phone).
 const GRID_SIZES: Record<number, string> = {
@@ -183,26 +195,26 @@ const GRID_SIZES: Record<number, string> = {
 }
 
 // The work: the same section on every project, laid out as approved for each one.
-function WorkContent({ p }: { p: Project }) {
+function WorkContent({ p, el }: { p: Project; el: ElementFn }) {
   const sup = p.supporting ?? []
   const grid = (framed = false) =>
     sup.length > 0 && (
       <div className={`work-grid cols-${sup.length}${framed ? ' work-grid-framed' : ''}`}>
         {sup.map((s, i) => (
-          <figure key={i}>
+          <figure key={i} {...el(`image-${i}`)}>
             <Media img={s} ratio="4/5" sizes={GRID_SIZES[sup.length] ?? GRID_SIZES[3]} />
-            {caption(s)}
+            {caption(s, el, `caption-${i}`, `supporting:${i}:caption`)}
           </figure>
         ))}
       </div>
     )
   const key = p.key_piece && (
-    <figure className="work-key">
+    <figure {...el('key', { className: 'work-key' })}>
       <Media img={p.key_piece} ratio="16/9" sizes="(max-width: 899px) 100vw, 90vw" />
-      {caption(p.key_piece)}
+      {caption(p.key_piece, el, 'key-caption', 'key_piece:caption')}
     </figure>
   )
-  const note = p.supporting_note && <p className="cap"><Rich text={p.supporting_note} /></p>
+  const note = p.supporting_note && <p {...el('note', { className: 'cap', field: 'supporting_note' })}><Rich text={p.supporting_note} /></p>
   switch (p.design) {
     case 'bersih':
       return (
@@ -211,8 +223,8 @@ function WorkContent({ p }: { p: Project }) {
           {grid()}
           {p.context && (
             <div className="work-context">
-              <Media img={p.context} ratio="9/16" sizes="(max-width: 899px) 33vw, 30vw" />
-              <p><Rich text={p.context.text} /></p>
+              <div {...el('context')}><Media img={p.context} ratio="9/16" sizes="(max-width: 899px) 33vw, 30vw" /></div>
+              <p {...el('context-text', { field: 'context:text' })}><Rich text={p.context.text} /></p>
             </div>
           )}
         </>
@@ -220,7 +232,7 @@ function WorkContent({ p }: { p: Project }) {
     case 'evoke':
       return <>{key}{grid(true)}{note}</>
     default:
-      return <>{key}{grid()}{note}<Film p={p} /></>
+      return <>{key}{grid()}{note}<Film p={p} el={el} /></>
   }
 }
 
@@ -234,14 +246,14 @@ function embedUrl(url: string) {
 
 // YouTube and Vimeo films load only when the visitor presses play, so nothing is fetched from
 // those sites before then. Once playing, the provider may collect information or store data.
-function Film({ p }: { p: Project }) {
+function Film({ p, el }: { p: Project; el: ElementFn }) {
   const [playing, setPlaying] = useState(false)
   if (!p.film) return null
   const url = p.film.url
   const embed = url && embedUrl(url)
   const title = p.film.caption ?? `${p.title} film`
   return (
-    <figure className="film">
+    <figure {...el('film', { className: 'film' })}>
       {url ? (
         embed ? (
           playing ? (
@@ -266,12 +278,13 @@ function Film({ p }: { p: Project }) {
   )
 }
 
-export function Work({ design }: BlockProps) {
+export function Work({ design, elements }: BlockProps) {
   const { p, shown } = useCase()
+  const el = useElement(elements)
   if (!shown.includes('work')) return null
   return (
-    <Sec id="work" title="The work" wide design={design}>
-      <WorkContent p={p} />
+    <Sec id="work" title={label(p, 'work')} wide design={design} titleProps={el('title', { className: 'c', field: 'labels:work' })}>
+      <WorkContent p={p} el={el} />
       <Gallery key={p.slug} images={p.gallery} note={p.gallery_note} />
     </Sec>
   )
@@ -282,13 +295,13 @@ export function Outcomes({ design, elements }: BlockProps) {
   const el = useElement(elements)
   if (!shown.includes('outcomes')) return null
   return (
-    <Sec id="outcomes" title={p.outcomes_title || 'Outcomes'} design={design} titleProps={el('title', { className: 'c', field: 'outcomes_title' })}>
+    <Sec id="outcomes" title={label(p, 'outcomes')} design={design} titleProps={el('title', { className: 'c', field: 'labels:outcomes' })}>
       {p.results_label && <span {...el('results-label', { className: 'lab', field: 'results_label' })}><Rich text={p.results_label} /></span>}
       {p.results?.length ? <Figures items={p.results} big el={el} field="results" /> : null}
       {p.outcome_note && <p {...el('note', { className: 'body-text outcome-note', field: 'outcome_note' })}><Rich text={p.outcome_note} /></p>}
       {p.skills?.length ? (
         <div className="skills">
-          <span {...el('skills-label', { className: 'lab', field: 'skills_label' })}>{p.skills_label || 'Skills shown'}</span>
+          <span {...el('skills-label', { className: 'lab', field: 'labels:skills' })}>{label(p, 'skills')}</span>
           <p {...el('skills', { field: 'skills' })}>{p.skills.map((skill, i) => <Fragment key={skill}>{i > 0 && ' / '}<span>{skill}</span></Fragment>)}</p>
         </div>
       ) : null}
@@ -299,13 +312,14 @@ export function Outcomes({ design, elements }: BlockProps) {
 
 // ---- After the sections
 
-export function AlsoIn({ design }: BlockProps) {
+export function AlsoIn({ design, elements }: BlockProps) {
   const { p } = useCase()
+  const el = useElement(elements)
   const siblings = caseStudies.filter((x) => x.category === p.category && x.slug !== p.slug)
   if (!siblings.length) return null
   return (
     <nav aria-label={`Also in ${categoryName(p.category)}`} {...designProps(design, 'also')}>
-      <span className="lab">Also in {categoryName(p.category)}</span>
+      <span {...el('label', { className: 'lab' })}>Also in {categoryName(p.category)}</span>
       <ul>
         {siblings.map((x) => (
           <li key={x.slug}>

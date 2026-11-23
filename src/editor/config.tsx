@@ -86,14 +86,14 @@ export function editorConfig(p: Project): Config {
     components: {
       CategoryNav: block('Category list', caseBlocks.CategoryNav),
       Opening: block('Opening', caseBlocks.Opening, { fields: { elements: elementsField(p) } }),
-      Facts: block('Facts', caseBlocks.Facts),
+      Facts: block('Facts', caseBlocks.Facts, { fields: { elements: elementsField(p) } }),
       SectionNav: block('Section bar', caseBlocks.SectionNav),
       Gap: block('Gap before sections', caseBlocks.Gap),
-      Overview: block('Overview', caseBlocks.Overview),
-      Research: block('Research & thinking', caseBlocks.Research),
-      Work: block('The work', caseBlocks.Work),
+      Overview: block('Overview', caseBlocks.Overview, { fields: { elements: elementsField(p) } }),
+      Research: block('Research & thinking', caseBlocks.Research, { fields: { elements: elementsField(p) } }),
+      Work: block('The work', caseBlocks.Work, { fields: { elements: elementsField(p) } }),
       Outcomes: block('Outcomes', caseBlocks.Outcomes, { fields: { elements: elementsField(p) } }),
-      AlsoIn: block('Also in this category', caseBlocks.AlsoIn),
+      AlsoIn: block('Also in this category', caseBlocks.AlsoIn, { fields: { elements: elementsField(p) } }),
       PrevNext: block('Previous and next', caseBlocks.PrevNext),
       Text: block('Text', TextBlock, {
         fields: {
