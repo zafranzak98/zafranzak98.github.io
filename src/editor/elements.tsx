@@ -3,6 +3,7 @@ import { createUsePuck } from '@puckeditor/core'
 import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { SCREENS, TEXT_SIZES, lookAt, type TextSize, type ElementLook, type ElementStyle, type Elements, type Screen } from '#/layout/elements'
 import type { Project } from '#/lib/site'
+import { boxOf, clearGuides, describeSnap, drawGuides, linesFor, snap, type Box } from './guides'
 import { LABELS, type LabelKey } from '#/layout/labels'
 
 // Editing single elements on the page: click one to select it, double-click its words to change
@@ -28,8 +29,7 @@ const NAMES: [RegExp, string][] = [
   [/^sub$/, 'Category and year line'],
   [/^line$/, 'Summary line'],
   [/^image$/, 'Opening image'],
-  [/^label-(role|type|when|deliverables|tools)$/, 'Label'],
-  [/^value-(role|type|when|deliverables|tools)$/, 'Fact'],
+
   [/^lead$/, 'Opening paragraph'],
   [/^label-did$/, '"What I did" label'],
   [/^did$/, 'What I did'],
@@ -57,6 +57,8 @@ const NAMES: [RegExp, string][] = [
   [/^caption$/, 'Caption'],
 ]
 const nameOf = (key: string) => {
+  const fact = key.match(/^(label|value)-(role|type|when|deliverables|tools)$/)
+  if (fact) return fact[1] === 'label' ? `"${LABELS[fact[2] as LabelKey]}" label` : `${LABELS[fact[2] as LabelKey]} fact`
   const match = NAMES.find(([re]) => re.test(key))
   const n = key.match(/(\d+)$/)
   return match ? `${match[1]}${n ? ` ${Number(n[1]) + 1}` : ''}` : key
@@ -133,7 +135,17 @@ function useWords(p: Project) {
 
 // ---- Arrow-key nudges reach the panel of the selected element through this small channel.
 
-const nudgeListeners = new Set<(dx: number, dy: number) => void>()
+// Moves (by dragging the grip or with the arrow keys) reach the selected element's panel as its new
+// position for the screen size being edited, in rem. Announcements go to the panel's live region.
+const moveListeners = new Set<(x: number, y: number) => void>()
+const announceListeners = new Set<(text: string) => void>()
+
+// Snapping to guides is on unless switched off in the panel; holding Option (Alt) moves freely.
+const SNAP_KEY = 'design-editor:snap'
+export const snapOn = () => { try { return localStorage.getItem(SNAP_KEY) !== 'off' } catch { return true } }
+export const setSnapOn = (on: boolean) => { try { localStorage.setItem(SNAP_KEY, on ? 'on' : 'off') } catch { /* stays on for this visit */ } }
+const round = (n: number) => Math.round(n * 100) / 100
+const shift = (b: Box, dx: number, dy: number): Box => ({ left: b.left + dx, right: b.right + dx, top: b.top + dy, bottom: b.bottom + dy, baseline: b.baseline === undefined ? undefined : b.baseline + dy })
 
 // ---- On the page: selecting, editing words, nudging
 
@@ -215,22 +227,92 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       box.addEventListener('blur', () => finish(true))
     }
 
+    // Where the selected element is now: its offset in pixels at this screen size.
+    const offsetOf = (el: HTMLElement) => {
+      const look = doc.defaultView!.getComputedStyle(el)
+      return [parseFloat(look.left) || 0, parseFloat(look.top) || 0]
+    }
+    const rootSize = () => parseFloat(doc.defaultView!.getComputedStyle(doc.documentElement).fontSize) || 16
+    // Screen pixels in the editor's (scaled) preview, as page pixels.
+    const pagePixels = (px: number) => {
+      const frame = doc.defaultView!.frameElement as HTMLElement | null
+      const scale = frame ? frame.getBoundingClientRect().width / doc.documentElement.clientWidth : 1
+      return px / (scale || 1)
+    }
+    const commit = (leftPx: number, topPx: number, words: string) => {
+      const root = rootSize()
+      moveListeners.forEach((fn) => fn(round(leftPx / root), round(topPx / root)))
+      announceListeners.forEach((fn) => fn(words))
+    }
+    const selectedEl = () => doc.querySelector<HTMLElement>('[data-el-selected]')
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (!latest.current.selected) return
       const target = e.target as HTMLElement
       if (target.closest('input, textarea, select, [contenteditable]')) return
-      const step = e.shiftKey ? 1 : 0.25
+      const el = selectedEl()
+      const step = (e.shiftKey ? 1 : 0.25) * rootSize()
       const move: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }
-      if (!move[e.key]) return
+      if (!el || !move[e.key]) return
       e.preventDefault()
-      nudgeListeners.forEach((fn) => fn(...move[e.key]))
+      let [dx, dy] = move[e.key]
+      const [left, top] = offsetOf(el)
+      // A gentle snap: only within a pixel or two of a guide, so the next key press moves on.
+      const s = snapOn() && !e.altKey ? snap(shift(boxOf(el), dx, dy), linesFor(el, nameOf), pagePixels(2)) : { dx: 0, dy: 0 }
+      if (!dx) { s.dx = 0; delete (s as { hitAcross?: unknown }).hitAcross }
+      if (!dy) { s.dy = 0; delete (s as { hitDown?: unknown }).hitDown }
+      dx += s.dx
+      dy += s.dy
+      if (s.dx || s.dy) { drawGuides(doc, s); setTimeout(() => clearGuides(doc), 900) }
+      commit(left + dx, top + dy, describeSnap(s) || 'Moved.')
     }
 
+    // Dragging the grip moves only the selected element; guides show what it lines up with.
+    const onGripDown = (e: PointerEvent) => {
+      const grip = (e.target as HTMLElement).closest('.el-grip') as HTMLElement | null
+      const el = selectedEl()
+      if (!grip || !el) return
+      e.preventDefault()
+      e.stopPropagation()
+      grip.setPointerCapture(e.pointerId)
+      const [left, top] = offsetOf(el)
+      const start = boxOf(el)
+      const lines = linesFor(el, nameOf)
+      const [x0, y0] = [e.clientX, e.clientY]
+      let last = { dx: 0, dy: 0, s: snap(start, { across: [], down: [] }, 0) }
+      const onMove = (m: PointerEvent) => {
+        let dx = m.clientX - x0
+        let dy = m.clientY - y0
+        // Snap only along a direction you are actually moving in, so a sideways drag never shifts it up or down.
+        const s = snapOn() && !m.altKey ? snap(shift(start, dx, dy), lines, pagePixels(6)) : snap(start, { across: [], down: [] }, 0)
+        if (Math.abs(dx) < pagePixels(3)) { s.dx = 0; s.hitAcross = undefined }
+        if (Math.abs(dy) < pagePixels(3)) { s.dy = 0; s.hitDown = undefined }
+        dx += s.dx
+        dy += s.dy
+        el.style.translate = `${dx}px ${dy}px`
+        drawGuides(doc, s)
+        last = { dx, dy, s }
+      }
+      const onUp = () => {
+        grip.removeEventListener('pointermove', onMove)
+        grip.removeEventListener('pointerup', onUp)
+        grip.removeEventListener('pointercancel', onUp)
+        el.style.translate = ''
+        clearGuides(doc)
+        if (last.dx || last.dy) commit(left + last.dx, top + last.dy, describeSnap(last.s) || 'Moved.')
+      }
+      grip.addEventListener('pointermove', onMove)
+      grip.addEventListener('pointerup', onUp)
+      grip.addEventListener('pointercancel', onUp)
+    }
+
+    doc.addEventListener('pointerdown', onGripDown, true)
     doc.addEventListener('click', onClick, true)
     doc.addEventListener('dblclick', onDoubleClick, true)
     doc.addEventListener('keydown', onKeyDown)
     if (doc !== document) document.addEventListener('keydown', onKeyDown)
     return () => {
+      doc.removeEventListener('pointerdown', onGripDown, true)
       doc.removeEventListener('click', onClick, true)
       doc.removeEventListener('dblclick', onDoubleClick, true)
       doc.removeEventListener('keydown', onKeyDown)
@@ -238,14 +320,24 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     }
   }, [doc, p, select])
 
-  // Keep the outline on the selected element after the page redraws.
+  // Keep the outline and the grip on the selected element after the page redraws.
   useEffect(() => {
-    if (!doc || !selected) return
-    const el = [...doc.querySelectorAll<HTMLElement>('[data-el]')].find((n) => n.dataset.el === selected.key && n.closest('[data-puck-component]')?.getAttribute('data-puck-component') === selected.blockId)
-    if (el && !el.hasAttribute('data-el-selected')) {
-      doc.querySelectorAll('[data-el-selected]').forEach((n) => n.removeAttribute('data-el-selected'))
-      el.setAttribute('data-el-selected', '')
+    if (!doc) return
+    const el = selected && [...doc.querySelectorAll<HTMLElement>('[data-el]')].find((n) => n.dataset.el === selected.key && n.closest('[data-puck-component]')?.getAttribute('data-puck-component') === selected.blockId)
+    doc.querySelectorAll('[data-el-selected]').forEach((n) => n !== el && n.removeAttribute('data-el-selected'))
+    let grip = doc.querySelector<HTMLElement>('.el-grip')
+    if (!el) { grip?.remove(); return }
+    el.setAttribute('data-el-selected', '')
+    if (!grip) {
+      grip = doc.createElement('div')
+      grip.className = 'el-grip'
+      grip.title = 'Drag to move this element (hold Option to move freely)'
+      grip.setAttribute('aria-hidden', 'true')
+      doc.body.append(grip)
     }
+    const r = el.getBoundingClientRect()
+    const view = doc.defaultView!
+    Object.assign(grip.style, { left: `${r.left + view.scrollX - 26}px`, top: `${r.top + view.scrollY - 2}px` })
   })
 
   return anchor
@@ -282,12 +374,13 @@ export function ElementPanel({ value, onChange, p }: { value: Elements | undefin
   }
   const latest = useRef(setLook)
   latest.current = setLook
-  const position = useRef(shown)
-  position.current = shown
+  const [message, setMessage] = useState('')
+  const [snapping, setSnapping] = useState(snapOn)
   useEffect(() => {
-    const fn = (dx: number, dy: number) => latest.current({ x: round((position.current.x ?? 0) + dx), y: round((position.current.y ?? 0) + dy) })
-    nudgeListeners.add(fn)
-    return () => { nudgeListeners.delete(fn) }
+    const onMove = (x: number, y: number) => latest.current({ x, y })
+    moveListeners.add(onMove)
+    announceListeners.add(setMessage)
+    return () => { moveListeners.delete(onMove); announceListeners.delete(setMessage) }
   }, [])
 
   // Text colours are checked against the block's background (Off-white unless the block sets one).
@@ -319,7 +412,9 @@ export function ElementPanel({ value, onChange, p }: { value: Elements | undefin
         <legend>Move (without moving anything else)</legend>
         <Stepper label="Left or right" value={shown.x ?? 0} onChange={(x) => setLook({ x })} inherited={inherited('x')} />
         <Stepper label="Up or down" value={shown.y ?? 0} onChange={(y) => setLook({ y })} inherited={inherited('y')} />
-        <p className="el-note">Arrow keys move it too (Shift for bigger steps).</p>
+        <p className="el-note">Drag the grip beside it, or use the arrow keys (Shift for bigger steps). Hold Option to move freely.</p>
+        <label className="el-switch"><input type="checkbox" checked={snapping} onChange={(e) => { setSnapOn(e.target.checked); setSnapping(e.target.checked) }} /> Snap to guides</label>
+        <p className="el-live" role="status" aria-live="polite">{message}</p>
       </fieldset>
 
       <Choice label="Space above" value={own.above} options={SPACING.map((s) => [s, `${s} rem`])} onChange={(above) => setLook({ above })} inherited={inherited('above')} />
@@ -344,7 +439,6 @@ export function ElementPanel({ value, onChange, p }: { value: Elements | undefin
   )
 }
 
-const round = (n: number) => Math.round(n * 100) / 100
 
 function Stepper({ label, value, onChange, inherited }: { label: string; value: number; onChange: (v: number) => void; inherited: boolean }) {
   return (

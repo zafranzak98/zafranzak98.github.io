@@ -84,7 +84,9 @@ function EditorApp() {
         viewports={[
           { width: 390, label: 'Phone', icon: 'Smartphone' },
           { width: 1024, label: 'Tablet', icon: 'Tablet' },
+          { width: 1280, label: 'Small desktop', icon: 'Monitor' },
           { width: 1440, label: 'Desktop', icon: 'Monitor' },
+          { width: 1920, label: 'Large desktop', icon: 'Monitor' },
         ]}
         overrides={OVERRIDES}
       />
