@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createUsePuck } from '@puckeditor/core'
-import { COLOURS } from '#/layout/design'
+import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { SCREENS, TEXT_SIZES, lookAt, type TextSize, type ElementLook, type ElementStyle, type Elements, type Screen } from '#/layout/elements'
 import type { Project } from '#/lib/site'
 
@@ -239,6 +239,11 @@ export function ElementPanel({ value, onChange, p }: { value: Elements | undefin
     return () => { nudgeListeners.delete(fn) }
   }, [])
 
+  // Text colours are checked against the block's background (Off-white unless the block sets one).
+  const background = ((item?.props as { design?: { background?: Colour } })?.design?.background ?? 'Off-white') as Colour
+  const ratio = shown.colour && key !== 'image' ? contrast(shown.colour, background) : null
+  const hardToRead = ratio !== null && ratio < 4.5
+
   if (!key) return <p className="el-hint">Click a heading, number, label or image on the page to change it on its own. Double-click words to edit them.</p>
 
   const edits = (root.props as { edits?: Edits })?.edits ?? {}
@@ -281,6 +286,7 @@ export function ElementPanel({ value, onChange, p }: { value: Elements | undefin
           <Choice label="Text size" value={own.size} options={(Object.keys(TEXT_SIZES) as TextSize[]).map((k) => [k, TEXT_SIZES[k][0]])} onChange={(size) => setLook({ size })} inherited={inherited('size')} />
           <Choice label="Weight" value={own.weight} options={[[400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold']]} onChange={(weight) => setLook({ weight })} inherited={inherited('weight')} />
           <Choice label="Colour" value={own.colour} options={COLOURS.map((c) => [c, c])} onChange={(colour) => setLook({ colour })} inherited={inherited('colour')} />
+          {hardToRead && <p className="editor-warning-text" role="note">{shown.colour} on {background} is hard to read ({ratio.toFixed(1)}:1; 4.5:1 is the minimum for text). Choose another colour or background.</p>}
         </>
       )}
       <button type="button" className="el-reset" onClick={() => setLook(Object.fromEntries(Object.keys(own).map((k) => [k, undefined])))}>Reset {SCREEN_LABEL[screen]} settings</button>
