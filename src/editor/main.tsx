@@ -9,6 +9,7 @@ import { caseStudies, type Project } from '#/lib/site'
 import { savedLayoutFor, standardCaseLayout } from '#/layout/render'
 import { editorConfig, layoutWarnings } from './config'
 import * as github from './github'
+import { SHARED_KEY, currentAccount, forgetOwn, keepOwn, sharedToken, signOutHere, type Account } from './signin'
 import { CATEGORY_FIELD, Selection, SelectionProvider, categoryEdits, nameOf, wordsOf, type Edits } from './elements'
 import { categoryName } from '#/lib/site'
 import { checkPage, type Finding } from './checks'
@@ -31,7 +32,6 @@ type Version = { id: string; date: string; message: string; layout?: Data }
 const readLocal = <T,>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(key) ?? '') as T } catch { return fallback } }
 const writeLocal = (key: string, value: unknown) => { try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* storage full or blocked: work continues */ } }
 const removeLocal = (key: string) => { try { localStorage.removeItem(key) } catch { /* nothing to remove */ } }
-const session = { get: (k: string) => { try { return sessionStorage.getItem(k) } catch { return null } }, set: (k: string, v: string) => { try { sessionStorage.setItem(k, v) } catch { /* sign-in lasts until the page closes */ } }, remove: (k: string) => { try { sessionStorage.removeItem(k) } catch { /* nothing kept */ } } }
 
 function startingLayout(p: Project): { data: Data; restored: boolean } {
   const unsaved = readLocal<Data | null>(localKey(p.slug, 'unsaved'), null)
@@ -57,7 +57,30 @@ function EditorApp() {
   const p = caseStudies.find((x) => x.slug === params.get('project')) ?? caseStudies.find((x) => x.design === 'about-face') ?? caseStudies[0]
   const config = useMemo(() => editorConfig(p), [p])
   const [start] = useState(() => startingLayout(p))
-  const [token, setToken] = useState<string | null>(() => session.get('design-editor:token'))
+  // One sign-in shared with the website editor (see signin.ts); GitHub's refusal of a token is
+  // remembered so it is not offered again until Sveltia renews it or you sign in.
+  const refused = useRef<string | null>(null)
+  const [account, setAccount] = useState<Account | null>(() => currentAccount())
+  const [login, setLogin] = useState('')
+  const token = account?.token ?? null
+  const setToken = (t: string | null) => setAccount(t ? { token: t, shared: false } : currentAccount(refused.current))
+  // Another tab (or /admin) signing in, renewing or signing out reaches this tab at once.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => { if (e.key === null || e.key === SHARED_KEY) setAccount(currentAccount(refused.current)) }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+  // Check the sign-in when the editor opens and whenever it changes.
+  useEffect(() => {
+    if (DEMO || !token) { setLogin(''); return }
+    let live = true
+    github.whoAmI(token).then((who) => {
+      if (!live) return
+      if (who === null) expire(token)
+      else setLogin(who)
+    }, () => { /* offline or GitHub unavailable: keep the sign-in and try again on the next save */ })
+    return () => { live = false }
+  }, [token])
   const [notice, setNoticeState] = useState<Notice>(start.restored ? { text: 'Your unsaved changes from last time are back. Undo removes them one by one, or choose More, then "Discard unsaved changes".' } : { text: '' })
   const setNotice = (text: string, undo = false) => setNoticeState({ text, undo })
   const saveTimer = useRef<number>(undefined)
@@ -78,7 +101,23 @@ function EditorApp() {
   useEffect(labelPuckControls, [])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const actions = useMemo(() => ({ p, token, setToken, setNotice, notice, markClean: () => { clean.current = '' }, clean }), [p, token, notice])
+  // GitHub refused this sign-in. Your own is forgotten; the shared one is left for Sveltia to renew.
+  function expire(t: string) {
+    refused.current = t
+    forgetOwn()
+    const shared = sharedToken() === t
+    setAccount(currentAccount(t))
+    setLogin('')
+    return shared
+  }
+  const signOut = () => {
+    signOutHere()
+    refused.current = null
+    setAccount(null)
+    setLogin('')
+    setNotice('Signed out of both editors in this browser. If the website editor (/admin) is open in another tab, close or reload it too. To cancel the sign-in at GitHub as well, open GitHub, Settings, Applications, and revoke "Zafran website editor (Sveltia CMS)".')
+  }
+  const actions = useMemo(() => ({ p, token, setToken, setNotice, notice, markClean: () => { clean.current = '' }, clean, login, shared: !!account?.shared, expire, signOut }), [p, token, notice, login, account])
   return (
     <SessionContext.Provider value={actions}>
       <SelectionProvider>
@@ -105,7 +144,7 @@ function EditorApp() {
 }
 
 type Notice = { text: string; undo?: boolean }
-type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string, undo?: boolean) => void; notice: Notice; markClean: () => void; clean: { current: string | null } }
+type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string, undo?: boolean) => void; notice: Notice; markClean: () => void; clean: { current: string | null }; login: string; shared: boolean; expire: (t: string) => boolean; signOut: () => void }
 
 // The left-hand tools, named for what they do.
 const PLUGINS = [{ ...blocksPlugin(), label: 'Add section', icon: <PlusIcon /> }, { ...outlinePlugin(), label: 'Page navigator', icon: <LayersIcon /> }, { ...fieldsPlugin(), label: 'Settings', icon: <SlidersIcon /> }]
@@ -146,7 +185,7 @@ const time = () => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', min
 // The top bar: the project, the screen size being edited, undo and redo, where the work stands,
 // and the three steps that matter: preview, save a draft, publish.
 function Actions() {
-  const { p, token, setToken, setNotice, notice, markClean, clean } = useContext(SessionContext)!
+  const { p, token, setToken, setNotice, notice, markClean, clean, login, shared, expire, signOut } = useContext(SessionContext)!
   const data = usePuck((s) => s.appState.data)
   const history = usePuck((s) => s.history)
   const [saved, setSaved] = useState<{ json: string; text: string } | null>(null)
@@ -207,10 +246,9 @@ function Actions() {
     try { setNotice(await task()) } catch (e) {
       const message = (e as Error).message
       // An expired or withdrawn sign-in: forget it, so "Sign in with GitHub" shows again.
-      if (/\b401\b|Bad credentials/i.test(message)) {
-        session.remove('design-editor:token')
-        setToken(null)
-        setNotice(`${label} did not work because your sign-in has expired. Choose "Sign in with GitHub", then try again. Nothing was changed.`)
+      if (/\b401\b|Bad credentials/i.test(message) && token) {
+        const wasShared = expire(token)
+        setNotice(`${label} did not work because your sign-in has expired. Nothing was changed. ${wasShared ? 'Open the website editor (/admin) in another tab to renew it, or choose Sign in, then try again.' : 'Choose Sign in, then try again.'}`)
       } else setNotice(`${label} did not work: ${message} Nothing was changed.`)
     } finally { setBusy('') }
   }
@@ -219,7 +257,7 @@ function Actions() {
 
   const signIn = () => run('Sign-in', async () => {
     const t = await github.signIn()
-    session.set('design-editor:token', t)
+    keepOwn(t)
     setToken(t)
     return 'Signed in. Drafts and publishing now save to the website.'
   })
@@ -334,6 +372,7 @@ function Actions() {
             <button type="button" onClick={choose(openHistory)} disabled={!!busy}>Versions <small>bring back an earlier version</small></button>
             <button type="button" onClick={choose(discardUnsaved)} disabled={!!busy || !unpublished}>Discard changes <small>go back to the published page</small></button>
             <button type="button" onClick={choose(() => setPanel('reset'))} disabled={!!busy}>Standard layout <small>start again from the template</small></button>
+            {!DEMO && token && <button type="button" onClick={choose(signOut)} disabled={!!busy}>Sign out <small>{login ? `signed in as ${login}` : 'signed in'}{shared ? ', shared with the website editor' : ''}; signs out of both here</small></button>}
           </div>
         </div>
         {!DEMO && !token && <button type="button" className="editor-signin" onClick={signIn} disabled={!!busy}>Sign in</button>}

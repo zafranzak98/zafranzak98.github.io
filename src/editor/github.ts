@@ -38,6 +38,14 @@ export function signIn(): Promise<string> {
   })
 }
 
+// Who the sign-in belongs to. null means GitHub refused it (expired or withdrawn).
+export async function whoAmI(token: string): Promise<string | null> {
+  const res = await fetch('https://api.github.com/user', { headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28' } })
+  if (res.status === 401) return null
+  if (!res.ok) throw new Error(`GitHub answered ${res.status}`)
+  return ((await res.json()) as { login?: string }).login ?? ''
+}
+
 async function api(token: string, path: string, init: RequestInit = {}) {
   const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}${path}`, {
     ...init,
