@@ -192,6 +192,29 @@ export const widthNow = (el: HTMLElement) => Math.round((el.getBoundingClientRec
 
 // Image widths changed by dragging the handle reach the panel the same way as moves.
 export const widthListeners = new Set<(width: number) => void>()
+// An image's angle in degrees as shown now: a cover's own tilt, or the turn of the whole part.
+export function angleOf(el: HTMLElement) {
+  const view = el.ownerDocument.defaultView!
+  const tilt = el.children.length === 1 && el.firstElementChild!.classList.contains('tilt') ? (el.firstElementChild as HTMLElement) : null
+  if (tilt) return parseFloat(view.getComputedStyle(tilt).getPropertyValue('--tilt')) || 2
+  return parseFloat(view.getComputedStyle(el).rotate) || 0
+}
+// Shows an angle on the page while it is being chosen, without saving it (null puts it back).
+export function previewAngle(el: HTMLElement, deg: number | null) {
+  const tilt = el.children.length === 1 && el.firstElementChild!.classList.contains('tilt') ? (el.firstElementChild as HTMLElement) : null
+  if (tilt) {
+    if (deg === null) { tilt.style.removeProperty('--tilt'); if (tilt.dataset.tilt) tilt.style.setProperty('--tilt', tilt.dataset.tilt) }
+    else { if (tilt.dataset.tilt === undefined) tilt.dataset.tilt = tilt.style.getPropertyValue('--tilt'); tilt.style.setProperty('--tilt', `${deg}deg`, 'important') }
+  } else el.style.rotate = deg === null ? '' : `${deg}deg`
+}
+// Angles chosen with the rotate handle reach the panel the same way as moves.
+export const rotateListeners = new Set<(deg: number) => void>()
+export const formatAngle = (deg: number) => `${Math.round(deg * 10) / 10}°`.replace('-', '−')
+
+// The other parts under the point last clicked (largest last), so a part hidden behind another
+// can be chosen from a list instead of by clicking.
+export const stackListeners = new Set<(parts: Picked[], picked: Picked | null) => void>()
+
 // A project's opening cover changes size in steps; dragging its handle reports how many steps.
 export const coverListeners = new Set<(steps: number) => void>()
 const COVER_VW: Record<number, number> = { 3: 20, 4: 26, 5: 32, 6: 38 }
@@ -266,6 +289,11 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     const place = (n: HTMLElement, el: HTMLElement) => {
       const r = visualBox(el)
       Object.assign(n.style, { left: `${r.left + view.scrollX}px`, top: `${r.top + view.scrollY}px`, width: `${r.width}px`, height: `${r.height}px`, display: 'block' })
+      // A turned image's frame turns with it (its name tag stays level), as in Canva and Figma.
+      const turned = n.classList.contains('el-frame') && IMAGES.test(el.dataset.el ?? '') && !grouped() ? angleOf(el) : 0
+      n.style.rotate = turned ? `${turned}deg` : ''
+      const tag = n.querySelector<HTMLElement>('.el-tag')
+      if (tag) tag.style.rotate = turned ? `${-turned}deg` : ''
     }
     const tagOf = (n: HTMLElement) => n.querySelector<HTMLElement>('.el-tag')!
     const hide = (n: HTMLElement | null) => { if (n) n.style.display = 'none' }
@@ -304,8 +332,15 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       }
       if (onFrame) return
       // A click on an empty part of a section selects the section itself.
-      if (!el) { select(null); return }
+      if (!el) { select(null); stackListeners.forEach((fn) => fn([], null)); return }
       select(pickOf(el))
+      const under = [...doc.querySelectorAll<HTMLElement>('[data-el]')]
+        .filter((n) => n !== el && !n.contains(el) && !el.contains(n))
+        .map((n) => ({ n, r: visualBox(n) }))
+        .filter(({ r }) => r.width > 0 && e.clientX >= r.left && e.clientX <= r.left + r.width && e.clientY >= r.top && e.clientY <= r.top + r.height)
+        .sort((a, b) => a.r.width * a.r.height - b.r.width * b.r.height)
+        .map(({ n }) => pickOf(n))
+      stackListeners.forEach((fn) => fn(under, pickOf(el)))
       hide(doc.querySelector('.el-hover'))
     }
 
@@ -436,6 +471,7 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       const name = tag.textContent ?? ''
       const [x0, y0] = [e.clientX, e.clientY]
       const resizing = (e.target as HTMLElement).classList.contains('el-handle')
+      if ((e.target as HTMLElement).classList.contains('el-rotate')) { rotate(e, frame, el); return }
       const [left, top] = offsetOf(el)
       const start = boxOf(el)
       const lines = linesFor(el, nameOf)
@@ -510,6 +546,51 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       frame.addEventListener('pointerup', onUp)
       frame.addEventListener('pointercancel', onUp)
     }
+    // The round handle above an image turns it around its centre. It settles on level (0°) when
+    // close, and Shift keeps it to steps of 15°. Nothing is saved until the handle is let go.
+    const rotate = (e: PointerEvent, frame: HTMLElement, el: HTMLElement) => {
+      e.preventDefault()
+      e.stopPropagation()
+      frame.setPointerCapture(e.pointerId)
+      const tag = tagOf(frame)
+      const name = tag.textContent ?? ''
+      const box = el.getBoundingClientRect()
+      const [cx, cy] = [box.left + box.width / 2, box.top + box.height / 2]
+      const pointer = (m: PointerEvent) => (Math.atan2(m.clientY - cy, m.clientX - cx) * 180) / Math.PI
+      const start = angleOf(el)
+      const p0 = pointer(e)
+      let angle = start
+      let moved = false
+      const onMove = (m: PointerEvent) => {
+        let a = start + pointer(m) - p0
+        a = ((a + 540) % 360) - 180
+        a = m.shiftKey ? Math.round(a / 15) * 15 : Math.round(a * 2) / 2
+        if (!m.shiftKey && Math.abs(a) <= 1) a = 0
+        if (!moved && a === start) return
+        moved = true
+        angle = a
+        frame.setAttribute('data-moving', '')
+        previewAngle(el, a)
+        place(frame, el)
+        tag.textContent = `Angle ${formatAngle(a)}${a === 0 ? ' · level' : ''}`
+      }
+      const onUp = () => {
+        frame.removeEventListener('pointermove', onMove)
+        frame.removeEventListener('pointerup', onUp)
+        frame.removeEventListener('pointercancel', onUp)
+        frame.removeAttribute('data-moving')
+        tag.textContent = name
+        previewAngle(el, null)
+        place(frame, el)
+        if (!moved || angle === start) return
+        rotateListeners.forEach((fn) => fn(angle))
+        announceListeners.forEach((fn) => fn(`Angle ${formatAngle(angle)}.`))
+      }
+      frame.addEventListener('pointermove', onMove)
+      frame.addEventListener('pointerup', onUp)
+      frame.addEventListener('pointercancel', onUp)
+    }
+
     // Dragging any member of a group moves them all; guides follow the selected one.
     const dragGroup = (e: PointerEvent, frame: HTMLElement, lead: HTMLElement) => {
       const parts = movable()
@@ -646,10 +727,13 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     frame.querySelector('.el-tag')!.textContent = members.length ? `${members.length} selected · drag to move together` : nameOf(el.dataset.el!)
     frame.toggleAttribute('data-shared', el.hasAttribute('data-shared'))
     frame.toggleAttribute('data-cover', !members.length && el.classList.contains('cs-open-visual') && doc.defaultView!.getComputedStyle(el.parentElement!).display === 'grid')
-    frame.title = members.length ? 'Drag to move the group together. Shift-click a part to add or remove it.' : el.hasAttribute('data-shared') ? 'Double-click to change this name everywhere it appears.' : `${el.dataset.edit ? 'Double-click to edit the words. ' : ''}Drag to move${isImage ? '; drag the side handle to change its size' : ''}. Hold Option to move freely.`
+    frame.title = members.length ? 'Drag to move the group together. Shift-click a part to add or remove it.' : el.hasAttribute('data-shared') ? 'Double-click to change this name everywhere it appears.' : `${el.dataset.edit ? 'Double-click to edit the words. ' : ''}Drag to move${isImage ? '; drag the side handle to change its size, or the round handle above to turn it' : ''}. Hold Option to move freely.`
     let handle = frame.querySelector('.el-handle')
     if (isImage && !handle) { handle = doc.createElement('span'); handle.className = 'el-handle'; frame.append(handle) }
     if (!isImage) handle?.remove()
+    let turn = frame.querySelector('.el-rotate')
+    if (isImage && !turn) { turn = doc.createElement('span'); turn.className = 'el-rotate'; (turn as HTMLElement).title = 'Drag to turn. Hold Shift for steps of 15°.'; frame.append(turn) }
+    if (!isImage) turn?.remove()
   })
 
   return anchor

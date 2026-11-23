@@ -4,8 +4,8 @@ import { createUsePuck } from '@puckeditor/core'
 import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { COVER_NAMES, COVER_SIZES, TEXT_SIZES, lookAt, type ElementLook, type ElementStyle, type Elements, type Screen, type TextSize } from '#/layout/elements'
 import type { Project } from '#/lib/site'
-import { IMAGES, Selection, type Picked, groupMoveListeners, coverListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
-import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, PlusIcon, ResetIcon, SelectMoreIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
+import { IMAGES, Selection, type Picked, angleOf, groupMoveListeners, coverListeners, rotateListeners, stackListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
+import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, ResetIcon, RotateIcon, SelectMoreIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
 
 // The editing controls. The contextual bar under the top bar holds what you use most for the
 // selected text, image or section; the side panel ("More settings") holds everything, grouped.
@@ -20,7 +20,7 @@ const SPACING = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4]
 const SWATCH: Record<Colour, string> = { Olive: 'var(--olive)', Sage: 'var(--sage)', 'Light sage': 'var(--lsage)', 'Off-white': 'var(--off)', Terracotta: 'var(--terra)' }
 const WEIGHTS: [number, string][] = [[400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold']]
 const ALIGN: [NonNullable<ElementLook['align']>, string, () => ReactNode][] = [['left', 'Left', AlignLeftIcon], ['center', 'Centre', AlignCentreIcon], ['right', 'Right', AlignRightIcon]]
-const LOOKS: (keyof ElementLook)[] = ['place', 'hidden', 'cover', 'x', 'y', 'size', 'weight', 'colour', 'align', 'width', 'focusX', 'focusY', 'above', 'below']
+const LOOKS: (keyof ElementLook)[] = ['place', 'hidden', 'cover', 'x', 'y', 'size', 'weight', 'colour', 'align', 'width', 'focusX', 'focusY', 'rotate', 'above', 'below']
 const BOX: [NonNullable<ElementLook['place']>, string, () => ReactNode][] = [['start', 'Left', BoxStartIcon], ['center', 'Centre', BoxCentreIcon], ['end', 'Right', BoxEndIcon]]
 // A box can only be placed when it is a block narrower than its area could make it (not words inside a sentence).
 const placeable = () => { const el = selectedEl(); return !!el && !['inline', 'contents'].includes(getComputedStyle(el).display) }
@@ -28,6 +28,12 @@ const px = (rem: number) => `${Math.round(rem * 16)} px`
 
 export const canvas = () => (document.getElementById('preview-frame') as HTMLIFrameElement | null)?.contentDocument ?? null
 const selectedEl = () => canvas()?.querySelector<HTMLElement>('[data-el-selected]') ?? null
+// The element for a selection, found by its section and name (right after a new selection the page
+// may not yet mark it as selected).
+const elFor = (blockId?: string, key?: string | null) => {
+  const found = blockId && key ? canvas()?.querySelector<HTMLElement>(`[data-puck-component="${blockId}"] [data-el="${key}"]`) : null
+  return found ?? selectedEl()
+}
 
 // The selected element's settings at the screen size being edited, and a way to change them.
 function useLook() {
@@ -172,9 +178,16 @@ export function ContextBar() {
   const latestGroup = useRef(grouping)
   latestGroup.current = grouping
   const [message, setMessage] = useState('')
+  const [stack, setStack] = useState<{ for: string; parts: Picked[] }>({ for: '', parts: [] })
+  useEffect(() => {
+    const onStack = (parts: Picked[], picked: Picked | null) => setStack({ for: picked ? `${picked.blockId}|${picked.key}` : '', parts })
+    stackListeners.add(onStack)
+    return () => { stackListeners.delete(onStack) }
+  }, [])
   useEffect(() => {
     const onMove = (x: number, y: number) => latest.current({ x, y })
     const onWidth = (width: number) => latest.current({ width })
+    const onRotate = (rotate: number) => latest.current({ rotate })
     const onCover = (steps: number) => latestCover.current(steps)
     const onGroupMove = (moves: { key: string; blockId: string; x: number; y: number }[]) =>
       latestGroup.current.apply((m) => { const to = moves.find((v) => v.key === m.key && v.blockId === m.blockId); return to ? { x: to.x, y: to.y } : null })
@@ -182,8 +195,9 @@ export function ContextBar() {
     moveListeners.add(onMove)
     widthListeners.add(onWidth)
     coverListeners.add(onCover)
+    rotateListeners.add(onRotate)
     announceListeners.add(setMessage)
-    return () => { groupMoveListeners.delete(onGroupMove); moveListeners.delete(onMove); widthListeners.delete(onWidth); coverListeners.delete(onCover); announceListeners.delete(setMessage) }
+    return () => { groupMoveListeners.delete(onGroupMove); moveListeners.delete(onMove); widthListeners.delete(onWidth); coverListeners.delete(onCover); rotateListeners.delete(onRotate); announceListeners.delete(setMessage) }
   }, [])
   const latestCover = useRef((_steps: number) => {})
   latestCover.current = (steps: number) => {
@@ -204,7 +218,6 @@ export function ContextBar() {
       tab?.click()
     } else dispatch({ type: 'setUi', ui: { rightSideBarVisible: !ui.rightSideBarVisible } })
   }
-  const showLeft = (plugin: 'blocks' | 'outline') => dispatch({ type: 'setUi', ui: { leftSideBarVisible: true, plugin: { current: plugin } } })
   const more = (
     <button type="button" className="ctx-btn" aria-pressed={phone() ? ui.plugin?.current === 'fields' : ui.rightSideBarVisible} onClick={toggleSettings}>
       <SlidersIcon /><span className="ctx-long">{ui.rightSideBarVisible ? 'Hide settings' : 'More settings'}</span><span className="ctx-short">Settings</span>
@@ -221,14 +234,11 @@ export function ContextBar() {
 
   if (grouping.members.length > 1) return <GroupBar {...grouping} where={where} more={more} live={live} onDone={() => select(null)} announce={setMessage} />
 
-  // Nothing selected: what to do first, and the two ways to change the page's structure.
+  // Nothing selected: what to do first. Adding and rearranging sections is in the side rail.
   if (!item) {
     return (
       <div className="ctx" role="toolbar" aria-label="Editing tools">
         <p className="ctx-hint"><b>Click</b> anything on the page to change it. <b>Double-click</b> words to type.</p>
-        <span className="ctx-gap" />
-        <button type="button" className="ctx-btn" onClick={() => showLeft('blocks')}><PlusIcon /><span>Add a section</span></button>
-        <button type="button" className="ctx-btn" onClick={() => showLeft('outline')}><LayersIcon /><span>Page navigator</span></button>
         {live}
       </div>
     )
@@ -290,8 +300,9 @@ export function ContextBar() {
 
   // An element is selected: the settings used most, one click away.
   const isImage = IMAGES.test(key)
-  const el = selectedEl()
+  const el = elFor(selected?.blockId, key)
   const width = shown.width ?? (el ? widthNow(el) : 100)
+  const angle = shown.rotate ?? (el && isImage ? angleOf(el) : 0)
   const startTyping = () => {
     const target = selectedEl()
     if (!target) return
@@ -304,6 +315,7 @@ export function ContextBar() {
   return (
     <div className="ctx" role="toolbar" aria-label={`${nameOf(key)} tools`}>
       <span className="ctx-name">{nameOf(key)}</span>
+      {selected && stack.for === `${selected.blockId}|${key}` && stack.parts.length > 0 && <AlsoHere parts={stack.parts} onPick={(m) => setStack({ for: `${m.blockId}|${m.key}`, parts: [selected, ...stack.parts.filter((x) => x !== m)] })} />}
       {selected?.field && <button type="button" className="ctx-btn" aria-label="Edit words" onClick={startTyping}><PenIcon /><span className="ctx-edit-word">Edit words</span></button>}
       {isCover(item.type, key) ? (
         <span className="ctx-group" role="group" aria-label="Cover size">
@@ -316,9 +328,16 @@ export function ContextBar() {
         <span className="ctx-group" role="group" aria-label="Width">
           <span className="ctx-label">Width</span>
           <input type="range" min={20} max={100} step={5} value={width} aria-label="Width" aria-valuetext={`${width}%`} onChange={(e) => setLook({ width: Number(e.target.value) })} />
-          <output className="ctx-value">{width}%</output>
+          <NumberField label="Width in per cent" value={width} unit="%" step={5} min={20} max={100} onCommit={(w) => setLook({ width: w })} />
         </span>
-      ) : (
+      ) : null}
+      {isImage && (
+        <span className="ctx-group" role="group" aria-label="Angle" title="Turn the image. Or drag the round handle above it.">
+          <RotateIcon />
+          <NumberField label="Angle in degrees" value={angle} unit="°" step={0.5} min={-180} max={180} onCommit={(rotate) => setLook({ rotate })} />
+        </span>
+      )}
+      {isImage ? null : (
         <>
           <span className="ctx-group" role="group" aria-label="Text size">
             <span className="ctx-label ctx-label-plain">Size</span>
@@ -519,8 +538,14 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
   }
 
   const isImage = IMAGES.test(key)
-  const el = selectedEl()
+  const el = elFor(selected?.blockId, key)
   const width = shown.width ?? (el ? widthNow(el) : 100)
+  const angle = shown.rotate ?? (el && isImage ? angleOf(el) : 0)
+  const angleRow = (
+    <Row label="Angle" hint="Turns the image. Drag the round handle above it, or type an angle. Shift-drag keeps to steps of 15°." from={from('rotate')} onReset={() => reset('rotate')}>
+      <StepField label="Angle" value={angle} unit="°" step={0.5} min={-180} max={180} onCommit={(rotate) => setLook({ rotate })} />
+    </Row>
+  )
   const ratio = shown.colour && !isImage ? contrast(shown.colour, background) : null
   const reset = (...keys: (keyof ElementLook)[]) => setLook(Object.fromEntries(keys.map((k) => [k, undefined])))
 
@@ -542,13 +567,15 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
           <Row label="Cover size" hint="Larger covers take more of the page; the words beside them make room." from={from('cover')} onReset={() => reset('cover')}>
             <Segments label="Cover size" value={shown.cover ?? 'standard'} options={COVER_OPTIONS} onChange={(cover) => setLook({ cover: cover as ElementLook['cover'] })} />
           </Row>
+          {angleRow}
         </Group>
       ) : isImage ? (
         <Group title="Image">
           <Row label="Width" from={from('width')} onReset={() => reset('width')}>
             <input type="range" min={20} max={100} step={5} value={width} aria-label="Width" aria-valuetext={`${width}%`} onChange={(e) => setLook({ width: Number(e.target.value) })} />
-            <output>{width}%</output>
+            <NumberField label="Width in per cent" value={width} unit="%" step={5} min={20} max={100} onCommit={(w) => setLook({ width: w })} />
           </Row>
+          {angleRow}
           <Row label="Crop focus" hint="The part of the photo kept in view when it is cropped." from={from('focusX', 'focusY')} onReset={() => reset('focusX', 'focusY')}>
             <FocusGrid x={shown.focusX ?? 50} y={shown.focusY ?? 50} onChange={(focusX, focusY) => setLook({ focusX, focusY })} />
           </Row>
@@ -582,10 +609,10 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
 
       <Group title="Position">
         <Row label="Across" from={from('x')} onReset={() => reset('x')}>
-          <Step label="Across" text={px(shown.x ?? 0)} onLess={() => setLook({ x: round((shown.x ?? 0) - 0.25) })} onMore={() => setLook({ x: round((shown.x ?? 0) + 0.25) })} />
+          <StepField label="Across" value={Math.round((shown.x ?? 0) * 16)} unit="px" step={4} min={-4000} max={4000} onCommit={(n) => setLook({ x: n ? round(n / 16) : undefined })} />
         </Row>
         <Row label="Down" from={from('y')} onReset={() => reset('y')}>
-          <Step label="Down" text={px(shown.y ?? 0)} onLess={() => setLook({ y: round((shown.y ?? 0) - 0.25) })} onMore={() => setLook({ y: round((shown.y ?? 0) + 0.25) })} />
+          <StepField label="Down" value={Math.round((shown.y ?? 0) * 16)} unit="px" step={4} min={-4000} max={4000} onCommit={(n) => setLook({ y: n ? round(n / 16) : undefined })} />
         </Row>
         <label className="el-switch"><input type="checkbox" checked={snapping} onChange={(e) => { setSnapOn(e.target.checked); setSnapping(e.target.checked) }} /> Snap to alignment guides</label>
         <p className="el-note">Or drag it on the page. Arrow keys move it too; hold Option to move without snapping.</p>
@@ -662,6 +689,77 @@ function Step({ label, text, onLess, onMore }: { label: string; text: string; on
       <button type="button" aria-label={`${label}: less`} onClick={onLess}>−</button>
       <output aria-live="polite">{text}</output>
       <button type="button" aria-label={`${label}: more`} onClick={onMore}>+</button>
+    </div>
+  )
+}
+
+// Parts under the one just clicked (behind it, or around it), to choose one that is hard to click.
+function AlsoHere({ parts, onPick }: { parts: Picked[]; onPick: (m: Picked) => void }) {
+  const { select } = useContext(Selection)
+  const [at, setAt] = useState<{ left: number; top: number } | null>(null)
+  const wrap = useRef<HTMLSpanElement>(null)
+  const menu = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!at) return
+    const away = (e: PointerEvent) => { if (!wrap.current?.contains(e.target as Node) && !menu.current?.contains(e.target as Node)) setAt(null) }
+    document.addEventListener('pointerdown', away)
+    menu.current?.querySelector('button')?.focus()
+    return () => document.removeEventListener('pointerdown', away)
+  }, [at])
+  return (
+    <span className="ctx-arrange" ref={wrap} onKeyDown={(e) => { if (e.key === 'Escape' && at) { e.preventDefault(); setAt(null); wrap.current?.querySelector('button')?.focus() } }}>
+      <button type="button" className="ctx-btn ctx-also" aria-expanded={!!at} aria-haspopup="true" title="Other parts at the place you clicked: choose one that is hard to click" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setAt(at ? null : { left: r.left, top: r.bottom + 4 }) }}>
+        <LayersIcon /><span>Also here ({parts.length})</span> <span aria-hidden="true">▾</span>
+      </button>
+      {at && createPortal(
+        <span className="ctx-menu" ref={menu} role="group" aria-label="Also here" style={{ left: Math.min(at.left, window.innerWidth - 220), top: at.top }} onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); setAt(null) } }}>
+          {parts.map((m) => <button key={`${m.blockId}|${m.key}`} type="button" onClick={() => { setAt(null); onPick(m); select(m) }}>{nameOf(m.key)}</button>)}
+        </span>,
+        document.body,
+      )}
+    </span>
+  )
+}
+
+// A number you can type (Enter or leaving the field applies it; Escape puts it back), or change
+// with the arrow keys (Shift for ten steps). Each applied number is one step to undo.
+function NumberField({ label, value, unit, step, min, max, onCommit }: { label: string; value: number; unit: string; step: number; min: number; max: number; onCommit: (n: number) => void }) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const shown = String(Math.round(value * 100) / 100)
+  const apply = (text: string) => {
+    setDraft(null)
+    const n = Number(text.replace('−', '-'))
+    if (text.trim() === '' || !Number.isFinite(n)) return
+    const next = Math.min(max, Math.max(min, n))
+    if (next !== value) onCommit(next)
+  }
+  return (
+    <span className="num-field">
+      <input type="text" inputMode="decimal" aria-label={label} value={draft ?? shown}
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={(e) => { if (draft !== null) apply(e.target.value) }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); apply(e.currentTarget.value) }
+          else if (e.key === 'Escape' && draft !== null) { e.preventDefault(); e.stopPropagation(); setDraft(null) }
+          else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault()
+            const base = Number((draft ?? shown).replace('−', '-'))
+            apply(String((Number.isFinite(base) ? base : value) + (e.key === 'ArrowUp' ? 1 : -1) * step * (e.shiftKey ? 10 : 1)))
+          }
+        }} />
+      <span className="num-unit" aria-hidden="true">{unit}</span>
+    </span>
+  )
+}
+// The same, with − and + buttons for touch.
+function StepField(props: Parameters<typeof NumberField>[0]) {
+  const { label, value, step, min, max, onCommit } = props
+  return (
+    <div className="el-step">
+      <button type="button" aria-label={`${label}: less`} onClick={() => onCommit(Math.max(min, Math.round((value - step) * 100) / 100))}>−</button>
+      <NumberField {...props} />
+      <button type="button" aria-label={`${label}: more`} onClick={() => onCommit(Math.min(max, Math.round((value + step) * 100) / 100))}>+</button>
     </div>
   )
 }

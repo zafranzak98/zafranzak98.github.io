@@ -592,6 +592,10 @@ h3.free-heading { font-size: var(--h3); }
 .el-colour-d { color: var(--el-colour-d) !important; }
 .el-width-d { width: var(--el-width-d) !important; max-width: none !important; }
 .el-focus-d img { object-position: var(--el-focus-d) !important; }
+/* An angle set in the editor: a cover's own tilt takes the new angle; any other image turns as a whole.
+   The image file is never changed; the browser draws it turned. */
+.el-rotate-d > .tilt:only-child { --tilt: var(--el-rotate-d) !important; }
+.el-rotate-d:not(:has(> .tilt:only-child)) { rotate: var(--el-rotate-d); }
 @media (max-width: 1279px) {
   .el-x-t { position: relative !important; left: var(--el-x-t) !important; }
   .el-y-t { position: relative !important; top: var(--el-y-t) !important; }
@@ -603,6 +607,8 @@ h3.free-heading { font-size: var(--h3); }
   .el-colour-t { color: var(--el-colour-t) !important; }
   .el-width-t { width: var(--el-width-t) !important; max-width: none !important; }
   .el-focus-t img { object-position: var(--el-focus-t) !important; }
+  .el-rotate-t > .tilt:only-child { --tilt: var(--el-rotate-t) !important; }
+  .el-rotate-t:not(:has(> .tilt:only-child)) { rotate: var(--el-rotate-t); }
 }
 @media (max-width: 899px) {
   .el-x-p { position: relative !important; left: var(--el-x-p) !important; }
@@ -615,4 +621,6 @@ h3.free-heading { font-size: var(--h3); }
   .el-colour-p { color: var(--el-colour-p) !important; }
   .el-width-p { width: var(--el-width-p) !important; max-width: none !important; }
   .el-focus-p img { object-position: var(--el-focus-p) !important; }
+  .el-rotate-p > .tilt:only-child { --tilt: var(--el-rotate-p) !important; }
+  .el-rotate-p:not(:has(> .tilt:only-child)) { rotate: var(--el-rotate-p); }
 }

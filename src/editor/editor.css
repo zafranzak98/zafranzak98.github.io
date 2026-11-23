@@ -117,7 +117,14 @@ html[data-el-active] [class*='DraggableComponent--isSelected'] [class*='Draggabl
 .editor-bar .editor-history button, .editor-bar .editor-quiet { border-color: transparent; background: none; }
 .editor-bar .editor-quiet[aria-pressed='true'] { border-color: var(--olive); }
 .editor-status { min-width: 0; max-width: 15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: #5c5a45; }
-.editor-status.is-unsaved::before { content: ''; display: inline-block; width: 0.5rem; height: 0.5rem; margin-right: 0.375rem; border-radius: 50%; background: var(--terra); vertical-align: 1px; }
+.editor-status-mark { display: inline-block; width: 0.5rem; height: 0.5rem; margin-right: 0.375rem; border-radius: 50%; vertical-align: 1px; }
+.editor-status.is-unsaved .editor-status-mark { background: #c9822b; }
+.editor-status.is-saved .editor-status-mark, .editor-status.is-clean .editor-status-mark { background: #6f8f4e; }
+.editor-status.is-busy .editor-status-mark { border: 2px solid #b9b7a3; border-top-color: var(--olive, #484527); animation: editor-spin 0.8s linear infinite; box-sizing: border-box; }
+.editor-status.is-failed { color: var(--terra, #9a3f24); font-weight: 600; }
+.editor-status.is-failed .editor-status-mark { background: var(--terra, #9a3f24); }
+@keyframes editor-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .editor-status.is-busy .editor-status-mark { animation: none; } }
 .editor-more-wrap { position: relative; }
 .editor-more { display: none; position: absolute; z-index: 1000; top: calc(100% + 0.375rem); right: 0; width: 17rem; padding: 0.375rem; border: 1px solid #dfe3d6; border-radius: 8px; background: #fff; box-shadow: 0 8px 24px rgba(40, 38, 20, 0.14); }
 .editor-more.open { display: grid; gap: 0.125rem; }
@@ -261,6 +268,11 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
 .editor-impact { margin: 0 0 0.75rem; padding: 0.75rem 0.875rem; border-radius: 8px; background: #f6e9e4; }
 .editor-impact p { margin: 0 0 0.375rem; }
 .editor-impact ul { margin: 0; padding-left: 1.1rem; }
+/* Rotate handle: a round knob on a short stem above the selected image (as in Canva and Figma). */
+.el-rotate { position: absolute; left: 50%; top: calc(var(--ui, 1px) * -34); width: calc(var(--ui, 1px) * 16); height: calc(var(--ui, 1px) * 16); margin-left: calc(var(--ui, 1px) * -8); border: calc(var(--ui, 1px) * 2) solid var(--terra); border-radius: 50%; background: var(--off); cursor: grab; touch-action: none; }
+.el-rotate::after { content: ''; position: absolute; left: 50%; top: 100%; width: calc(var(--ui, 1px) * 2); height: calc(var(--ui, 1px) * 18); margin-left: calc(var(--ui, 1px) * -1); background: var(--terra); }
+.el-rotate::before { content: ''; position: absolute; inset: calc(var(--ui, 1px) * -10); } /* a larger area to grab, for touch */
+.el-frame[data-moving] .el-rotate { cursor: grabbing; }
 .el-frame[data-cover] .el-handle { right: auto; left: calc(var(--ui, 1px) * -10); }
 /* Hidden parts stay visible in the editor, faded, so they can be found and shown again. */
 @media (min-width: 1280px) { [data-el-hidden~='d'] { opacity: 0.3; } }
@@ -319,3 +331,23 @@ html[data-preview] [data-el-note] { outline: none; }
 /* Dot on a size button: the selected part has its own settings on that size. */
 .editor-own-dot { display: inline-block; width: 6px; height: 6px; margin-left: 0.375rem; border-radius: 50%; background: var(--terra, #9a3f24); vertical-align: 0.15em; }
 .editor-screens button[aria-pressed="true"] .editor-own-dot { background: #f1c8b8; }
+
+/* Puck's zoom bar above the page is hidden: the page always fits the space (auto zoom), and the
+   width to preview is chosen in the top bar. This gives the page more room. */
+[class*='_PuckCanvas-controls_'] { display: none; }
+
+/* Typed numbers (angle, width, position): a small field with its unit. */
+.num-field { display: inline-flex; align-items: center; gap: 0.125rem; }
+.num-field input { width: 3rem; height: 2rem; box-sizing: border-box; padding: 0 0.375rem; border: 1px solid #d6d4c8; border-radius: 6px; background: #fff; font: inherit; font-size: 13px; text-align: right; color: inherit; }
+.num-field input:focus-visible { outline: 2px solid var(--terra, #9a3f24); outline-offset: 1px; }
+.num-unit { font-size: 14px; color: #3f3d2a; min-width: 1ch; padding-left: 0.125rem; }
+.el-step .num-field input { width: 4rem; }
+.ctx-group[aria-label="Angle"] { gap: 0.25rem; }
+
+.editor-bar .editor-notes .editor-notes-btn.has-advice { color: var(--olive, #484527); font-weight: 600; }
+.editor-notes-head { margin: 0.5rem 0 0.375rem; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: #5c5a45; }
+.editor-notes-list section + section { margin-top: 0.25rem; }
+
+/* A short line after Undo or Redo saying what changed back. */
+.editor-undone { position: fixed; left: 50%; bottom: 1rem; z-index: 70; transform: translateX(-50%); margin: 0; padding: 0.5rem 0.875rem; border-radius: 8px; background: var(--olive, #484527); color: #fff; font-size: 13px; box-shadow: 0 4px 18px rgb(0 0 0 / 0.18); }
+@media (max-width: 637px) { .editor-undone { bottom: 6.5rem; } }

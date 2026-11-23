@@ -33,6 +33,7 @@ export type ElementLook = {
   width?: number // per cent of the space it sits in (images)
   focusX?: number // crop focus in per cent (images)
   focusY?: number
+  rotate?: number // degrees (images); replaces a cover's designed tilt, otherwise turns the whole part
   place?: Place // where the whole box sits in its area (start, centre, end), apart from its text alignment
   hidden?: boolean // left out at this screen size (and smaller ones, unless shown there)
   cover?: CoverSize // a project's opening cover: a step on the grid, so the text beside it reflows
@@ -60,6 +61,7 @@ function cssFor(look: ElementLook): [string, string][] {
   if (look.weight) out.push(['weight', String(look.weight)])
   if (look.colour && COLOURS.includes(look.colour)) out.push(['colour', COLOUR_VAR[look.colour]])
   if (look.width) out.push(['width', `${look.width}%`])
+  if (look.rotate !== undefined && Number.isFinite(look.rotate)) out.push(['rotate', `${look.rotate}deg`])
   if (look.focusX !== undefined || look.focusY !== undefined) out.push(['focus', `${look.focusX ?? 50}% ${look.focusY ?? 50}%`])
   return out
 }

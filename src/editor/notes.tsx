@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from 'react'
 import { createUsePuck } from '@puckeditor/core'
 import { colourOf, highlightOnSage, type Project } from '#/lib/site'
 import { checkPage, noteId, type CheckOptions, type Finding } from './checks'
+import { SCREENS, type ElementStyle, type Elements } from '#/layout/elements'
 import { Selection, nameOf } from './elements'
 
 // Layout notes: while you edit, the page at the screen size you are working on is checked quietly
@@ -88,6 +89,8 @@ export function LayoutNotes({ p, screen, preview, checkSizes }: { p: Project; sc
   const current = live.filter((f) => !silenced.has(noteId(f)))
   const elsewhere = others.filter((f) => f.screen !== screen && !silenced.has(noteId(f)))
   const notes = [...current, ...elsewhere]
+  const problems = notes.filter((f) => !f.advice)
+  const suggested = notes.filter((f) => f.advice)
 
   // Mark the parts with notes on the page, faintly; only at the size being edited.
   useEffect(() => {
@@ -107,6 +110,37 @@ export function LayoutNotes({ p, screen, preview, checkSizes }: { p: Project; sc
     if (fresh.length) setSaid(fresh.length === 1 ? `Layout note: ${fresh[0].text}` : `${fresh.length} new layout notes.`)
   }, [current.map(noteId).join()])
 
+  // A suggestion's fix, applied only when chosen: one change at the size it was found, one step to undo.
+  const getItemById = usePuck((s) => s.getItemById)
+  const getSelectorForId = usePuck((s) => s.getSelectorForId)
+  const applyFix = (f: Finding) => {
+    const fix = f.fix
+    const doc = canvasDoc()
+    const item = f.blockId ? getItemById(f.blockId) : undefined
+    const at = f.blockId ? getSelectorForId(f.blockId) : undefined
+    if (!fix || !doc || !item || !at || !f.key) return
+    const size = SCREENS[['Desktop', 'Tablet', 'Phone'].indexOf(f.screen)]
+    const rem = parseFloat(doc.defaultView!.getComputedStyle(doc.documentElement).fontSize) || 16
+    const el = [...doc.querySelectorAll<HTMLElement>('[data-el]')].find((n) => n.dataset.el === f.key && n.closest('[data-puck-component]')?.getAttribute('data-puck-component') === f.blockId)
+    const o = el ? doc.defaultView!.getComputedStyle(el) : null
+    const [x, y] = o ? [parseFloat(o.left) || 0, parseFloat(o.top) || 0] : [0, 0]
+    const r16 = (n: number) => Math.round(n * 16) / 16
+    const all = ((item.props as { elements?: Elements }).elements ?? {}) as Elements
+    const style: ElementStyle = all[f.key] ?? {}
+    const look = { ...(style[size] ?? {}) }
+    if (fix.back) { look.x = 0; look.y = 0 }
+    if (fix.dx) look.x = r16((x + fix.dx) / rem)
+    if (fix.dy) look.y = r16((y + fix.dy) / rem)
+    // A part that sits where designed needs no setting at this size, unless a larger size moved it.
+    const larger = SCREENS.slice(0, SCREENS.indexOf(size)).some((s2) => style[s2]?.x || style[s2]?.y)
+    if (!larger) { if (!look.x) delete look.x; if (!look.y) delete look.y }
+    const next: ElementStyle = { ...style, [size]: look }
+    if (!Object.keys(look).length) delete next[size]
+    const elements = { ...all, [f.key]: next }
+    if (!Object.keys(next).length) delete elements[f.key]
+    dispatch({ type: 'replace', destinationIndex: at.index, destinationZone: at.zone, data: { ...item, props: { ...item.props, elements } } as never })
+    setSaid(`${fix.label}: done. Undo puts it back.`)
+  }
   const setIntended = (next: Intended[]) =>
     dispatch({ type: 'replaceRoot', root: { ...data.root, props: { ...root, intended: next } } as never })
   const show = async (f: Finding) => {
@@ -142,8 +176,8 @@ export function LayoutNotes({ p, screen, preview, checkSizes }: { p: Project; sc
   return (
     <div className="editor-notes">
       {(count > 0 || intended.length > 0) && (
-        <button type="button" className={`editor-quiet editor-notes-btn${count ? ' has-notes' : ''}`} aria-expanded={open} onClick={() => setOpen(!open)}>
-          {count ? `${count} layout ${count === 1 ? 'note' : 'notes'}` : 'Layout notes'}
+        <button type="button" className={`editor-quiet editor-notes-btn${problems.length ? ' has-notes' : suggested.length ? ' has-advice' : ''}`} aria-expanded={open} onClick={() => setOpen(!open)}>
+          {[problems.length && `${problems.length} layout ${problems.length === 1 ? 'note' : 'notes'}`, suggested.length && `${suggested.length} ${suggested.length === 1 ? 'suggestion' : 'suggestions'}`].filter(Boolean).join(' · ') || 'Layout notes'}
         </button>
       )}
       {hint && !checking && (
@@ -157,18 +191,24 @@ export function LayoutNotes({ p, screen, preview, checkSizes }: { p: Project; sc
       {open && (
         <div className="editor-notes-list" role="group" aria-label="Layout notes">
           {count === 0 && <p className="editor-notes-empty">No layout notes. Everything you changed fits.</p>}
-          {count > 0 && <p className="editor-notes-intro">Advice only: nothing has been changed. Fix it, or mark it as intended.</p>}
-          <ul>
-            {notes.map((f) => (
-              <li key={noteId(f)}>
-                <span><b>{f.screen}:</b> {f.text}</span>
-                <span className="editor-notes-actions">
-                  <button type="button" onClick={() => show(f)}>Show</button>
-                  <button type="button" onClick={() => setIntended([...intended, { id: noteId(f), text: `${f.screen}: ${f.text}` }])}>This is intended</button>
-                </span>
-              </li>
-            ))}
-          </ul>
+          {count > 0 && <p className="editor-notes-intro">Advice only: nothing changes unless you choose a fix. Fix it, or mark it as intended.</p>}
+          {([['Problems', notes.filter((f) => !f.advice)], ['Suggestions', notes.filter((f) => f.advice)]] as const).map(([title, list]) => list.length > 0 && (
+            <section key={title} aria-label={title}>
+              {problems.length > 0 && suggested.length > 0 && <h3 className="editor-notes-head">{title}</h3>}
+              <ul>
+                {list.map((f) => (
+                  <li key={noteId(f)}>
+                    <span><b>{f.screen}:</b> {f.text}</span>
+                    <span className="editor-notes-actions">
+                      <button type="button" onClick={() => show(f)}>Show</button>
+                      {f.fix && f.screen === screen && <button type="button" onClick={() => applyFix(f)}>{f.fix.label}</button>}
+                      <button type="button" onClick={() => setIntended([...intended, { id: noteId(f), text: `${f.screen}: ${f.text}` }])}>This is intended</button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
           {intended.length > 0 && (
             <details className="editor-notes-intended">
               <summary>Marked as intended ({intended.length})</summary>

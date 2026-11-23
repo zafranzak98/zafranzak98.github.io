@@ -27,6 +27,7 @@ On `localhost` the editor runs as a demo, so nothing reaches GitHub. `signin.py`
 | `align.py` | Arrange for a group: align edges, centres and middles, and space evenly, each one undo step, at Desktop, Tablet and Phone |
 | `notes.py` | Layout notes: no notes on unchanged pages at three sizes, the approved contrast exception stays quiet, notes for parts moved off the page, nothing moved back, under 30 ms, keyboard use, "This is intended" saved and reversible, Tablet and Phone checked only on request, no checks while typing, the page never shifts |
 | `ux.py` | Interface refinements: More menu closes with Escape or a click elsewhere, one name for the Page navigator, per-size dots, Escape from the toolbar, scroll arrows for tools on narrow screens |
+| `round2.py` | Rotation by mouse, Shift, typing, arrow keys and touch, per screen size, with undo, redo and reset; suggestions with their fixes and "This is intended"; Also here; typed position; save status including a failed save; Undo and Redo labels |
 | `signin.py` | The sign-in shared with the website editor: renewal in another tab, expiry, missing or unexpected data, fallback to the editor's own sign-in, sign-out from either editor |
 
 A failure names the check and what it found. Fix the cause, rebuild, and run the file again; then run the others, because a fix in one part of the editor can affect another.

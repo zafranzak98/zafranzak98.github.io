@@ -65,11 +65,11 @@ with sync_playwright() as p:
     pg.locator(".editor-notes-list li button", has_text="This is intended").first.click(); pg.wait_for_timeout(600)
     root = saved(pg, "about-face-beauty").get("root", {}).get("props", {})
     check("This is intended is saved with the page, for this part and size", len(root.get("intended", [])) == 1 and "|desktop|" in root["intended"][0]["id"], str(root.get("intended")))
-    after = pg.locator(".editor-notes-list > ul > li").count()
+    after = pg.locator(".editor-notes-list section li").count()
     check("That note goes quiet", after == before - 1, f"{before} -> {after}")
     pg.locator(".editor-notes-intended summary").click(); pg.wait_for_timeout(200)
     pg.locator(".editor-notes-intended button", has_text="Show this note again").click(); pg.wait_for_timeout(600)
-    check("It can be reversed from the list", pg.locator(".editor-notes-list > ul > li").count() == before and not saved(pg, "about-face-beauty")["root"]["props"].get("intended"))
+    check("It can be reversed from the list", pg.locator(".editor-notes-list section li").count() == before and not saved(pg, "about-face-beauty")["root"]["props"].get("intended"))
     pg.keyboard.press("Escape")
 
     # 7. Check Tablet and Phone on request; Show goes to that size and selects the part.

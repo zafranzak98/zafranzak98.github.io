@@ -13,6 +13,7 @@ import { SHARED_KEY, currentAccount, forgetOwn, keepOwn, sharedToken, signOutHer
 import { CATEGORY_FIELD, Selection, SelectionProvider, categoryEdits, nameOf, wordsOf, type Edits } from './elements'
 import { categoryName } from '#/lib/site'
 import { checkPage, noteId, type Finding } from './checks'
+import { describeStep } from './history'
 import { LayoutNotes, checkOptions, settled, type Intended } from './notes'
 import { ContextBar, screenFor } from './panel'
 import { EyeIcon, LayersIcon, PlusIcon, RedoIcon, SlidersIcon, UndoIcon } from './icons'
@@ -191,7 +192,23 @@ function Actions() {
   const { p, token, setToken, setNotice, notice, markClean, clean, login, shared, expire, signOut } = useContext(SessionContext)!
   const data = usePuck((s) => s.appState.data)
   const history = usePuck((s) => s.history)
+  // What one step back or forward changes, in words (shown on the buttons and after undoing).
+  const pageAt = (i: number) => (history.histories[i]?.state as { data?: never } | undefined)?.data
+  const undoWhat = describeStep(pageAt(history.index - 1), pageAt(history.index))
+  const redoWhat = describeStep(pageAt(history.index), pageAt(history.index + 1))
+  const [undone, setUndone] = useState('')
+  // Undo and Redo from the buttons or the keyboard: one step back (or forward, with nothing new added).
+  const step = useRef({ index: history.index, length: history.histories.length })
+  useEffect(() => {
+    const was = step.current
+    step.current = { index: history.index, length: history.histories.length }
+    if (history.histories.length !== was.length) return
+    if (history.index === was.index - 1) setUndone(`Undone: ${describeStep(pageAt(history.index), pageAt(history.index + 1))}. Redo puts it back.`)
+    else if (history.index === was.index + 1) setUndone(`Redone: ${describeStep(pageAt(history.index - 1), pageAt(history.index))}.`)
+  }, [history.index, history.histories.length])
+  useEffect(() => { if (!undone) return; const t = setTimeout(() => setUndone(''), 4000); return () => clearTimeout(t) }, [undone])
   const [saved, setSaved] = useState<{ json: string; text: string } | null>(null)
+  const [failed, setFailed] = useState('') // the page as it was when a save or publish failed
   const [preview, setPreview] = useState(false)
   const { select, selected } = useContext(Selection)
   const selectedItem = usePuck((s) => s.selectedItem)
@@ -249,7 +266,23 @@ function Actions() {
   // Different from the published page (a saved draft still counts), and not yet saved anywhere.
   const unpublished = clean.current !== '' && json !== clean.current
   const unsaved = unpublished && json !== saved?.json
-  const status = saved && json === saved.json ? saved.text : unsaved ? 'Unsaved changes' : 'No unsaved changes'
+  // One clear save state: failed, saving, saved (draft or published), not saved yet, or up to date.
+  const state: 'failed' | 'busy' | 'saved' | 'unsaved' | 'clean' =
+    busy ? 'busy' : failed && failed === json ? 'failed' : saved && json === saved.json ? 'saved' : unsaved ? 'unsaved' : 'clean'
+  const status = {
+    failed: 'Not saved: see the message',
+    busy: `${busy}…`,
+    saved: saved?.text ?? '',
+    unsaved: 'Not saved yet',
+    clean: unpublished ? 'Draft saved, not published' : 'Same as the website',
+  }[state]
+  const statusHint = {
+    failed: 'The last save did not work. Nothing was changed on the website. Try again, or read the message for why.',
+    busy: undefined,
+    saved: undefined,
+    unsaved: 'Your changes are kept safely in this browser. Save a draft or publish when ready.',
+    clean: undefined,
+  }[state]
   const showWidth = (width: number) => dispatch({ type: 'setUi', ui: { viewports: { ...ui.viewports, current: { width, height: 'auto' } } } })
   // Preview hides every editing mark and panel, so the page looks exactly as visitors see it.
   const before = useRef<{ left: boolean; right: boolean } | null>(null)
@@ -271,7 +304,10 @@ function Actions() {
 
   const run = async (label: string, task: () => Promise<string>) => {
     setBusy(label)
+    const saving = label === 'Saving the draft' || label === 'Publishing'
+    if (saving) setFailed('')
     try { setNotice(await task()) } catch (e) {
+      if (saving) setFailed(JSON.stringify(data))
       const message = (e as Error).message
       // An expired or withdrawn sign-in: forget it, so "Sign in with GitHub" shows again.
       if (/\b401\b|Bad credentials/i.test(message) && token) {
@@ -291,7 +327,7 @@ function Actions() {
   })
 
   const saveDraft = () => run('Saving the draft', async () => {
-    if (DEMO) { writeLocal(localKey(p.slug, 'draft'), data); setSaved({ json: JSON.stringify(data), text: `Draft saved at ${time()}` }); return `Draft saved in this browser (${stamp()}). In the real editor it is saved to the drafts branch; nothing is published.` }
+    if (DEMO) { try { localStorage.setItem(localKey(p.slug, 'draft'), JSON.stringify(data)) } catch { throw new Error('This browser would not keep the draft (its storage is full or blocked).') } setSaved({ json: JSON.stringify(data), text: `Draft saved at ${time()}` }); return `Draft saved in this browser (${stamp()}). In the real editor it is saved to the drafts branch; nothing is published.` }
     await github.writeLayout(needToken(), p.slug, data, github.DRAFTS, `Design editor: draft for ${p.slug}`)
     setSaved({ json: JSON.stringify(data), text: `Draft saved at ${time()}` })
     return `Draft saved (${stamp()}). Nothing is published until you choose Publish.`
@@ -390,10 +426,10 @@ function Actions() {
 
       <div className="editor-bar-end">
         <div className="editor-history">
-          <button type="button" onClick={history.back} disabled={!history.hasPast} title="Undo (Cmd+Z)" aria-label="Undo"><UndoIcon /><span className="editor-word">Undo</span></button>
-          <button type="button" onClick={history.forward} disabled={!history.hasFuture} title="Redo (Cmd+Shift+Z)" aria-label="Redo"><RedoIcon /><span className="editor-word">Redo</span></button>
+          <button type="button" onClick={history.back} disabled={!history.hasPast} title={history.hasPast ? `Undo: ${undoWhat} (Cmd+Z)` : 'Nothing to undo'} aria-label={history.hasPast ? `Undo: ${undoWhat}` : 'Undo'}><UndoIcon /><span className="editor-word">Undo</span></button>
+          <button type="button" onClick={history.forward} disabled={!history.hasFuture} title={history.hasFuture ? `Redo: ${redoWhat} (Cmd+Shift+Z)` : 'Nothing to redo'} aria-label={history.hasFuture ? `Redo: ${redoWhat}` : 'Redo'}><RedoIcon /><span className="editor-word">Redo</span></button>
         </div>
-        <span className={`editor-status${unsaved ? ' is-unsaved' : ''}`} role="status" title={unsaved ? 'Kept safely in this browser. Save a draft or publish when ready.' : undefined}>{busy ? `${busy}…` : status}</span>
+        <span className={`editor-status is-${state}`} role="status" title={statusHint}><span className="editor-status-mark" aria-hidden="true" />{status}</span>
         <LayoutNotes p={p} screen={SCREEN_NAME[screenFor(Number(ui.viewports.current.width) || 1440)]} preview={preview} checkSizes={checkSizes} />
         <button type="button" className="editor-quiet editor-preview" aria-pressed={preview} onClick={togglePreview}><EyeIcon /><span>{preview ? 'Back to editing' : 'Preview'}</span></button>
         <div className="editor-more-wrap" ref={moreRef}>
@@ -411,6 +447,7 @@ function Actions() {
       </div>
       <div className="editor-bar-ctx" onKeyDown={(e) => { if (e.key === 'Escape' && !e.defaultPrevented && !(e.target as HTMLElement).closest('input, textarea, select, .ctx-menu')) select(null) }}>{!preview && <MoreTools />}{preview ? <p className="ctx ctx-hint">Previewing the page exactly as visitors see it. Nothing here can be changed until you go back to editing.</p> : <ContextBar />}</div>
       {warnings.length > 0 && <p className="editor-demo editor-checks">{warnings.join(' ')}</p>}
+      {undone && <p className="editor-undone" role="status">{undone}</p>}
       {notice.text && (
         <div className="editor-notice" role="status">
           <p>{notice.text}</p>

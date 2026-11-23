@@ -35,3 +35,5 @@ export const BoxCentreIcon = () => <Icon><path d="M12 4v4M12 16v4" /><rect x="7.
 export const BoxEndIcon = () => <Icon><path d="M20 4v16" /><rect x="8" y="8" width="9" height="8" rx="1.5" /></Icon>
 // Two boxes, one dashed: "select more than one".
 export const SelectMoreIcon = () => <Icon><rect x="3" y="3" width="11" height="11" rx="1.5" /><rect x="10" y="10" width="11" height="11" rx="1.5" strokeDasharray="2.5 2.5" /></Icon>
+// A curved arrow: turn (rotate).
+export const RotateIcon = () => <Icon><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 4v7h-7" /></Icon>
