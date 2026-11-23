@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { Puck, blocksPlugin, createUsePuck, outlinePlugin, type Data } from '@puckeditor/core'
+import { Puck, blocksPlugin, createUsePuck, fieldsPlugin, outlinePlugin, type Data } from '@puckeditor/core'
 import '@puckeditor/core/no-external.css'
 import '@fontsource-variable/instrument-sans/wdth.css'
 import '../styles.css'
@@ -11,6 +11,8 @@ import { editorConfig, layoutWarnings } from './config'
 import * as github from './github'
 import { Selection, SelectionProvider, nameOf, wordsOf, type Edits } from './elements'
 import { checkPage, type Finding } from './checks'
+import { ContextBar } from './panel'
+import { EyeIcon, LayersIcon, PlusIcon, RedoIcon, SlidersIcon, UndoIcon } from './icons'
 
 // The design editor at /admin/design/. Arrange and restyle a page with its real blocks, then
 // save a draft or publish. Undo and redo cover every change; unsaved work is kept in this
@@ -93,7 +95,7 @@ function EditorApp() {
         ]}
         overrides={OVERRIDES}
         plugins={PLUGINS}
-        ui={{ leftSideBarVisible: false }}
+        ui={{ leftSideBarVisible: false, rightSideBarVisible: false }}
         onAction={(action) => { if (action.type === 'remove') setNotice('Section removed from the page.', true) }}
       />
       </SelectionProvider>
@@ -105,7 +107,7 @@ type Notice = { text: string; undo?: boolean }
 type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string, undo?: boolean) => void; notice: Notice; markClean: () => void; clean: { current: string | null } }
 
 // The left-hand tools, named for what they do.
-const PLUGINS = [{ ...blocksPlugin(), label: 'Add section' }, { ...outlinePlugin(), label: 'Page navigator' }]
+const PLUGINS = [{ ...blocksPlugin(), label: 'Add section', icon: <PlusIcon /> }, { ...outlinePlugin(), label: 'Page navigator', icon: <LayersIcon /> }, { ...fieldsPlugin(), label: 'Settings', icon: <SlidersIcon /> }]
 
 const SessionContext = createContext<Session | null>(null)
 const OVERRIDES = { header: () => <Actions />, fields: SidePanel }
@@ -119,14 +121,8 @@ function SidePanel({ fields }: { children: React.ReactNode; fields: Partial<Reco
   if (!item) {
     return (
       <div className="el-panel el-welcome">
-        <h2>Edit this page</h2>
-        <ul>
-          <li><b>Click</b> anything on the page to change it. A dashed outline shows what you can select.</li>
-          <li><b>Double-click</b> words to type on the page.</li>
-          <li><b>Drag</b> a selected item to move it. Guides show when it lines up.</li>
-          <li><b>Desktop, Tablet and Phone</b> each keep their own changes.</li>
-          <li><b>Undo</b> and <b>Redo</b> are at the top; nothing reaches the website until you publish.</li>
-        </ul>
+        <h2>Page settings</h2>
+        <p className="el-note">Select something on the page to see all its settings here.</p>
         <button type="button" onClick={() => dispatch({ type: 'setUi', ui: { leftSideBarVisible: true } })}>Add or rearrange sections</button>
       </div>
     )
@@ -195,7 +191,7 @@ function Actions() {
       document.body.classList.add('is-preview')
       select(null)
     } else {
-      dispatch({ type: 'setUi', ui: { leftSideBarVisible: before.current?.left ?? false, rightSideBarVisible: before.current?.right ?? true } })
+      dispatch({ type: 'setUi', ui: { leftSideBarVisible: before.current?.left ?? false, rightSideBarVisible: before.current?.right ?? false } })
       doc?.documentElement.removeAttribute('data-preview')
       document.body.classList.remove('is-preview')
     }
@@ -315,11 +311,11 @@ function Actions() {
 
       <div className="editor-bar-end">
         <div className="editor-history">
-          <button type="button" onClick={history.back} disabled={!history.hasPast} title="Undo (Cmd+Z)" aria-label="Undo"><span aria-hidden="true">↶</span><span className="editor-word"> Undo</span></button>
-          <button type="button" onClick={history.forward} disabled={!history.hasFuture} title="Redo (Cmd+Shift+Z)" aria-label="Redo"><span aria-hidden="true">↷</span><span className="editor-word"> Redo</span></button>
+          <button type="button" onClick={history.back} disabled={!history.hasPast} title="Undo (Cmd+Z)" aria-label="Undo"><UndoIcon /><span className="editor-word">Undo</span></button>
+          <button type="button" onClick={history.forward} disabled={!history.hasFuture} title="Redo (Cmd+Shift+Z)" aria-label="Redo"><RedoIcon /><span className="editor-word">Redo</span></button>
         </div>
         <span className={`editor-status${unsaved ? ' is-unsaved' : ''}`} role="status" title={unsaved ? 'Kept safely in this browser. Save a draft or publish when ready.' : undefined}>{busy ? `${busy}…` : status}</span>
-        <button type="button" className="editor-quiet editor-preview" aria-pressed={preview} onClick={togglePreview}>{preview ? 'Back to editing' : 'Preview'}</button>
+        <button type="button" className="editor-quiet editor-preview" aria-pressed={preview} onClick={togglePreview}><EyeIcon /><span>{preview ? 'Back to editing' : 'Preview'}</span></button>
         <div className="editor-more-wrap">
           <button type="button" className="editor-quiet" aria-expanded={more} aria-haspopup="true" onClick={() => setMore(!more)}>More <span aria-hidden="true">▾</span></button>
           <div className={more ? 'editor-more open' : 'editor-more'}>
@@ -332,6 +328,7 @@ function Actions() {
         <button type="button" className="editor-save" onClick={saveDraft} disabled={!!busy} title="Saves without changing the website">Save<span className="editor-long"> draft</span></button>
         <button type="button" className="editor-primary" onClick={openPublish} disabled={!!busy} title="Checks the page, then updates the website">Publish</button>
       </div>
+      <div className="editor-bar-ctx">{preview ? <p className="ctx ctx-hint">Previewing the page exactly as visitors see it. Nothing here can be changed until you go back to editing.</p> : <ContextBar />}</div>
       {warnings.length > 0 && <p className="editor-demo editor-checks">{warnings.join(' ')}</p>}
       {notice.text && (
         <div className="editor-notice" role="status">
