@@ -2,6 +2,7 @@ import { about, allCategories, allProjects, site } from '../../.content-collecti
 import { assignColours } from './project-colours.js'
 import { isPhoto, variantPath, widthsFor } from './image-variants.js'
 import imageWidths from 'virtual:image-widths'
+import { croppedSizesFor } from './cover-image.js'
 
 export { about, site }
 export type Project = (typeof allProjects)[number]
@@ -57,19 +58,9 @@ export const photoSize = (path?: string) => {
   return size ? { width: size[0], height: size[1] } : undefined
 }
 
-// A photo cropped to fill a frame of another shape (object-fit: cover) needs more pixels than the
-// frame's width: a wide photo in a tall frame is shown at the frame's height. frameRatio is the
-// frame's width / height; the sizes values grow by how much wider the photo is than the frame.
-export const croppedSizes = (sizes: string, path?: string, frameRatio?: number) => {
-  const size = photoSize(path)
-  if (!size || !frameRatio) return sizes
-  const factor = size.width / size.height / frameRatio
-  if (factor <= 1.01) return sizes
-  return sizes
-    .split(',')
-    .map((entry) => entry.trim().replace(/(\S+)$/, (value) => `calc(${value} * ${factor.toFixed(3)})`))
-    .join(', ')
-}
+// A photo cropped to fill a frame of another shape needs more pixels than the frame's width
+// (see src/lib/cover-image.js, shared with the build).
+export const croppedSizes = (sizes: string, path?: string, frameRatio?: number): string => croppedSizesFor(sizes, photoSize(path), frameRatio)
 
 // Everything an <img> needs to load a photo at the right size. `sizes` says how wide the image is
 // shown (for example "(max-width: 899px) 100vw, 26vw"); the browser then picks the smallest copy

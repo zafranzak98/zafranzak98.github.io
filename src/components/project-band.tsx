@@ -9,7 +9,7 @@ import { Rich } from '#/components/rich'
 // its opening visual, and the title set large across the foot of the band. Every project uses
 // this layout. A project with a case study page links to it; a "Listed only" project has no page,
 // so its band is the same but not a link.
-export default function ProjectBand({ p, number }: { p: Project; number: number }) {
+export default function ProjectBand({ p, number, first = false }: { p: Project; number: number; first?: boolean }) {
   const o = openingOf(p)
   const hasPage = p.page_type === 'Full case study'
   const colour = colourOf(p)
@@ -25,7 +25,7 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
         <span>My role: {p.role}{hasPage && <> <span className="band-arrow" aria-hidden="true">→</span></>}</span>
       </div>
       <p className="band-line"><span><Rich text={p.summary} /></span></p>
-      <div className="band-visual"><OpeningVisual p={p} inBand /></div>
+      <div className="band-visual"><OpeningVisual p={p} inBand priority={first} /></div>
       <b className="c band-title">{p.title}</b>
     </>
   )
@@ -41,5 +41,5 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
 // projects page (all) lists each group newest first; category pages keep the Order number.
 export function ProjectBands({ items, all = false }: { items: Project[]; all?: boolean }) {
   const ordered = all ? allOrder(items) : bandOrder(items)
-  return <section className="bands">{ordered.map((p, i) => <ProjectBand key={p.slug} p={p} number={i + 1} />)}</section>
+  return <section className="bands">{ordered.map((p, i) => <ProjectBand key={p.slug} p={p} number={i + 1} first={i === 0} />)}</section>
 }
