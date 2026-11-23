@@ -86,20 +86,31 @@ Every page also gets its own `index.html` at build time, so direct links and ref
 
 ## Quality targets
 
-Checked before launch and on every significant change, and reported with the results. Baseline measured 23 Nov 2026 on the published version (commit `2a989a1`) served locally; figures from the real test site still need a check in PageSpeed Insights (see below).
+Checked before launch and on every significant change, and reported with the results. The local baseline (23 Nov 2026) was measured on a copy of the published version (commit `2a989a1`) served from a local computer, not on the public site; the workspace used could not reach the site. Published-site figures come from PageSpeed Insights and are listed separately below. Neither is real-visitor data.
 
 | Area | Target | Baseline (local) |
 |---|---|---|
 | Page weight, compressed, whole page scrolled, phone width | 500 KB or less per page | 162 to 462 KB (Cancel Me, Not! 462) |
 | Page weight, desktop width, image-led case studies | 1 MB or less | Cancel Me, Not! 884 KB; others under 450 KB |
 | Script, compressed | 120 KB or less | 97 to 106 KB |
-| Loading, Lighthouse mobile (simulated mid-range phone, slow 4G) | Largest Contentful Paint 2.5 s or less | 1.9 to 3.5 s: Projects 2.4 to 3.0, Cancel Me, Not! 3.3 to 3.5 over target |
-| Responsiveness, Lighthouse lab stand-in | Total Blocking Time 200 ms or less | 0 to 81 ms |
-| Visual stability | Cumulative Layout Shift 0.1 or less | 0.13 to 0.18 on Projects, AF-Binary and Cancel Me, Not!: over target |
+| Loading, Lighthouse mobile (simulated mid-range phone, slow 4G) | Largest Contentful Paint 2.5 s or less (Google's "good" threshold) | 1.9 to 3.5 s: Projects 2.4 to 3.0, Cancel Me, Not! 3.3 to 3.5 over target |
+| Responsiveness: Total Blocking Time, a lab stand-in for INP (not INP itself) | 200 ms or less (Lighthouse's "good" threshold) | 0 to 81 ms |
+| Visual stability | Cumulative Layout Shift 0.1 or less (Google's "good" threshold) | 0.13 to 0.18 on Projects, AF-Binary and Cancel Me, Not!: over target |
 | Accessibility | WCAG 2.2 AA: no automated failures, plus the manual checks below | Automated: passes except the approved AF-Binary and Evoke small text on Sage (4.27:1, below AA's 4.5:1). Manual checks: not yet done |
 | Editor code | No design-editor files downloaded by any visitor page | None, on `main` and on the editor branch |
 
-The loading and stability targets are Google's "good" Core Web Vitals thresholds (web.dev/articles/vitals). Lighthouse cannot measure real interaction delay (INP), so Total Blocking Time stands in for it in the lab.
+Largest Contentful Paint and Cumulative Layout Shift use Google's "good" Core Web Vitals thresholds (web.dev/articles/vitals), which Google applies to real visits at the 75th percentile; here they are applied to lab measurements. The third Core Web Vital, Interaction to Next Paint (INP, good at 200 ms or less), needs real interactions and cannot be measured by Lighthouse, so Total Blocking Time stands in for it in the lab. The page-weight and script limits are this project's own, chosen from the baseline with room for new work.
+
+**Published test site (PageSpeed Insights, Lighthouse 13.6, one run each, 23 Nov 2026, 12:05)**
+
+| Page | Form | Performance | LCP | TBT | CLS | Accessibility |
+|---|---|---|---|---|---|---|
+| Home | Mobile | 95 | 1.2 s | 0 ms | 0.107 (over 0.1) | 100 |
+| Home | Desktop | 99 | 0.2 s | 0 ms | 0.061 | 100 |
+
+SEO scores 66 on the test site because it deliberately asks search engines not to index it until launch. Projects and Cancel Me, Not! are still to be measured on the published site.
+
+**Accessibility exception.** AF-Binary and Evoke deliberately show small text directly on Sage at 4.27:1 (approved 22 Nov 2026), below WCAG 2.2 AA's 4.5:1 for small text. While it stands, the site does not fully meet WCAG 2.2 AA.
 
 **How to measure**
 
