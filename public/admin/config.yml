@@ -227,25 +227,6 @@ collections:
       - { name: results, label: Results, widget: list, required: false, max: 4, fields: *figure }
       - { name: outcome_note, label: Outcome note, widget: text, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
       - { name: skills, label: Skills shown, widget: list, required: false, hint: One per line. }
-      - name: labels
-        label: Section titles and labels
-        widget: object
-        required: false
-        collapsed: true
-        hint: Change the fixed words on this page. Leave a field empty to use the standard wording.
-        fields:
-          - { name: overview, label: 'Overview', widget: string, required: false, hint: 'Leave empty for "Overview".' }
-          - { name: research, label: 'Research & thinking', widget: string, required: false, hint: 'Leave empty for "Research & thinking".' }
-          - { name: work, label: 'The work', widget: string, required: false, hint: 'Leave empty for "The work".' }
-          - { name: outcomes, label: 'Outcomes', widget: string, required: false, hint: 'Leave empty for "Outcomes".' }
-          - { name: role, label: 'My role', widget: string, required: false, hint: 'Leave empty for "My role".' }
-          - { name: type, label: 'Type', widget: string, required: false, hint: 'Leave empty for "Type".' }
-          - { name: when, label: 'When', widget: string, required: false, hint: 'Leave empty for "When".' }
-          - { name: deliverables, label: 'Deliverables', widget: string, required: false, hint: 'Leave empty for "Deliverables".' }
-          - { name: tools, label: 'Tools', widget: string, required: false, hint: 'Leave empty for "Tools".' }
-          - { name: what_i_did, label: 'What I did', widget: string, required: false, hint: 'Leave empty for "What I did".' }
-          - { name: what_team_did, label: 'What the team did', widget: string, required: false, hint: 'Leave empty for "What the team did".' }
-          - { name: skills, label: 'Skills shown', widget: string, required: false, hint: 'Leave empty for "Skills shown".' }
       - name: link
         label: External link
         widget: object
