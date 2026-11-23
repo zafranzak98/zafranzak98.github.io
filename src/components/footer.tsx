@@ -31,9 +31,10 @@ export default function Footer() {
       <div className="footer-credit">
         <p>© {new Date().getFullYear()} Zafran Zakaria. All rights reserved.</p>
         {site.credit_name && (
-          <p>
-            website by{' '}
-            <a href={site.credit_url} target="_blank" rel="noreferrer" className="credit-link">{site.credit_name}</a>
+          <p className="credit">
+            <a href={site.credit_url} target="_blank" rel="noreferrer" className="credit-link">
+              Original website development by <span>{site.credit_name}</span>
+            </a>
           </p>
         )}
       </div>
