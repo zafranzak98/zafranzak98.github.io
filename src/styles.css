@@ -75,7 +75,7 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .hl-keep { white-space: nowrap; }
 /* Olive on Sage is 4.27:1, under the 4.5:1 small text needs, so small text on a Sage band or
    case study opening sits on the Light sage highlight (6.43:1). Large titles pass as they are. */
-.on-sage .band-top > span, .on-sage .band-line > span, .on-sage .cs-sub, .on-sage .cs-line > span, .on-sage .ph > span { background: var(--lsage); padding: 0.08em 0; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.on-sage .band-top > span, .on-sage .band-line > span, .on-sage .band-format > span, .on-sage .cs-sub, .on-sage .cs-line > span, .on-sage .ph > span { background: var(--lsage); padding: 0.08em 0; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 /* *bold* from the website editor: same typeface and colour, only the weight changes. */
 .b { font-weight: 700; }
 .text-link { font-size: var(--t-small); font-weight: 600; }
@@ -304,6 +304,8 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .band-arrow { display: inline-block; transition: transform .25s; }
 a.band:hover .band-arrow, a.band:focus-visible .band-arrow { transform: translateX(0.3125rem); }
 .band-line { position: relative; z-index: 3; max-width: 21.25rem; margin: 5.5rem 0 0; font-size: var(--t-body); line-height: 1.5; }
+/* What the project produced (from Deliverables), under the summary in the small meta size. */
+.band-format { position: relative; z-index: 3; max-width: 21.25rem; margin: 0.625rem 0 0; font-size: var(--t-meta); line-height: 1.45; }
 .band-visual { position: absolute; z-index: 2; top: 5.4vw; right: calc(var(--m) + 6%); width: 15vw; transition: transform .4s; }
 a.band:hover .band-visual { transform: translateY(-0.375rem); }
 .band-evoke { --vis: calc(6% + 24.5vw); }
@@ -326,6 +328,7 @@ a.band:hover .band-visual { transform: translateY(-0.375rem); }
   .band { display: flex; flex-direction: column; min-height: 0; padding: 1.5rem 1.5rem 0; }
   .band-top { flex-direction: column; gap: 0.25rem; }
   .band-line { margin: 1rem 0 0; max-width: none; }
+  .band-format { margin: 0.5rem 0 0; max-width: none; }
   .band-visual { position: relative; top: auto; right: auto; width: 62%; margin: 1.75rem 0 0 auto; }
   .band-evoke .band-visual { width: 80%; }
   a.band:hover .band-visual { transform: none; }
