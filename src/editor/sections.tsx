@@ -363,7 +363,7 @@ function AddSection({ onAdded, announce }: { onAdded: () => void; announce: (s: 
           ))}
         </section>
       )}
-      <p className="sec-intro sec-after">After adding, double-click the words on the page to type, or use <b>All settings</b>. Photos are added in the website editor (/admin); once a photo is on the page, select it here to adjust it.</p>
+      <p className="sec-intro sec-after">After adding, double-click the words on the page to type, or use <b>Settings</b>. Photos are added in the website editor (/admin); once a photo is on the page, select it here to adjust it.</p>
     </div>
   )
 }

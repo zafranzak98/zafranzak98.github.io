@@ -2,6 +2,7 @@ import { about, allCategories, allProjects, site } from '../../.content-collecti
 import { assignColours } from './project-colours.js'
 import { isPhoto, variantPath, widthsFor } from './image-variants.js'
 import imageWidths from 'virtual:image-widths'
+import { plainText } from '#/components/rich'
 
 export { about, site }
 export type Project = (typeof allProjects)[number]
@@ -20,7 +21,7 @@ export const projectsIn = (slug: string) => projects.filter((p) => p.category ==
 // Finds a case study by its web address (the last part of its URL), not its file name.
 export const projectByAddress = (address: string) => caseStudies.find((p) => p.address === address)
 export const categoryName = (slug: string) => categoryBySlug(slug)?.name ?? slug
-export const yearOf = (p: Project) => (p.year ? String(p.year) : p.when)
+export const yearOf = (p: Project) => (p.year ? String(p.year) : plainText(p.when ?? ''))
 
 // Opening colours, used for a project's band on the Projects pages and its case study opening.
 // Text and secondary text are chosen per background for contrast (WCAG AA, measured):

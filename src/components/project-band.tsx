@@ -22,7 +22,7 @@ export default function ProjectBand({ p, number }: { p: Project; number: number 
           <b>{String(number).padStart(2, '0')}</b> · {categoryName(p.category)} · {yearOf(p)}
           {p.status === 'Draft' && <span className="draft-badge">Draft</span>}
         </span>
-        <span>My role: {p.role}{hasPage && <> <span className="band-arrow" aria-hidden="true">→</span></>}</span>
+        <span>My role: <Rich text={p.role} />{hasPage && <> <span className="band-arrow" aria-hidden="true">→</span></>}</span>
       </div>
       <p className="band-line"><span><Rich text={p.summary} /></span></p>
       <div className="band-visual"><OpeningVisual p={p} inBand /></div>

@@ -67,6 +67,12 @@ function render(nodes: RichNode[], highlight: boolean): ReactNode {
   })
 }
 
+// The same words without their formatting, for places that show them as plain text.
+export function plainText(text: string): string {
+  const flat = (nodes: RichNode[]): string => nodes.map((n) => (typeof n === 'string' ? n : flat(n.children))).join('')
+  return flat(parseRich(text))
+}
+
 export function Rich({ text, highlight = false }: { text?: string; highlight?: boolean }) {
   if (!text) return null
   return <>{render(parseRich(text), highlight)}</>

@@ -7,7 +7,7 @@ import { allCategories } from '../../.content-collections/generated'
 const categoryName = (slug: string) => allCategories.find((c) => c.slug === slug)?.name ?? slug
 import { boxOf, clearGuides, describeSnap, drawGuides, linesFor, snap, type Box } from './guides'
 import { LABELS, type LabelKey } from '#/layout/labels'
-import { MOD, fillBox, readBox, report, setTypingBox, takeStartAtEnd } from './formatting'
+import { MOD, fillBox, readBox, report, setTypingBox, splitRich, takeStartAtEnd } from './formatting'
 
 // Editing single elements on the page: click one to select it, double-click its words to change
 // them, then style it in the "Selected element" panel or move it with the arrow keys.
@@ -126,10 +126,10 @@ export const wordsOf = (p: Project, field: string, edits: Edits = {}) => {
 // Where changed words are written: one or more paths in the content file and their values.
 export function writesFor(field: string, words: string): [(string | number)[], unknown][] {
   if (field === 'type') {
-    const [kind, ...detail] = words.split(' · ')
-    return [[['project_type'], kind.trim()], [['type_detail'], detail.join(' · ').trim() || undefined]]
+    const [kind = '', ...detail] = splitRich(words, ' · ')
+    return [[['project_type'], kind], [['type_detail'], detail.join(' · ') || undefined]]
   }
-  if (SEPARATOR[field]) return [[[field], words.split(SEPARATOR[field].trim()).map((s) => s.trim()).filter(Boolean)]]
+  if (SEPARATOR[field]) return [[[field], splitRich(words, SEPARATOR[field].trim())]]
   return [[keysOf(field), words]]
 }
 
