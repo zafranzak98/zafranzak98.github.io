@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { PageLink } from '#/components/page-link'
 import type { CSSProperties } from 'react'
 import OpeningVisual from '#/components/opening-visual'
 import { allOrder, bandOrder } from '#/lib/project-colours.js'
@@ -35,9 +35,9 @@ export default function ProjectBand({ p, number, first = false }: { p: Project; 
   )
   if (!hasPage) return <article className={className} style={style}>{content}</article>
   return (
-    <Link to="/projects/$projectCat/$projectId/" params={{ projectCat: p.category, projectId: p.address }} className={className} style={style}>
+    <PageLink to={`/projects/${p.category}/${p.address}/`} className={className} style={style}>
       {content}
-    </Link>
+    </PageLink>
   )
 }
 

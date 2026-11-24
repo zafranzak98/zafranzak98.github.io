@@ -31,10 +31,28 @@ const KINDS: Record<string, Kind> = {
   Image: { name: 'Image', hint: 'Your image' },
   Grid: { name: 'Side by side', hint: 'Your columns' },
   Spacer: { name: 'Space', hint: 'Extra room' },
+  // Homepage, About, Projects and category pages, and the shared parts (visual editor demo)
+  HomeIntro: { name: 'Introduction', hint: 'The opening statement' },
+  HomeClock: { name: 'Clock', hint: 'The local time and its line' },
+  HomeLine: { name: 'Availability and CV', hint: 'Availability and the CV links' },
+  HomeFocus: { name: 'Areas of Focus', hint: 'Links to each category' },
+  HomeWork: { name: 'Selected Projects', hint: 'The featured case studies' },
+  AboutHero: { name: 'Title and portrait', hint: 'The page title and your photo' },
+  AboutIntro: { name: 'Intro', hint: 'About you and your languages' },
+  AboutSkills: { name: 'Skills', hint: 'Your skills, one row each' },
+  AboutEducation: { name: 'Education', hint: 'Your qualifications' },
+  AboutExperience: { name: 'Experience', hint: 'Your roles' },
+  ListingHead: { name: 'Title and categories', hint: 'The page title, introduction and category links' },
+  ListingBands: { name: 'Project list', hint: 'Every project in this list' },
+  Header: { name: 'Header', hint: 'Name and menu, on every page' },
+  Footer: { name: 'Footer', hint: 'Contact and page links, on every page' },
 }
 // The kind's short name, used wherever a section is named (the contextual bar, Undo, this panel).
 export const kindName = (type: string) => KINDS[type]?.name ?? (type === 'Cell' ? 'Column' : type)
-const STANDARD = ['CategoryNav', 'Opening', 'Facts', 'SectionNav', 'Gap', 'Overview', 'Research', 'Work', 'Outcomes', 'AlsoIn', 'PrevNext']
+let STANDARD: readonly string[] = ['CategoryNav', 'Opening', 'Facts', 'SectionNav', 'Gap', 'Overview', 'Research', 'Work', 'Outcomes', 'AlsoIn', 'PrevNext']
+let IS_CASE = true
+// The standard sections of the page being edited (a case study unless set otherwise).
+export const setStandardSections = (list: readonly string[], isCase: boolean) => { STANDARD = list; IS_CASE = isCase }
 
 // A section's name in the list: your own text sections use their heading, so two are easy to tell apart.
 export function sectionLabel(item: Item) {
@@ -341,7 +359,7 @@ function AddSection({ onAdded, announce }: { onAdded: () => void; announce: (s: 
           {content.map((item, i) => <option key={item.props.id} value={i}>{i + 1}. {sectionLabel(item)}</option>)}
         </select>
       </label>
-      {GROUPS.map((g) => (
+      {STANDARD.some((t) => t === 'Header' || t === 'Footer') ? null : GROUPS.map((g) => (
         <section key={g.title} className="sec-group" aria-labelledby={`sec-g-${g.title}`}>
           <h3 id={`sec-g-${g.title}`}>{g.title}</h3>
           {g.options.map((o) => (
@@ -354,7 +372,7 @@ function AddSection({ onAdded, announce }: { onAdded: () => void; announce: (s: 
       ))}
       {missing.length > 0 && (
         <section className="sec-group" aria-labelledby="sec-g-back">
-          <h3 id="sec-g-back">Put back a project section</h3>
+          <h3 id="sec-g-back">{IS_CASE ? 'Put back a project section' : 'Put back a standard section'}</h3>
           <p className="sec-intro">These were removed from this page.</p>
           {missing.map((t) => (
             <button key={t} type="button" className="sec-option sec-option-plain" onClick={() => add({ type: t, props: { id: newId(t) } }, KINDS[t].name)}>

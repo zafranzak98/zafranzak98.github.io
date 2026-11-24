@@ -19,6 +19,10 @@ import { ContextBar, screenFor } from './panel'
 import { SectionsPanel, openSections } from './sections'
 import { emptyImages } from './photos'
 import { EyeIcon, LayersIcon, RedoIcon, SlidersIcon, UndoIcon } from './icons'
+import { PAGES, asProject, pageConfig, pageFor, standardLayout, type PageDef } from './pages'
+import { publishShared } from './shared'
+import { setStandardSections } from './sections'
+import { AdminShell } from './admin-demo'
 
 // The design editor at /admin/design/. Arrange and restyle a page with its real blocks, then
 // save a draft or publish. Undo and redo cover every change; unsaved work is kept in this
@@ -38,10 +42,13 @@ const readLocal = <T,>(key: string, fallback: T): T => { try { return JSON.parse
 const writeLocal = (key: string, value: unknown) => { try { localStorage.setItem(key, JSON.stringify(value)); return true } catch { return false } }
 const removeLocal = (key: string) => { try { localStorage.removeItem(key) } catch { /* nothing to remove */ } }
 
-function startingLayout(p: Project): { data: Data; restored: boolean } {
+// The page as published: a case study's saved layout, or (demo) any other page's standard one.
+const publishedOf = (p: Project, page: PageDef | null) => (page ? standardLayout(page) : ((savedLayoutFor(p) ?? standardCaseLayout()) as Data))
+const standardOf = (page: PageDef | null) => (page ? standardLayout(page) : (standardCaseLayout() as Data))
+function startingLayout(p: Project, page: PageDef | null): { data: Data; restored: boolean } {
   const unsaved = readLocal<Data | null>(localKey(p.slug, 'unsaved'), null)
   if (unsaved) return { data: unsaved, restored: true }
-  return { data: (savedLayoutFor(p) ?? standardCaseLayout()) as Data, restored: false }
+  return { data: publishedOf(p, page), restored: false }
 }
 
 // Puck leaves a few of its own controls unnamed; name them for screen readers as they appear.
@@ -58,10 +65,15 @@ function labelPuckControls() {
 }
 
 function EditorApp() {
-  const params = new URLSearchParams(location.search)
-  const p = caseStudies.find((x) => x.slug === params.get('project')) ?? caseStudies.find((x) => x.design === 'about-face') ?? caseStudies[0]
-  const config = useMemo(() => editorConfig(p), [p])
-  const [start] = useState(() => startingLayout(p))
+  // Which page: a case study (?project=), or in the demo any page of the website (?page=).
+  const [{ p, page, config }] = useState(() => {
+    const params = new URLSearchParams(location.search)
+    const page = DEMO ? (pageFor(params.get('page')) ?? null) : null
+    const p = page ? asProject(page) : (caseStudies.find((x) => x.slug === params.get('project')) ?? caseStudies.find((x) => x.design === 'about-face') ?? caseStudies[0])
+    setStandardSections(page ? page.sections : standardCaseLayout().content.map((i) => i.type), !page)
+    return { p, page, config: page ? pageConfig(page) : editorConfig(p) }
+  })
+  const [start] = useState(() => startingLayout(p, page))
   // One sign-in shared with the website editor (see signin.ts); GitHub's refusal of a token is
   // remembered so it is not offered again until Sveltia renews it or you sign in.
   const refused = useRef<string | null>(null)
@@ -147,7 +159,7 @@ function EditorApp() {
     setLogin('')
     setNotice('Signed out of both editors in this browser. If the website editor (/admin) is open in another tab, close or reload it too. To cancel the sign-in at GitHub as well, open GitHub, Settings, Applications, and revoke "Zafran website editor (Sveltia CMS)".')
   }
-  const actions = useMemo(() => ({ p, token, setToken, setNotice, notice, markClean: () => { clean.current = '' }, clean, login, shared: !!account?.shared, expire, signOut, keptHere }), [p, token, notice, login, account, keptHere])
+  const actions = useMemo(() => ({ p, page, token, setToken, setNotice, notice, markClean: () => { clean.current = '' }, clean, login, shared: !!account?.shared, expire, signOut, keptHere }), [p, token, notice, login, account, keptHere])
   return (
     <SessionContext.Provider value={actions}>
       <SelectionProvider>
@@ -176,7 +188,7 @@ function EditorApp() {
 }
 
 type Notice = { text: string; undo?: boolean }
-type Session = { p: Project; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string, undo?: boolean) => void; notice: Notice; markClean: () => void; clean: { current: string | null }; login: string; shared: boolean; expire: (t: string) => boolean; signOut: () => void; keptHere: boolean }
+type Session = { p: Project; page: PageDef | null; token: string | null; setToken: (t: string | null) => void; setNotice: (n: string, undo?: boolean) => void; notice: Notice; markClean: () => void; clean: { current: string | null }; login: string; shared: boolean; expire: (t: string) => boolean; signOut: () => void; keptHere: boolean }
 
 // The left-hand tools, named for what they do.
 // Puck's own Blocks and Outline panels are replaced by one Sections panel, which takes the
@@ -236,7 +248,7 @@ const time = () => new Date().toLocaleString('en-GB', { day: 'numeric', month: '
 // The top bar: the project, the screen size being edited, undo and redo, where the work stands,
 // and the three steps that matter: preview, save a draft, publish.
 function Actions() {
-  const { p, token, setToken, setNotice, notice, markClean, clean, login, shared, expire, signOut, keptHere } = useContext(SessionContext)!
+  const { p, page, token, setToken, setNotice, notice, markClean, clean, login, shared, expire, signOut, keptHere } = useContext(SessionContext)!
   const data = usePuck((s) => s.appState.data)
   const history = usePuck((s) => s.history)
   // What one step back or forward changes, in words (shown on the buttons and after undoing).
@@ -441,7 +453,11 @@ function Actions() {
       removeLocal(localKey(p.slug, 'unsaved'))
       clean.current = JSON.stringify(data)
       setSaved({ json: clean.current, text: `Published ${time()}` })
-      return 'Published in this demo only. In the real editor this saves the page and the test site updates in about a minute, after the usual checks.'
+      if (page?.shared) {
+        publishShared(page.shared, ((data.root.props as { edits?: Edits } | undefined)?.edits) ?? {})
+        return `Published in this demo only (simulated). The ${page.shared} now shows your change on every page of this demo: open any page in the list to see it. In the real editor this saves one shared file and the test site updates in about a minute.`
+      }
+      return 'Published in this demo only (simulated). In the real editor this saves the page and the test site updates in about a minute, after the usual checks.'
     }
     // Words, shared category names and the layout are saved together, all or nothing.
     const edits = (data.root.props as { edits?: Edits } | undefined)?.edits ?? {}
@@ -482,7 +498,7 @@ function Actions() {
   })
 
   const loadStandard = () => {
-    dispatch({ type: 'setData', recordHistory: true, data: standardCaseLayout() as Data })
+    dispatch({ type: 'setData', recordHistory: true, data: standardOf(page) })
     setPanel('')
     setNotice('The standard layout is loaded. Publish to use it on the website; Undo takes you back.')
   }
@@ -494,7 +510,7 @@ function Actions() {
     discarded.current = JSON.parse(JSON.stringify(data)) as Data
     removeLocal(localKey(p.slug, 'unsaved'))
     markClean()
-    dispatch({ type: 'setData', recordHistory: true, data: (savedLayoutFor(p) ?? standardCaseLayout()) as Data })
+    dispatch({ type: 'setData', recordHistory: true, data: publishedOf(p, page) })
     setNotice('Changes discarded. The page is as last published. Undo brings them back.', true)
   }
   const undoNotice = () => {
@@ -508,12 +524,23 @@ function Actions() {
     <header className="editor-bar">
       <div className="editor-bar-start">
         <span className="editor-brand">Design editor</span>
-        {DEMO && <span className="editor-chip" title="Everything works, but saving and publishing stay in this browser.">Demo</span>}
-        <label className="editor-field"><span className="sr-only">Project</span>
-          <select className="editor-project" value={p.slug} onChange={(e) => { location.search = `?project=${e.target.value}` }}>
-            {caseStudies.map((x) => <option key={x.slug} value={x.slug}>{x.title}</option>)}
-          </select>
-        </label>
+        {DEMO && <span className="editor-chip" title="Everything works, but Preview, Save draft and Publish are simulated: they stay in this browser and never change the website.">Demo</span>}
+        {DEMO && <span className="editor-chip editor-sim" title="Preview, Save draft and Publish stay in this browser and never change the website.">Saving simulated</span>}
+        {DEMO ? (
+          <label className="editor-field"><span className="sr-only">Page</span>
+            <select className="editor-project" value={page ? `page:${page.key}` : `case:${p.slug}`} onChange={(e) => { const v = e.target.value; location.search = v.startsWith('case:') ? `?project=${v.slice(5)}` : `?page=${v.slice(5)}` }}>
+              {(['Pages', 'Categories'] as const).map((g) => <optgroup key={g} label={g}>{PAGES.filter((x) => x.group === g).map((x) => <option key={x.key} value={`page:${x.key}`}>{x.label}</option>)}</optgroup>)}
+              <optgroup label="Case studies">{caseStudies.map((x) => <option key={x.slug} value={`case:${x.slug}`}>{x.title}</option>)}</optgroup>
+              <optgroup label="Shared on every page">{PAGES.filter((x) => x.group === 'Shared').map((x) => <option key={x.key} value={`page:${x.key}`}>{x.label}</option>)}</optgroup>
+            </select>
+          </label>
+        ) : (
+          <label className="editor-field"><span className="sr-only">Project</span>
+            <select className="editor-project" value={p.slug} onChange={(e) => { location.search = `?project=${e.target.value}` }}>
+              {caseStudies.map((x) => <option key={x.slug} value={x.slug}>{x.title}</option>)}
+            </select>
+          </label>
+        )}
       </div>
 
       <div className="editor-bar-middle" role="group" aria-label="Screen size you are editing">
@@ -553,8 +580,8 @@ function Actions() {
           </div>
         </div>
         {!DEMO && !token && <button type="button" className="editor-signin" onClick={signIn} disabled={!!busy}>Sign in</button>}
-        <button type="button" className="editor-save" onClick={saveDraft} disabled={!!busy} title="Saves without changing the website">Save draft</button>
-        <button type="button" className="editor-primary" onClick={openPublish} disabled={!!busy} title="Checks the page, then updates the website">Publish</button>
+        <button type="button" className="editor-save" onClick={saveDraft} disabled={!!busy} title={DEMO ? 'Simulated: saves in this browser only' : 'Saves without changing the website'}>Save draft</button>
+        <button type="button" className="editor-primary" onClick={openPublish} disabled={!!busy} title={DEMO ? 'Simulated: checks the page, then keeps it in this browser only' : 'Checks the page, then updates the website'}>Publish</button>
       </div>
       <div className="editor-bar-ctx" onKeyDown={(e) => { if (e.key === 'Escape' && !e.defaultPrevented && !(e.target as HTMLElement).closest('input, textarea, select, .ctx-menu')) select(null) }}>{!preview && <MoreTools />}{!preview && <ScreenStrip width={Number(ui.viewports.current.width) || 1440} />}{preview ? <p className="ctx ctx-hint">Previewing the page exactly as visitors see it. Nothing here can be changed until you go back to editing.</p> : <ContextBar />}</div>
       {warnings.length > 0 && <p className="editor-demo editor-checks">{warnings.join(' ')}</p>}
@@ -569,6 +596,8 @@ function Actions() {
 
       {panel === 'publish' && (
         <Panel title="Publish this page?" onClose={() => setPanel('')}>
+          {DEMO && <p className="editor-sim-note"><b>Simulated.</b> In this demo, publishing stays in this browser. Nothing is sent to GitHub, /admin or either website.</p>}
+          {page?.shared && <div className="editor-impact" role="note"><p><b>This changes every page.</b> The {page.shared} is shared: Homepage, About, Projects, every category and every case study show it.</p></div>}
           <p>The test site will show this layout for {p.title} in about a minute, after the usual checks. The current version stays in Versions, so you can bring it back at any time.</p>
           {renames.length > 0 && (
             <div className="editor-impact" role="note">
@@ -636,7 +665,10 @@ function Panel({ title, onClose, children }: { title: string; onClose: () => voi
   )
 }
 
-createRoot(document.getElementById('editor')!).render(<EditorApp />)
+// The demo opens on a copy of the website editor (/admin) with the visual editor as one entry.
+const params = new URLSearchParams(location.search)
+const showAdmin = DEMO && !params.has('project') && !params.has('page')
+createRoot(document.getElementById('editor')!).render(showAdmin ? <AdminShell /> : <EditorApp />)
 
 // On narrow screens the editing tools scroll sideways. These arrows show that more tools are
 // there and scroll to them; keyboard users reach the same tools with Tab.

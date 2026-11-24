@@ -9,6 +9,7 @@ import { CategoryNames } from '#/components/category-index'
 import { CATEGORY_FIELD, applyEdits, categoryEdits, useCanvasEditing, type Edits } from './elements'
 import { ElementPanel } from './panel'
 import { EmptyImage } from './photos'
+import { SharedAround, UVE_DEMO } from './shared'
 
 // The design editor's building blocks: the website's own blocks (src/layout), plus the controls
 // shown for each. Adding a block here makes it available in the editor for every page.
@@ -48,7 +49,7 @@ function Warnings({ messages }: { messages: string[] }) {
 
 // A block built from the site, with the Design panel and editing-only warnings.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function block(label: string, Render: (props: any) => React.ReactNode, extra: Record<string, unknown> = {}): ComponentConfig {
+export function block(label: string, Render: (props: any) => React.ReactNode, extra: Record<string, unknown> = {}): ComponentConfig {
   return {
     label,
     ...extra,
@@ -67,7 +68,7 @@ function block(label: string, Render: (props: any) => React.ReactNode, extra: Re
 }
 
 // Settings for single elements inside a block, shown for the element clicked on the page.
-const elementsField = (p: Project) => ({
+export const elementsField = (p: Project) => ({
   type: 'custom',
   label: 'Single elements',
   render: ({ value, onChange }: { value: Elements | undefined; onChange: (v: Elements) => void }) => <ElementPanel value={value} onChange={onChange} p={p} />,
@@ -167,7 +168,11 @@ function EditorFrame({ p, edits, children }: { p: Project; edits: Edits; childre
     <Editing.Provider value={true}>
       <CategoryNames.Provider value={Object.fromEntries(categoryEdits(edits).map(([field, words]) => [field.match(CATEGORY_FIELD)![1], words]))}>
         <span ref={anchor} hidden />
-        <CaseFrame p={applyEdits(p, edits)} content={content}>{children}</CaseFrame>
+        {UVE_DEMO ? (
+          <SharedAround>
+            <CaseFrame p={applyEdits(p, edits)} content={content}>{children}</CaseFrame>
+          </SharedAround>
+        ) : <CaseFrame p={applyEdits(p, edits)} content={content}>{children}</CaseFrame>}
       </CategoryNames.Provider>
     </Editing.Provider>
   )

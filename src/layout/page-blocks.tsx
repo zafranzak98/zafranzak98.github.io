@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import CategoryIndex from '#/components/category-index'
+import { useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import CategoryIndex, { CategoryNames } from '#/components/category-index'
 import { Media } from '#/components/media'
 import { PageLink } from '#/components/page-link'
 import { PaperClip } from '#/components/paper-clip'
@@ -300,12 +300,14 @@ const listingWords = (category?: string): (() => ListingWords) => () => (categor
 export function ListingHead({ design, elements, category }: BlockProps & { category?: string }) {
   const w = usePageWords(listingWords(category))
   const el = useElement(elements)
+  const renamed = useContext(CategoryNames)
   return (
     <section {...designProps(design, 'listing-head')}>
       {category && <span className="lab cat-count">{w.labels?.category ?? 'Category'} · {w.count} {w.count === 1 ? 'project' : 'projects'}</span>}
-      <h1 {...el('title', { className: category ? 'c listing-title cat-title' : 'c listing-title', field: 'title' })}>{w.title}</h1>
+      {/* A category's title is its name, which is shared with every page that shows it. */}
+      <h1 {...el('title', { className: category ? 'c listing-title cat-title' : 'c listing-title', field: category ? `category:${category}` : 'title' })}>{(category && renamed[category]) || w.title}</h1>
       {w.intro && <p {...el('intro', { className: 'listing-intro', field: 'intro', rich: true })}><Rich text={w.intro} /></p>}
-      <CategoryIndex />
+      <CategoryIndex current={category ?? 'all'} />
     </section>
   )
 }
