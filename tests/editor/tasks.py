@@ -50,7 +50,7 @@ with sync_playwright() as p:
     h=f.locator(".el-frame .el-handle"); hx,hy=centre(h); pg.mouse.move(hx,hy); pg.mouse.down()
     for i in range(1,21): pg.mouse.move(hx-80*i/20,hy); pg.wait_for_timeout(20)
     pg.mouse.up(); pg.wait_for_timeout(800)
-    pg.locator(".ctx button", has_text="settings").first.click(); pg.wait_for_timeout(600)
+    if pg.locator(".ctx .ctx-settings").first.get_attribute("aria-pressed") != "true": pg.locator(".ctx .ctx-settings").first.click(); pg.wait_for_timeout(600)
     pg.get_by_role("button",name="Focus top centre").first.click(); pg.wait_for_timeout(600)
     pg.locator(".ctx button", has_text="settings").first.click(); pg.wait_for_timeout(400)
     d=(look(pg,"Work","image-0") or {}).get("desktop",{})
