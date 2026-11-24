@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Rich } from '#/components/rich'
-import { croppedSizes, imageProps, photoSize, projects, site, yearOf } from '#/lib/site'
+import { croppedSizes, cvUrl, imageProps, photoSize, projects, site, yearOf } from '#/lib/site'
 import { frameFor } from '#/lib/cover-image.js'
 import { useTitle } from '#/lib/title'
 
@@ -17,6 +17,20 @@ function Home() {
     <main id="main" className="home">
       <h1 className="visually-hidden">{site.name}</h1>
       <p className="home-intro"><Rich text={site.home_intro} highlight /></p>
+      {site.clock && site.clock.show !== false && <Clock city={site.clock.city} timeZone={site.clock.time_zone} line={site.clock.line} />}
+      {(site.availability || cvUrl) && (
+        <p className="home-line">
+          {site.availability && <span className="home-line-item">{site.availability}</span>}
+          {site.availability && cvUrl && <span className="home-sep" aria-hidden="true">·</span>}
+          {cvUrl && (
+            <span className="home-line-item">
+              <a href={cvUrl}>View CV (PDF)</a>
+              <span className="home-sep" aria-hidden="true">/</span>
+              <a href={cvUrl} download>Download</a>
+            </span>
+          )}
+        </p>
+      )}
       <section aria-label="Areas of focus" className="home-focus">
         <h2 className="lab">Areas of Focus</h2>
         <ul>
@@ -69,5 +83,30 @@ function Home() {
         )}
       </div>
     </main>
+  )
+}
+
+// The local time in the city chosen in Site settings. The visitor's browser works it out for that
+// time zone, so daylight saving changes are followed automatically. It updates once a second and is
+// not announced by screen readers on every change.
+function Clock({ city, timeZone, line }: { city: string; timeZone: string; line?: string }) {
+  const format = useMemo(() => new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }), [timeZone])
+  const [now, setNow] = useState(() => format.format(new Date()))
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>
+    const tick = () => {
+      setNow(format.format(new Date()))
+      timer = setTimeout(tick, 1000 - (Date.now() % 1000))
+    }
+    tick()
+    return () => clearTimeout(timer)
+  }, [format])
+  return (
+    <p className="home-clock">
+      <span className="home-clock-now">
+        <span>It is now</span> <time>{now}</time> <span>in {city}.</span>
+      </span>
+      {line && <> {line}</>}
+    </p>
   )
 }

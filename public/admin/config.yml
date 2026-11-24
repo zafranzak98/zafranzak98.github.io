@@ -342,6 +342,21 @@ collections:
                 search_fields: [name]
                 display_fields: [name]
           - { name: projects_intro, label: Projects page introduction, widget: text, required: false, hint: 'Wrap words in *single asterisks* to make them bold.' }
+          - { name: availability, label: Availability line, widget: string, required: false, hint: 'Shown under the homepage introduction, before the CV links, for example "Open to junior roles across the UK". Leave empty to hide it.' }
+          - name: clock
+            label: Homepage clock
+            widget: object
+            required: false
+            hint: The local time shown beside the homepage introduction. It follows daylight saving automatically.
+            fields:
+              - { name: show, label: Show the clock, widget: boolean, default: true, required: false }
+              - { name: city, label: City, widget: string, hint: 'The place named after the time, for example Harrogate.' }
+              - name: time_zone
+                label: Time zone
+                widget: string
+                pattern: ['^[A-Za-z_]+(/[A-Za-z0-9_+-]+)+$', 'Use a time zone name such as Europe/London or Asia/Kuala_Lumpur.']
+                hint: 'The time zone of that city, for example Europe/London, Europe/Paris, America/New_York or Asia/Kuala_Lumpur. The website checks it before publishing.'
+              - { name: line, label: Line under the time, widget: string, required: false, hint: 'For example "A mind full of ideas, always." Leave empty for none.' }
           - name: cv
             label: CV (PDF)
             widget: file
