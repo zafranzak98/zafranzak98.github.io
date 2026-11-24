@@ -137,3 +137,26 @@ export function write(runs: Run[]): string {
   if (inHighlight) out += '**'
   return out + space
 }
+
+// Formatted words split into list items (deliverables, tools, the two parts of "Type"). The split is
+// made on the words, not the markers, so formatting that runs across a separator is closed at the
+// end of one item and opened again in the next, and every item reads back on its own.
+export function splitRich(text: string, separator: string): string[] {
+  const runs: Run[] = []
+  const flat = (nodes: RichNode[], on: Omit<Run, 'text'>) => {
+    for (const n of nodes) {
+      if (typeof n === 'string') runs.push({ ...on, text: n })
+      else flat(n.children, { ...on, [n.kind]: true })
+    }
+  }
+  flat(parseRich(text), { bold: false, italic: false, underline: false, highlight: false })
+  const items: Run[][] = [[]]
+  for (const run of runs) {
+    const pieces = run.text.split(separator)
+    pieces.forEach((piece, i) => {
+      if (i > 0) items.push([])
+      if (piece) items.at(-1)!.push({ ...run, text: piece })
+    })
+  }
+  return items.map((item) => write(item).trim()).filter(Boolean)
+}

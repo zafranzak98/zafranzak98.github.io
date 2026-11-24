@@ -90,7 +90,7 @@ export function Facts({ design, elements }: BlockProps) {
   const fact = ([k, v]: (typeof facts)[number]) => (
     <div key={k}>
       <span {...el(`label-${k}`, { className: 'lab', field: `labels:${k}` })}>{label(p, k)}</span>
-      <span {...el(`value-${k}`, { className: 'fact-val', field: k })}>{v}</span>
+      <span {...el(`value-${k}`, { className: 'fact-val', field: k, rich: true })}><Rich text={v} /></span>
     </div>
   )
   return (
