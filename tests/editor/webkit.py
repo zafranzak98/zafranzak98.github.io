@@ -1,7 +1,7 @@
 # The main editing tasks in WebKit, the engine Safari is built on, using WebKitGTK and its own WebDriver
 # (Playwright's WebKit cannot be downloaded in this workspace). This checks the engine: layout, CSS and
 # scripts. It is NOT Safari and NOT an Apple device: Safari's own interface, Apple fonts, iPad and
-# iPhone touch and VoiceOver still need a person on real devices.
+# iPhone touch still need a person on real devices.
 # Needs: apt install webkit2gtk-driver xvfb; pip install selenium.
 # Run from the repository root after `bun run build` and `python3 tests/editor/serve.py dist 4302 &`:
 #   xvfb-run -a python3 tests/editor/webkit.py
@@ -102,23 +102,28 @@ for w, h in [(1440, 900), (390, 844)]:
         btn(d, ".sec-parts button", "Title").click(); time.sleep(0.9)
         check(f"{w}px: choosing a part in Sections selects it", name(d) == "Title", name(d))
 
-        # Add an Image section and choose a photo.
+        # Add a section offers what needs no photo; a photo already on the page can be selected.
+        # Photos are placed in the website editor (Sveltia), so the page gets one from a saved draft.
         ActionChains(d).send_keys(Keys.ESCAPE).perform(); time.sleep(0.3)
         if not btn(d, "[role='tab']", "Add a section"): btn(d, "button, [role='button']", "Sections").click(); time.sleep(0.6)
         btn(d, "[role='tab']", "Add a section").click(); time.sleep(0.4)
-        btn(d, ".sec-option", "One image").click(); time.sleep(1.5)
-        if w < 638: ActionChains(d).send_keys(Keys.ESCAPE).perform(); time.sleep(0.4)
-        btn(d, ".ctx-photo").click(); time.sleep(0.8)
-        dlg = js(d, "const r = document.querySelector('.ph-dialog')?.getBoundingClientRect(); return r ? [r.width, r.height] : null")
-        check(f"{w}px: the photo picker opens and fits the screen", dlg and dlg[1] <= h + 1, str(dlg))
-        btn(d, ".ph-pick").click(); time.sleep(0.4)
-        f = d.find_element(By.CSS_SELECTOR, ".ph-alt input"); f.send_keys("Test photo"); time.sleep(0.3)
-        # Enter in the description box confirms in Chromium, but a WebDriver Enter does not reach it here
-        # (a script-sent Enter does). Unclear whether Safari is affected: it is on the Safari checklist.
-        btn(d, ".ph-dialog button", "Use this photo").click(); time.sleep(1.2)
-        check(f"{w}px: Use this photo closes the picker", js(d, "return !document.querySelector('.ph-dialog')"))
+        opts = js(d, "return [...document.querySelectorAll('.sec-option .sec-name')].map(e => e.innerText.trim())")
+        check(f"{w}px: Add a section offers Text, Statement and Space", opts[:3] == ["Text", "Statement", "Space"] and not any("image" in o.lower() for o in opts), str(opts))
+        sp = [b for b in d.find_elements(By.CSS_SELECTOR, ".sec-option") if b.find_element(By.CSS_SELECTOR, ".sec-name").get_attribute("textContent").strip() == "Space"][0]
+        js(d, "arguments[0].scrollIntoView({block: 'center'})", sp); time.sleep(0.3); sp.click(); time.sleep(1.5)
+        errors += js(d, "return window.__errs")
+        key = "design-editor:about-face-beauty:unsaved"
+        draft = js(d, f"return JSON.parse(localStorage.getItem('{key}'))")
+        draft["content"].append({"type": "Image", "props": {"id": "Image-seeded", "image": "/media/projects/about-face-beauty/brand-proposal-cover-art.webp", "alt": "Test photo", "ratio": "auto", "fit": "cover", "focusX": 50, "focusY": 50}})
+        d.get(URL.split("/admin/")[0] + "/"); time.sleep(1)  # leave the editor first: it stores its own draft as it closes
+        js(d, "localStorage.setItem(arguments[0], arguments[1])", key, json.dumps(draft))
+        d.get(URL); time.sleep(4)
+        d.execute_script("window.__errs = []; addEventListener('error', e => __errs.push(String(e.message))); addEventListener('unhandledrejection', e => __errs.push(String(e.reason)))")
+        click_part(d, ".free-photo"); time.sleep(1.2)  # brings it into view, so the lazy-loaded photo loads
         shown = js(d, "const i = document.getElementById('preview-frame').contentDocument.querySelector('.free-photo img'); return i ? i.naturalWidth : 0")
-        check(f"{w}px: the chosen photo shows on the page", shown > 0, str(shown))
+        check(f"{w}px: a photo already on the page shows", shown > 0, str(shown))
+        check(f"{w}px: selecting the photo selects it", "Photo" in name(d), name(d))
+        check(f"{w}px: there is no Choose or Replace photo button", not js(d, "return [...document.querySelectorAll('button')].some(b => /choose a photo|replace photo/i.test(b.innerText + ' ' + (b.getAttribute('aria-label') || '')))"))
 
         # Save draft.
         cover = js(d, "const b = document.querySelector('.editor-save').getBoundingClientRect(); const e = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return e.closest('.editor-save') ? '' : (e.className || e.tagName) + ' ' + (e.innerText || '').slice(0, 80)")

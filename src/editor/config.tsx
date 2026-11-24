@@ -1,5 +1,4 @@
 import { createUsePuck, type ComponentConfig, type Config, type Fields } from '@puckeditor/core'
-import imageWidths from 'virtual:image-widths'
 import type { Project } from '#/lib/site'
 import * as caseBlocks from '#/layout/case-blocks'
 import { COLOURS, SPACES, designProps, designWarnings, type Design } from '#/layout/design'
@@ -74,7 +73,6 @@ const elementsField = (p: Project) => ({
   render: ({ value, onChange }: { value: Elements | undefined; onChange: (v: Elements) => void }) => <ElementPanel value={value} onChange={onChange} p={p} />,
 })
 
-const photos = Object.keys(imageWidths).sort()
 const SIZES = [['Small', 'small'], ['Medium', 'medium'], ['Large', 'large'], ['Extra large', 'xlarge']].map(([label, value]) => ({ label, value }))
 const percent = (label: string) => ({ type: 'number' as const, label, min: 0, max: 100, step: 5 })
 
@@ -115,7 +113,6 @@ export function editorConfig(p: Project): Config {
       Image: block('Image', ImageBlock, {
         fields: {
           elements: elementsField(p),
-          image: { type: 'select', label: 'Photo', options: [{ label: 'Choose a photo', value: '' }, ...photos.map((path) => ({ label: path.replace('/media/', ''), value: path }))] },
           alt: { type: 'text', label: 'Description (what the photo shows)' },
           caption: { type: 'text', label: 'Caption' },
           ratio: { type: 'select', label: 'Shape', options: ratioOptions },
@@ -124,7 +121,7 @@ export function editorConfig(p: Project): Config {
           focusY: percent('Crop focus down (%)'),
         } as never,
         defaultProps: { image: '', ratio: 'auto', fit: 'cover', focusX: 50, focusY: 50 } as never,
-        // No photo yet: an empty frame with "Choose a photo", only in the editor.
+        // No photo (only possible in an old draft): a plain frame, only in the editor; publishing is refused.
         whileEditing: (props: Record<string, unknown>) => (props.image ? null : <EmptyImage id={props.id as string} {...designProps(props.design as Design, 'free-block free-image')} />),
       }),
       Grid: block('Free grid', GridBlock, {

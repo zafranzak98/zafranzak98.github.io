@@ -112,10 +112,10 @@ with sync_playwright() as p:
     # 8. Add a section: plain groups, a picture for each, where it goes, and Put back.
     pg.get_by_role("tab", name="Add a section").click(); pg.wait_for_timeout(300)
     groups = pg.locator(".sec-group h3").all_inner_texts()
-    check("Options grouped as Words, Images, Spacing", [g.lower() for g in groups[:3]] == ["words", "images", "spacing"], str(groups))
+    check("Options grouped as Words and Spacing (photos are added in the website editor)", [g.lower() for g in groups[:2]] == ["words", "spacing"], str(groups))
     opts = pg.locator(".sec-option .sec-name").all_inner_texts()
-    check("Six kinds to add, in plain words", opts[:6] == ["Text", "Statement", "Image", "Two images", "Image and text", "Space"], str(opts))
-    check("Every option has a picture and a description", pg.locator(".sec-option .sec-pic").count() == 6 and all(t.strip() for t in pg.locator(".sec-option .sec-hint").all_inner_texts()))
+    check("Three kinds to add, in plain words", opts[:3] == ["Text", "Statement", "Space"], str(opts))
+    check("Every option has a picture and a description", pg.locator(".sec-option .sec-pic").count() >= 3 and all(t.strip() for t in pg.locator(".sec-option .sec-hint").all_inner_texts()))
     check("A removed project section can be put back", "Outcomes" in opts, str(opts))
     pg.locator(".sec-option", has_text="Outcomes").click(); pg.wait_for_timeout(900)
     check("Putting Outcomes back adds it", "Outcomes" in rows(pg))
@@ -139,17 +139,14 @@ with sync_playwright() as p:
     pg2, e = open_editor(br); errors += e; open_panel(pg2)
     pg2.get_by_role("tab", name="Add a section").click(); pg2.wait_for_timeout(300)
     check("With nothing selected, new sections go above Also in this category", "Outcomes" in pg2.locator(".sec-where select option:checked").inner_text())
-    for name, kinds in [("Two images", ["Grid"]), ("Image and text", ["Grid"]), ("Statement", ["Text"]), ("Space", ["Spacer"]), ("One image", ["Image"])]:
+    for name in ["Statement", "Space"]:
         pg2.get_by_role("tab", name="Add a section").click(); pg2.wait_for_timeout(200)
         pg2.locator(".sec-option", has_text=name).first.click(); pg2.wait_for_timeout(900)
     types = [i["type"] for i in saved(pg2)["content"]]
-    check("Each kind adds the right block", types.count("Grid") == 2 and types.count("Spacer") == 1 and types.count("Image") == 1 and types.count("Text") == 1, str(types))
-    grid = [i for i in saved(pg2)["content"] if i["type"] == "Grid"]
-    cells = [[c["type"] for c in cell["props"]["content"]] for g in grid for cell in g["props"]["cells"]]
-    check("Two images has two image columns; Image and text has an image and text", ["Image"] in cells and ["Text"] in cells and cells.count(["Image"]) == 3, str(cells))
-    check("The page shows all five new sections", len(page_order(pg2)) == 16, str(len(page_order(pg2))))
+    check("Each kind adds the right block", types.count("Spacer") == 1 and types.count("Text") == 1 and "Image" not in types and "Grid" not in types, str(types))
+    check("The page shows both new sections", len(page_order(pg2)) == 13, str(len(page_order(pg2))))
     pg2.reload(wait_until="networkidle"); pg2.wait_for_timeout(2500); open_panel(pg2)
-    check("After a reload the new sections are still there", len(rows(pg2)) == 16, str(len(rows(pg2))))
+    check("After a reload the new sections are still there", len(rows(pg2)) == 13, str(len(rows(pg2))))
     pg2.close()
 
     # 9. Narrow screens: the panel fits, the rows stay large enough to tap, nothing overflows.
