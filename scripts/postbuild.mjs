@@ -74,6 +74,9 @@ for (const p of projects) byAddress.set(addressOf(p), [...(byAddress.get(address
 for (const [address, list] of byAddress)
   if (address && list.length > 1) errors.push(`Web address "${address}" is used by ${list.map((p) => `"${p.title}" (file ${p.slug}.md)`).join(' and ')}. Change one title, or fill in a different Web address for one of them.`)
 for (const m of mediaIn(about)) if (!existsSync(join('public', m))) errors.push(`About: file not found: ${m}`)
+if (site.clock?.time_zone) {
+  try { new Intl.DateTimeFormat('en-GB', { timeZone: site.clock.time_zone }) } catch { errors.push(`Site settings: the homepage clock's time zone "${site.clock.time_zone}" is not a real time zone. Use a name such as Europe/London or Asia/Kuala_Lumpur.`) }
+}
 for (const m of siteText.match(/\/(media|files)\/[^\s"']+/g) ?? []) if (!existsSync(join('public', m))) errors.push(`Site settings: file not found: ${m}`)
 
 // ---- 1. real pages for direct links

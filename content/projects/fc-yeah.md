@@ -22,7 +22,7 @@ tools:
   - '[Tools used]'
 objective: Sheffield Hallam students answered a live brief from French Connection UK with a campaign and a showcase event.
 what_i_did: Mood-boarding, casting and coordinating studio photoshoots for the campaign imagery. [Add anything you personally led.]
-what_team_did: 32 final campaign visuals and a short film, used across social, in-event and print, and a live showcase at Kommune, Sheffield, with about 200 guests. Marketing, project management, graphic design and styling teams worked alongside.
+what_team_did: 32 final campaign visuals and a short film, used across social, in-event and print, and a live showcase at Kommune, Sheffield, with about 50 guests. Marketing, project management, graphic design and styling teams worked alongside.
 research:
   text: '[The brief, the audience it targeted and the creative idea behind the imagery.]'
   moodboard:
@@ -42,7 +42,7 @@ results:
     label: campaign visuals
   - figure: '1'
     label: short film
-  - figure: ~200
+  - figure: ~50
     label: showcase guests
 outcome_note: '[Any response from French Connection UK, or how the work was used.]'
 skills:

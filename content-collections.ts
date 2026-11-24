@@ -151,6 +151,8 @@ const site = defineSingleton({
     areas_of_focus: z.array(z.object({ label: z.string(), category: z.string().optional() })),
     projects_intro: z.string().optional(),
     cv: z.string().optional(),
+    availability: z.string().optional(),
+    clock: z.object({ show: z.boolean().optional(), city: z.string(), time_zone: z.string(), line: z.string().optional() }).optional(),
     email: z.string(),
     instagram: z.string().optional(),
     linkedin: z.string().optional(),
