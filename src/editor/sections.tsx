@@ -1,6 +1,6 @@
 import { createUsePuck } from '@puckeditor/core'
 import { useContext, useEffect, useRef, useState } from 'react'
-import { Selection } from './elements'
+import { Selection, nameOf, partsOf, type Picked } from './elements'
 import { CopyIcon, DownIcon, TrashIcon, UpIcon } from './icons'
 
 // The Sections panel on the left: one place for the page's sections, with two clear jobs.
@@ -51,6 +51,9 @@ const SHOW: Record<string, string> = { desktop: 'Desktop only', phone: 'Phones o
 let openTab: (tab: Tab) => void = () => {}
 type Tab = 'page' | 'add'
 export const openSections = (tab: Tab = 'page') => openTab(tab)
+// Opens Sections at a section's parts (from the side panel), with the first part focused.
+let openParts: (id: string) => void = () => {}
+export const showPartsOf = (id: string) => { openTab('page'); setTimeout(() => openParts(id), 0) }
 
 let nextId = 0
 const newId = (type: string) => `${type}-${Date.now().toString(36)}${(nextId++).toString(36)}`
@@ -141,6 +144,31 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
   const [dragging, setDragging] = useState<number | null>(null)
   const [over, setOver] = useState<number | null>(null)
   const list = useRef<HTMLOListElement>(null)
+  // Each section's parts, listed under its row when opened: another way to select a part, the same
+  // as clicking it on the page, that works by keyboard and touch.
+  const { selected: part, select } = useContext(Selection)
+  const [open, setOpen] = useState<Set<string>>(() => new Set())
+  const [parts, setParts] = useState<Record<string, Picked[]>>({})
+  const toggle = (id: string, to = !open.has(id)) => setOpen((now) => { const next = new Set(now); if (to) next.add(id); else next.delete(id); return next })
+  // Read the parts from the page once it has redrawn (after any change to the content).
+  useEffect(() => {
+    const t = setTimeout(() => setParts(Object.fromEntries(content.map((i) => [i.props.id, partsOf(i.props.id)]))), 80)
+    return () => clearTimeout(t)
+  }, [content, open])
+  useEffect(() => {
+    openParts = (id) => { toggle(id, true); setTimeout(() => list.current?.querySelector<HTMLButtonElement>(`[data-parts-of="${id}"] button`)?.focus(), 150) }
+    return () => { openParts = () => {} }
+  })
+  // A part selected on the page opens its section here, so the list shows where it is.
+  const partTop = part ? content.find((i) => i.props.id === part.blockId || JSON.stringify(i.props).includes(`"id":"${part.blockId}"`))?.props.id : undefined
+  useEffect(() => { if (partTop && !open.has(partTop)) toggle(partTop, true) }, [partTop])
+  const pick = (m: Picked) => {
+    // Select the block the part belongs to, then the part itself, as a click on the page does.
+    const at = getSelectorForId(m.blockId)
+    if (at) dispatch({ type: 'setUi', ui: { itemSelector: at } })
+    setTimeout(() => select(m), 0)
+    setTimeout(() => canvas()?.querySelector(`[data-puck-component="${m.blockId}"] [data-el="${m.key}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60)
+  }
   // The section selected on the page may be inside another one (a column of a grid): show its section.
   const selectedTop = content.find((i) => i.props.id === selectedId || JSON.stringify(i.props).includes(`"id":"${selectedId}"`))?.props.id
 
@@ -204,6 +232,21 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
                 onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', item.props.id); setDragging(i) }}
                 onDragEnd={() => { setDragging(null); setOver(null) }}
               >⠿</span>
+              {(parts[item.props.id]?.length ?? 0) > 0 ? (
+                <button
+                  type="button"
+                  className="sec-toggle"
+                  aria-expanded={open.has(item.props.id)}
+                  aria-controls={`sec-parts-${item.props.id}`}
+                  aria-label={`Parts of ${label}`}
+                  title={open.has(item.props.id) ? 'Hide its parts' : 'Show its parts'}
+                  onClick={() => toggle(item.props.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowRight') { e.preventDefault(); if (open.has(item.props.id)) e.currentTarget.parentElement?.querySelector<HTMLButtonElement>('.sec-parts button')?.focus(); else toggle(item.props.id, true) }
+                    if (e.key === 'ArrowLeft') { e.preventDefault(); toggle(item.props.id, false) }
+                  }}
+                ><span aria-hidden="true">▸</span></button>
+              ) : <span className="sec-toggle-none" aria-hidden="true" />}
               <button
                 type="button"
                 className="sec-go"
@@ -239,6 +282,32 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
                   ))}
                   <button type="button" className="sec-danger" onClick={() => { remove(i); setMenu(null) }}><TrashIcon /> Remove</button>
                 </div>
+              )}
+              {open.has(item.props.id) && (parts[item.props.id]?.length ?? 0) > 0 && (
+                <ul className="sec-parts" id={`sec-parts-${item.props.id}`} data-parts-of={item.props.id} aria-label={`Parts of ${label}`}>
+                  {(() => {
+                    const list = parts[item.props.id]
+                    const count: Record<string, number> = {}
+                    return list.map((m) => {
+                      const base = nameOf(m.key)
+                      const n = (count[base] = (count[base] ?? 0) + 1)
+                      const name = list.filter((x) => nameOf(x.key) === base).length > 1 ? `${base} ${n}` : base
+                      const current = !!part && part.key === m.key && part.blockId === m.blockId
+                      return (
+                        <li key={`${m.blockId}|${m.key}`}>
+                          <button type="button" aria-current={current ? 'true' : undefined} onClick={() => pick(m)}
+                            onKeyDown={(e) => {
+                              const items = [...(e.currentTarget.closest('ul')?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
+                              const at = items.indexOf(e.currentTarget)
+                              if (e.key === 'ArrowDown') { e.preventDefault(); items[Math.min(items.length - 1, at + 1)]?.focus() }
+                              if (e.key === 'ArrowUp') { e.preventDefault(); items[Math.max(0, at - 1)]?.focus() }
+                              if (e.key === 'ArrowLeft') { e.preventDefault(); e.currentTarget.closest('.sec-row')?.querySelector<HTMLButtonElement>('.sec-toggle')?.focus() }
+                            }}>{name}</button>
+                        </li>
+                      )
+                    })
+                  })()}
+                </ul>
               )}
             </li>
           )

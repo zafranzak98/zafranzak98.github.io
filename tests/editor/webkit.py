@@ -92,6 +92,16 @@ for w, h in [(1440, 900), (390, 844)]:
         check(f"{w}px: editing Phone shows the strip", strip.startswith("Editing Phone."), strip[:60])
         btn(d, ".editor-screens button", "Desktop").click(); time.sleep(1.5)
 
+        # A part chosen from its section's list in Sections (item 8).
+        ActionChains(d).send_keys(Keys.ESCAPE).perform(); time.sleep(0.3)
+        if not btn(d, "[role='tab']", "On this page"): btn(d, "button, [role='button']", "Sections").click(); time.sleep(0.6)
+        btn(d, "[role='tab']", "On this page").click(); time.sleep(0.4)
+        js(d, "document.querySelector('.sec-row .sec-toggle[aria-label=\"Parts of Opening\"]').scrollIntoView({block:'center'})"); time.sleep(0.3)
+        tg = btn(d, ".sec-toggle[aria-label='Parts of Opening']")
+        if tg.get_attribute("aria-expanded") != "true": tg.click(); time.sleep(0.6)  # it may already be open (a part was selected)
+        btn(d, ".sec-parts button", "Title").click(); time.sleep(0.9)
+        check(f"{w}px: choosing a part in Sections selects it", name(d) == "Title", name(d))
+
         # Add an Image section and choose a photo.
         ActionChains(d).send_keys(Keys.ESCAPE).perform(); time.sleep(0.3)
         if not btn(d, "[role='tab']", "Add a section"): btn(d, "button, [role='button']", "Sections").click(); time.sleep(0.6)
