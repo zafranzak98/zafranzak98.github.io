@@ -16,6 +16,9 @@ export const RedoIcon = () => <Icon><path d="m15 14 5-5-5-5" /><path d="M20 9H9.
 export const EyeIcon = () => <Icon><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></Icon>
 export const PenIcon = () => <Icon><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></Icon>
 export const BoldIcon = () => <Icon><path d="M7 5h6a3.5 3.5 0 0 1 0 7H7Z" /><path d="M7 12h7a3.5 3.5 0 0 1 0 7H7Z" /></Icon>
+export const DotsIcon = () => <Icon><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></Icon>
+export const ItalicIcon = () => <Icon><path d="M10 5h8M6 19h8M14 5l-4 14" /></Icon>
+export const UnderlineIcon = () => <Icon><path d="M7 4v7a5 5 0 0 0 10 0V4" /><path d="M5 20h14" /></Icon>
 export const AlignLeftIcon = () => <Icon><path d="M4 6h16M4 10h10M4 14h16M4 18h10" /></Icon>
 export const AlignCentreIcon = () => <Icon><path d="M4 6h16M7 10h10M4 14h16M7 18h10" /></Icon>
 export const AlignRightIcon = () => <Icon><path d="M4 6h16M10 10h10M4 14h16M10 18h10" /></Icon>

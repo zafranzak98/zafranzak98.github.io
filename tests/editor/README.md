@@ -34,5 +34,11 @@ On `localhost` the editor runs as a demo, so nothing reaches GitHub. `signin.py`
 | `a11y.py` | Keyboard-only use of the Sections panel, and an axe check of the editor's own controls in three everyday states |
 | `everyday.py` | Your everyday tasks start to finish in one session (find, reorder, add, edit words, move and resize an image, screen sizes, Undo and Redo, save and reload), then the editor at 1920, 1440, 1280, 1024, 768, 390 and 375 px |
 | `signin.py` | The sign-in shared with the website editor: renewal in another tab, expiry, missing or unexpected data, fallback to the editor's own sign-in, sign-out from either editor |
+| `final.py` | Final refinements: links in the page, settings never cut off at 768 to 1920 px, Present the photo for project photos (size, shape, fit, crop, per screen, gallery rows), section names, phone layout at 320, 390, 430 and 844×390, and Bold/Italic/Underline on selected words with shortcuts, saving, Undo and Redo |
+| `photos.py` | Photos are added in the website editor, not here: Add a section offers Text, Statement and Space; no picker or Choose/Replace photo button; an old draft's empty Image section says to remove it, can be saved as a draft, blocks publishing until removed |
+| `present.py` | Present the photo: widths per screen, presets, shape, fit, crop focus, the soft-photo note, Reset, Undo and Redo, phones, keyboard and axe |
+| `webkit.py` | The main tasks in WebKit (WebKitGTK, not Safari): `xvfb-run -a python3 tests/editor/webkit.py` |
+
+`seed.py` is a helper, not a test: it puts a photo section into the unsaved draft before the page loads, because photos cannot be added in this editor.
 
 A failure names the check and what it found. Fix the cause, rebuild, and run the file again; then run the others, because a fix in one part of the editor can affect another.

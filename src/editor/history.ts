@@ -73,6 +73,11 @@ export function describeStep(before: Page | undefined, after: Page | undefined):
   const ra = before.root?.props ?? {}
   const rb = after.root?.props ?? {}
   if (!same(ra.intended, rb.intended)) return 'a layout note marked as intended'
-  if (!same(ra.edits, rb.edits)) return 'rename a category'
+  if (!same(ra.edits, rb.edits)) {
+    // Changed words on a project page are kept with the page; category names are shared ones.
+    const ea = (ra.edits ?? {}) as Record<string, unknown>, eb = (rb.edits ?? {}) as Record<string, unknown>
+    const changed = Object.keys({ ...ea, ...eb }).filter((k) => !same(ea[k], eb[k]))
+    return changed.every((k) => k.startsWith('category:')) ? 'rename a category' : 'edit the words'
+  }
   return 'the last change'
 }

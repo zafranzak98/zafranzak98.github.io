@@ -43,8 +43,8 @@ with sync_playwright() as p:
     row(pg, "Opening").locator(".sec-parts button", has_text="Summary line").click(); pg.wait_for_timeout(800)
     check("Choosing a part selects it, the same as clicking it on the page", pg.locator(".ctx-name").first.inner_text() == "Summary line")
     check("The chosen part is marked as current in the list", row(pg, "Opening").locator(".sec-parts button[aria-current='true']").inner_text() == "Summary line")
-    pg.locator(".ctx button[aria-label='Bold']").click(); pg.wait_for_timeout(500)
-    check("The selected part can be changed straight away", frame(pg).locator("[data-el='line']").first.evaluate("e => getComputedStyle(e).fontWeight") in ("700", "bold"))
+    pg.locator(".ctx button[aria-label='Larger text']").click(); pg.wait_for_timeout(500)
+    check("The selected part can be changed straight away", float(frame(pg).locator("[data-el='line']").first.evaluate("e => getComputedStyle(e).fontSize")[:-2]) > 20.3)
     pg.keyboard.press("Escape"); pg.wait_for_timeout(300)
     # Clicking a part on the page opens its section in the list.
     out = row(pg, "Outcomes").locator(".sec-toggle")
@@ -57,10 +57,10 @@ with sync_playwright() as p:
     # Sections without parts have no arrow; adding a section updates the list.
     pg.keyboard.press("Escape"); pg.wait_for_timeout(300)
     pg.get_by_role("tab", name="Add a section").click(); pg.wait_for_timeout(300)
-    pg.locator(".sec-option", has_text="Two images").first.click(); pg.wait_for_timeout(1500)
+    pg.locator(".sec-option", has_text="Space").first.click(); pg.wait_for_timeout(1500)
     sections(pg)
     r = pg.locator(".sec-row.is-selected").first
-    check("A new, empty Two images section has no arrow until it has photos", r.count() == 1 and r.locator(".sec-toggle").count() == 0)
+    check("A new Space section has no arrow (it has no parts)", r.count() == 1 and r.locator(".sec-toggle").count() == 0)
     # A section with several images: every name in its list is distinct.
     multi = None
     for i in range(pg.locator(".sec-row").count()):

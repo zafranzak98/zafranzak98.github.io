@@ -32,9 +32,12 @@ with sync_playwright() as p:
     pg.locator(".ctx button[aria-label='Olive']").click(); pg.wait_for_timeout(700)
     check("3 Change text colour (select, swatch)", (look(pg,"Outcomes","skills-label") or {}).get("desktop",{}).get("colour")=="Olive", 3)
     # 4 typography
-    pg.locator(".ctx button[aria-label='Larger text']").click(); pg.wait_for_timeout(300); pg.locator(".ctx button[aria-label='Bold']").click(); pg.wait_for_timeout(700)
+    # Whole-part weight is in All settings › Weight (the toolbar's Bold, Italic and Underline format selected words).
+    pg.locator(".ctx button[aria-label='Larger text']").click(); pg.wait_for_timeout(300)
+    if pg.locator(".el-panel:visible").count() == 0: pg.locator(".ctx .ctx-settings").click(); pg.wait_for_timeout(500)
+    pg.locator(".el-panel:visible [aria-label='Weight']").get_by_role("button", name="Bold", exact=True).click(); pg.wait_for_timeout(700)
     d=(look(pg,"Outcomes","skills-label") or {}).get("desktop",{})
-    check("4 Adjust typography (A+, Bold)", d.get("size") and d.get("weight")==700, 2, str(d))
+    check("4 Adjust typography (A+, Settings › Weight: Bold)", d.get("size") and d.get("weight")==700, 3, str(d))
     # 5 move image
     l=el("[data-el='image']"); x,y=centre(l); pg.mouse.click(x,y); pg.wait_for_timeout(600)
     pg.mouse.move(x,y); pg.mouse.down()
@@ -47,7 +50,7 @@ with sync_playwright() as p:
     h=f.locator(".el-frame .el-handle"); hx,hy=centre(h); pg.mouse.move(hx,hy); pg.mouse.down()
     for i in range(1,21): pg.mouse.move(hx-80*i/20,hy); pg.wait_for_timeout(20)
     pg.mouse.up(); pg.wait_for_timeout(800)
-    pg.locator(".ctx button", has_text="settings").first.click(); pg.wait_for_timeout(600)
+    if pg.locator(".ctx .ctx-settings").first.get_attribute("aria-pressed") != "true": pg.locator(".ctx .ctx-settings").first.click(); pg.wait_for_timeout(600)
     pg.get_by_role("button",name="Focus top centre").first.click(); pg.wait_for_timeout(600)
     pg.locator(".ctx button", has_text="settings").first.click(); pg.wait_for_timeout(400)
     d=(look(pg,"Work","image-0") or {}).get("desktop",{})

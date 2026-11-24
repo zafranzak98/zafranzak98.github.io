@@ -20,12 +20,8 @@ def fresh(br, w=1440, h=900):
     pg.goto(URL, wait_until="networkidle"); pg.evaluate("localStorage.clear()"); pg.reload(wait_until="networkidle"); pg.wait_for_timeout(2500)
     if not pg.locator(".sec-panel:visible").count(): pg.locator("[class*='_Nav-list'] [class*='_NavItem-link']").first.click(); pg.wait_for_timeout(600)
     return pg, errs
-def add_photo(pg, name):
-    pg.get_by_role("tab", name="Add a section").click(); pg.wait_for_timeout(300)
-    pg.locator(".sec-option", has_text="One image").first.click(); pg.wait_for_timeout(1200)
-    e = frame(pg).locator(".editor-empty-image").first; e.scroll_into_view_if_needed(); pg.wait_for_timeout(300); b = e.bounding_box()
-    pg.mouse.click(b["x"] + b["width"] / 2, b["y"] + b["height"] * 0.2); pg.wait_for_timeout(700)
-    pg.locator(f".ph-pick[aria-label^='{name}']").first.click(); pg.locator(".ph-alt input").fill("Test photo"); pg.keyboard.press("Enter"); pg.wait_for_timeout(1000)
+from seed import seed, image, PHOTOS
+def add_photo(pg, name): seed(pg, [image(PHOTOS[name])])
 def select_photo(pg):
     ph = frame(pg).locator(".free-photo").first; ph.scroll_into_view_if_needed(); pg.wait_for_timeout(300); b = ph.bounding_box()
     pg.mouse.click(b["x"] + b["width"] / 2, b["y"] + b["height"] / 2); pg.wait_for_timeout(700)
@@ -141,13 +137,8 @@ with sync_playwright() as p:
 
     # 9. On a phone: the controls fit and the photo uses the phone's width even at Wide.
     pg, e = fresh(br, 390, 844); errors += e
-    pg.get_by_role("tab", name="Add a section").click(); pg.wait_for_timeout(300)
-    pg.locator(".sec-option", has_text="One image").first.click(); pg.wait_for_timeout(1200)
-    if pg.locator(".sec-panel:visible").count(): pg.keyboard.press("Escape")
-    pg.locator(".ctx-photo").click(); pg.wait_for_timeout(600)
-    pg.locator(".ph-pick[aria-label^='brand proposal cover art']").first.click(); pg.locator(".ph-alt input").fill("Test photo")
-    pg.locator(".ph-dialog").get_by_role("button", name="Use this photo").click(); pg.wait_for_timeout(1000)
-    check("Phone: the photo is chosen and the picker closes", pg.locator(".ph-dialog").count() == 0)
+    add_photo(pg, "brand proposal cover art")
+    check("Phone: a page with a photo opens with the photo shown", frame(pg).locator(".free-photo img").count() == 1)
     ph = frame(pg).locator(".free-photo").first; ph.scroll_into_view_if_needed(); b = ph.bounding_box(); pg.mouse.click(b["x"] + b["width"] / 2, b["y"] + b["height"] / 2); pg.wait_for_timeout(700)
     pg.get_by_role("button", name="Settings").first.click(); pg.wait_for_timeout(700)
     g = panel(pg)

@@ -68,7 +68,7 @@ export function Opening({ design, elements }: BlockProps) {
             {p.status === 'Draft' && <span className="draft-badge">Draft</span>}
           </span>
           <h1 {...el('title', { className: 'c cs-title', field: 'title' })}>{p.title}</h1>
-          <p {...el('line', { className: 'cs-line', field: 'summary' })}><span><Rich text={p.summary} /></span></p>
+          <p {...el('line', { className: 'cs-line', field: 'summary', rich: true })}><span><Rich text={p.summary} /></span></p>
         </div>
         <div {...el('image', { className: 'cs-open-visual' })}><OpeningVisual p={p} /></div>
       </div>
@@ -152,7 +152,7 @@ const Figures = ({ items, big, el = plain, field }: { items: { figure: string; l
     {items.map((f, i) => (
       <div key={i}>
         <b {...el(`figure-${i}`, { className: 'c', style: { '--chars': Math.max(3, [...f.figure].length) } as CSSProperties, field: field && `${field}:${i}:figure` })}>{f.figure}</b>
-        <span {...el(`figure-label-${i}`, { field: field && `${field}:${i}:label` })}><Rich text={f.label} /></span>
+        <span {...el(`figure-label-${i}`, { field: field && `${field}:${i}:label`, rich: true })}><Rich text={f.label} /></span>
       </div>
     ))}
   </div>
@@ -164,10 +164,10 @@ export function Overview({ design, elements }: BlockProps) {
   if (!shown.includes('overview')) return null
   return (
     <Sec id="overview" title={label(p, 'overview')} design={design} titleProps={el('title', { className: 'c', field: 'labels:overview' })}>
-      {p.objective && <p {...el('lead', { className: 'lead', field: 'objective' })}><Rich text={p.objective} highlight /></p>}
+      {p.objective && <p {...el('lead', { className: 'lead', field: 'objective', rich: true })}><Rich text={p.objective} highlight /></p>}
       <div className={p.what_team_did ? 'did did-two' : 'did'}>
-        {p.what_i_did && <div><span {...el('label-did', { className: 'lab', field: 'labels:what_i_did' })}>{label(p, 'what_i_did')}</span><p {...el('did', { field: 'what_i_did' })}><Rich text={p.what_i_did} highlight /></p></div>}
-        {p.what_team_did && <div><span {...el('label-team', { className: 'lab', field: 'labels:what_team_did' })}>{label(p, 'what_team_did')}</span><p {...el('team', { field: 'what_team_did' })}><Rich text={p.what_team_did} highlight /></p></div>}
+        {p.what_i_did && <div><span {...el('label-did', { className: 'lab', field: 'labels:what_i_did' })}>{label(p, 'what_i_did')}</span><p {...el('did', { field: 'what_i_did', rich: true })}><Rich text={p.what_i_did} highlight /></p></div>}
+        {p.what_team_did && <div><span {...el('label-team', { className: 'lab', field: 'labels:what_team_did' })}>{label(p, 'what_team_did')}</span><p {...el('team', { field: 'what_team_did', rich: true })}><Rich text={p.what_team_did} highlight /></p></div>}
       </div>
     </Sec>
   )
@@ -181,14 +181,14 @@ export function Research({ design, elements }: BlockProps) {
   return (
     <Sec id="research" title={label(p, 'research')} design={design} titleProps={el('title', { className: 'c', field: 'labels:research' })}>
       {r?.stats?.length ? <Figures items={r.stats} el={el} field="research:stats" /> : null}
-      {r?.text && <p {...el('text', { className: 'lead', field: 'research:text' })}><Rich text={r.text} /></p>}
-      {r?.extra && <p {...el('extra', { className: 'body-text', field: 'research:extra' })}><Rich text={r.extra} /></p>}
+      {r?.text && <p {...el('text', { className: 'lead', field: 'research:text', rich: true })}><Rich text={r.text} /></p>}
+      {r?.extra && <p {...el('extra', { className: 'body-text', field: 'research:extra', rich: true })}><Rich text={r.extra} /></p>}
       {r?.moodboard && <div {...el('moodboard', { className: 'mood' })}><Media img={r.moodboard} ratio="21/9" label="moodboard" sizes="(max-width: 899px) 100vw, 67vw" /></div>}
     </Sec>
   )
 }
 
-const caption = (img: Img | undefined, el: ElementFn, key: string, field: string) => img?.caption && <p {...el(key, { className: 'cap', field })}><Rich text={img.caption} /></p>
+const caption = (img: Img | undefined, el: ElementFn, key: string, field: string) => img?.caption && <p {...el(key, { className: 'cap', field, rich: true })}><Rich text={img.caption} /></p>
 
 // How wide supporting images are shown: one, two or three across (two across on a phone).
 const GRID_SIZES: Record<number, string> = {
@@ -217,7 +217,7 @@ function WorkContent({ p, el }: { p: Project; el: ElementFn }) {
       {caption(p.key_piece, el, 'key-caption', 'key_piece:caption')}
     </figure>
   )
-  const note = p.supporting_note && <p {...el('note', { className: 'cap', field: 'supporting_note' })}><Rich text={p.supporting_note} /></p>
+  const note = p.supporting_note && <p {...el('note', { className: 'cap', field: 'supporting_note', rich: true })}><Rich text={p.supporting_note} /></p>
   switch (p.design) {
     case 'bersih':
       return (
@@ -227,7 +227,7 @@ function WorkContent({ p, el }: { p: Project; el: ElementFn }) {
           {p.context && (
             <div className="work-context">
               <Wrap props={el('context')}><Media img={p.context} ratio="9/16" sizes="(max-width: 899px) 33vw, 30vw" /></Wrap>
-              <p {...el('context-text', { field: 'context:text' })}><Rich text={p.context.text} /></p>
+              <p {...el('context-text', { field: 'context:text', rich: true })}><Rich text={p.context.text} /></p>
             </div>
           )}
         </>
@@ -299,9 +299,9 @@ export function Outcomes({ design, elements }: BlockProps) {
   if (!shown.includes('outcomes')) return null
   return (
     <Sec id="outcomes" title={label(p, 'outcomes')} design={design} titleProps={el('title', { className: 'c', field: 'labels:outcomes' })}>
-      {p.results_label && <span {...el('results-label', { className: 'lab', field: 'results_label' })}><Rich text={p.results_label} /></span>}
+      {p.results_label && <span {...el('results-label', { className: 'lab', field: 'results_label', rich: true })}><Rich text={p.results_label} /></span>}
       {p.results?.length ? <Figures items={p.results} big el={el} field="results" /> : null}
-      {p.outcome_note && <p {...el('note', { className: 'body-text outcome-note', field: 'outcome_note' })}><Rich text={p.outcome_note} /></p>}
+      {p.outcome_note && <p {...el('note', { className: 'body-text outcome-note', field: 'outcome_note', rich: true })}><Rich text={p.outcome_note} /></p>}
       {p.skills?.length ? (
         <div className="skills">
           <span {...el('skills-label', { className: 'lab', field: 'labels:skills' })}>{label(p, 'skills')}</span>

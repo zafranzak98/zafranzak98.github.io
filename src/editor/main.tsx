@@ -17,7 +17,7 @@ import { describeStep } from './history'
 import { LayoutNotes, checkOptions, settled, type Intended } from './notes'
 import { ContextBar, screenFor } from './panel'
 import { SectionsPanel, openSections } from './sections'
-import { PhotoPicker, emptyImages, openPhotoPicker } from './photos'
+import { emptyImages } from './photos'
 import { EyeIcon, LayersIcon, RedoIcon, SlidersIcon, UndoIcon } from './icons'
 
 // The design editor at /admin/design/. Arrange and restyle a page with its real blocks, then
@@ -222,7 +222,8 @@ function ScreenStrip({ width }: { width: number }) {
   return (
     <p className={`editor-strip is-${screen}`}>
       <b>Editing {SCREEN_NAME[screen]}.</b>{' '}
-      {screen === 'tablet' ? 'Changes here apply to tablets, and to phones unless Phone has its own setting.' : 'Changes here apply to phones only.'}
+      <span className="editor-strip-main">{screen === 'tablet' ? 'Changes here apply to tablets, and to phones unless Phone has its own setting.' : 'Changes here apply to phones only.'}</span>
+      <span className="editor-strip-short">{screen === 'tablet' ? 'Tablets, and phones unless set there.' : 'Phones only.'}</span>
       <span className="editor-strip-more"> Anything not changed here follows {screen === 'tablet' ? 'Desktop' : 'Tablet and Desktop'}. A dot on a size button means the selected part has its own settings there.</span>
     </p>
   )
@@ -432,7 +433,7 @@ function Actions() {
 
   const publish = () => run('Publishing', async () => {
     // Never publish an empty Image section, whichever way Publish was reached.
-    if (emptyImages(data.content as never).length) throw new Error('An Image section has no photo yet. Choose a photo or remove the section, then publish.')
+    if (emptyImages(data.content as never).length) throw new Error('An Image section has no photo. Remove the section, then publish.')
     setPanel('')
     if (DEMO) {
       const list = readLocal<Version[]>(localKey(p.slug, 'versions'), [])
@@ -505,7 +506,6 @@ function Actions() {
 
   return (
     <header className="editor-bar">
-      <PhotoPicker />
       <div className="editor-bar-start">
         <span className="editor-brand">Design editor</span>
         {DEMO && <span className="editor-chip" title="Everything works, but saving and publishing stay in this browser.">Demo</span>}
@@ -539,12 +539,13 @@ function Actions() {
           <button type="button" onClick={history.back} disabled={!history.hasPast} title={history.hasPast ? `Undo: ${undoWhat} (Cmd+Z)` : 'Nothing to undo'} aria-label={history.hasPast ? `Undo: ${undoWhat}` : 'Undo'}><UndoIcon /><span className="editor-word">Undo</span></button>
           <button type="button" onClick={history.forward} disabled={!history.hasFuture} title={history.hasFuture ? `Redo: ${redoWhat} (Cmd+Shift+Z)` : 'Nothing to redo'} aria-label={history.hasFuture ? `Redo: ${redoWhat}` : 'Redo'}><RedoIcon /><span className="editor-word">Redo</span></button>
         </div>
-        <span className={`editor-status is-${state}`} role="status" title={statusHint}><span className="editor-status-mark" aria-hidden="true" />{status}</span>
+        <span className={`editor-status is-${state}`} role="status" title={`${status}. ${statusHint}`}><span className="editor-status-mark" aria-hidden="true" /><span className="editor-status-text">{status}</span></span>
         <LayoutNotes p={p} screen={SCREEN_NAME[screenFor(Number(ui.viewports.current.width) || 1440)]} preview={preview} checkSizes={checkSizes} />
         <button type="button" className="editor-quiet editor-preview" aria-pressed={preview} onClick={togglePreview}><EyeIcon /><span>{preview ? 'Back to editing' : 'Preview'}</span></button>
         <div className="editor-more-wrap" ref={moreRef}>
-          <button type="button" className="editor-quiet" aria-expanded={more} aria-haspopup="true" onClick={() => setMore(!more)}>More <span aria-hidden="true">▾</span></button>
+          <button type="button" className="editor-quiet editor-more-btn" aria-expanded={more} aria-haspopup="true" onClick={() => setMore(!more)}><span className="editor-more-word">More </span><span className="editor-more-caret" aria-hidden="true">▾</span><span className="editor-more-dots" aria-hidden="true">⋯</span></button>
           <div className={more ? 'editor-more open' : 'editor-more'}>
+            <button type="button" className="editor-more-preview" onClick={choose(togglePreview)}>{preview ? 'Back to editing' : 'Preview'} <small>{preview ? 'change the page again' : 'the page as visitors see it'}</small></button>
             <button type="button" onClick={choose(openHistory)} disabled={!!busy}>Versions <small>bring back an earlier version</small></button>
             <button type="button" onClick={choose(discardUnsaved)} disabled={!!busy || !unpublished}>Discard changes <small>go back to the published page</small></button>
             <button type="button" onClick={choose(() => setPanel('reset'))} disabled={!!busy}>Standard layout <small>start again from the template</small></button>
@@ -578,8 +579,7 @@ function Actions() {
           {warnings.map((w) => <p key={w} className="editor-warning-text">{w}</p>)}
           {empties.length > 0 && (
             <div className="editor-blocked" role="alert">
-              <p><b>{empties.length === 1 ? 'An Image section has no photo yet.' : `${empties.length} Image sections have no photo yet.`}</b> Choose a photo, or remove the section, before publishing. Saving a draft still works.</p>
-              <ul>{empties.map((id, k) => <li key={id}><button type="button" onClick={() => { setPanel(''); openPhotoPicker(id) }}>Choose a photo{empties.length > 1 ? ` (${k + 1})` : ''}</button></li>)}</ul>
+              <p><b>{empties.length === 1 ? 'An Image section has no photo.' : `${empties.length} Image sections have no photo.`}</b> Remove {empties.length === 1 ? 'it' : 'them'} in Sections before publishing. Photos are added in the website editor (/admin). Saving a draft still works.</p>
             </div>
           )}
           {findings === null ? (

@@ -5,9 +5,9 @@ import { allCategories } from '../../.content-collections/generated'
 
 // Read straight from the content, so the saving code (and its tests) do not load the whole site.
 const categoryName = (slug: string) => allCategories.find((c) => c.slug === slug)?.name ?? slug
-import { openPhotoPicker } from './photos'
 import { boxOf, clearGuides, describeSnap, drawGuides, linesFor, snap, type Box } from './guides'
 import { LABELS, type LabelKey } from '#/layout/labels'
+import { MOD, fillBox, readBox, report, setTypingBox, takeStartAtEnd } from './formatting'
 
 // Editing single elements on the page: click one to select it, double-click its words to change
 // them, then style it in the "Selected element" panel or move it with the arrow keys.
@@ -335,13 +335,30 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     const onPointerLeave = () => { hide(doc.querySelector('.el-hover')); html.removeAttribute('data-el-over') }
 
     const onClick = (e: MouseEvent) => {
+      // A link on the page never leaves the editor (Enter on a focused link sends a click too):
+      // another page would replace the one being edited. Jumps within the page (#outcomes) still work.
+      const link = (e.target as HTMLElement).closest?.<HTMLAnchorElement>('a[href]')
+      const href = link?.getAttribute('href') ?? ''
+      // A jump within the page scrolls to its section here (the page is not a real address, so the
+      // browser's own jump would reload it).
+      if (link && href.startsWith('#')) {
+        e.preventDefault()
+        const target = href.length > 1 ? doc.getElementById(decodeURIComponent(href.slice(1))) : null
+        target?.scrollIntoView({ block: 'start' })
+        if (e.detail === 0 || previewing()) return
+      } else if (link) {
+        e.preventDefault()
+        if (e.detail === 0) {
+          announceListeners.forEach((fn) => fn('Links to other pages open on the website, not in the editor.'))
+          // From the keyboard, Enter on a link selects the part it belongs to, as a click would.
+          const part = link.closest<HTMLElement>('[data-el]')
+          if (part && !previewing()) select(pickOf(part))
+          return
+        }
+      }
       // The second click of a double-click never changes the selection: the double-click types.
       if (previewing() || e.detail > 1) return
       if (dragged) { dragged = false; return }
-      // An empty Image section's frame opens the photo picker (Puck keeps clicks off the page itself,
-      // so the frame is found by where the click landed).
-      const empty = [...doc.querySelectorAll<HTMLElement>('.editor-empty-image')].find((n) => { const r = n.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom })
-      if (empty?.dataset.choosePhoto && !e.shiftKey && !latest.current.adding) { openPhotoPicker(empty.dataset.choosePhoto); return }
       const more = e.shiftKey || latest.current.adding
       const onFrame = (e.target as HTMLElement).closest?.('.el-frame, .el-gframe')
       if (onFrame && !more) return
@@ -377,29 +394,39 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       const box = doc.createElement('div')
       box.className = 'el-typing'
       const blockId = blockOf(el)
-      box.textContent = latest.current.words.read(field, blockId)
+      // Words that the page shows with formatting are typed with it too (bold, italic, underline);
+      // titles, headings and labels are plain words.
+      const rich = el.hasAttribute('data-rich')
+      if (rich) fillBox(box, latest.current.words.read(field, blockId))
+      else box.textContent = latest.current.words.read(field, blockId)
       Object.assign(box.style, {
         left: `${r.left + view.scrollX}px`, top: `${r.top + view.scrollY}px`, width: `${Math.max(r.width, 120)}px`, minHeight: `${r.height}px`,
         font: look.font, letterSpacing: look.letterSpacing, textTransform: look.textTransform, lineHeight: look.lineHeight, color: look.color, textAlign: look.textAlign,
       })
-      try { box.contentEditable = 'plaintext-only' } catch { box.contentEditable = 'true' }
+      if (rich) box.contentEditable = 'true'
+      else try { box.contentEditable = 'plaintext-only' } catch { box.contentEditable = 'true' }
       box.setAttribute('role', 'textbox')
       box.setAttribute('aria-label', `${nameOf(el.dataset.el!)}: edit the words, then press Enter`)
       const help = doc.createElement('span')
       help.className = 'el-tag el-tag-help'
       help.setAttribute('aria-hidden', 'true')
-      help.textContent = 'Enter to finish · Esc to cancel'
+      help.textContent = rich ? `Enter to finish · Esc to cancel · ${MOD}B, ${MOD}I, ${MOD}U to format` : 'Enter to finish · Esc to cancel'
       Object.assign(help.style, { left: `${r.left + view.scrollX}px`, top: `${r.bottom + view.scrollY}px` })
       el.setAttribute('data-el-editing', '')
       html.setAttribute('data-el-typing', '')
       doc.body.append(box, help)
       box.focus()
-      doc.getSelection()?.selectAllChildren(box)
+      if (takeStartAtEnd()) { doc.getSelection()?.selectAllChildren(box); doc.getSelection()?.collapseToEnd() }
+      else doc.getSelection()?.selectAllChildren(box)
+      if (rich) setTypingBox(box)
+      const onSelection = () => report()
+      if (rich) doc.addEventListener('selectionchange', onSelection)
       let done = false
       const finish = (keep: boolean) => {
         if (done) return
         done = true
-        const words = (box.textContent ?? '').replace(/\s+/g, ' ').trim()
+        const words = rich ? readBox(box) : (box.textContent ?? '').replace(/\s+/g, ' ').trim()
+        if (rich) { doc.removeEventListener('selectionchange', onSelection); setTypingBox(null) }
         box.remove()
         help.remove()
         el.removeAttribute('data-el-editing')
@@ -411,6 +438,17 @@ export function useCanvasEditing(p: Project, edits: Edits) {
         k.stopPropagation()
         if (k.key === 'Enter' && !k.shiftKey) { k.preventDefault(); finish(true) }
         if (k.key === 'Escape') { k.preventDefault(); finish(false) }
+        // Cmd/Ctrl+B, I and U format the selected words (or what is typed next); plain words have none.
+        const command = (k.metaKey || k.ctrlKey) && !k.altKey && ({ b: 'bold', i: 'italic', u: 'underline' } as const)[k.key.toLowerCase() as 'b' | 'i' | 'u']
+        if (command) {
+          k.preventDefault()
+          if (rich) { doc.execCommand('styleWithCSS', false, 'false'); doc.execCommand(command); report() }
+        }
+      })
+      // Pasted words arrive as plain words, so formatting from elsewhere never comes with them.
+      box.addEventListener('paste', (p) => {
+        p.preventDefault()
+        doc.execCommand('insertText', false, (p.clipboardData?.getData('text/plain') ?? '').replace(/\s+/g, ' '))
       })
       box.addEventListener('blur', () => finish(true))
     }

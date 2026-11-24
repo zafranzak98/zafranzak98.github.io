@@ -1,5 +1,4 @@
 import { kindName, showPartsOf } from './sections'
-import { openPhotoPicker } from './photos'
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { createUsePuck } from '@puckeditor/core'
@@ -7,8 +6,9 @@ import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { COVER_NAMES, COVER_SIZES, TEXT_SIZES, lookAt, type ElementLook, type ElementStyle, type Elements, type Screen, type TextSize } from '#/layout/elements'
 import { photoSize, type Project } from '#/lib/site'
 import { ratioOptions } from '#/layout/free-blocks'
+import { MOD, formatListeners, formatWords, type Command, type Formats } from './formatting'
 import { IMAGES, Selection, type Picked, partsOf, angleOf, groupMoveListeners, coverListeners, rotateListeners, stackListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
-import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, ResetIcon, RotateIcon, SelectMoreIcon, ImageIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
+import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DotsIcon, ItalicIcon, UnderlineIcon, DownIcon, LayersIcon, PenIcon, ResetIcon, RotateIcon, SelectMoreIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
 
 // The editing controls. The contextual bar under the top bar holds what you use most for the
 // selected text, image or section; the side panel ("All settings") holds everything, grouped.
@@ -65,6 +65,13 @@ function useLook() {
     if (!Object.keys(nextStyle).length) delete all[key]
     dispatch({ type: 'replace', destinationIndex: at.index, destinationZone: at.zone, data: { ...item, props: { ...item.props, elements: all } } as never })
   }
+  // The same change for several parts of this section at one screen size (a gallery row's shape), as one change.
+  const setLookFor = (keys: string[], at: Screen, patch: Partial<ElementLook>) => {
+    const pos = item && getSelectorForId(item.props.id as string)
+    if (!item || !pos) return
+    const all = keys.reduce((els, k) => merged(els, k, at, patch), value)
+    dispatch({ type: 'replace', destinationIndex: pos.index, destinationZone: pos.zone, data: { ...item, props: { ...item.props, elements: all } } as never })
+  }
   // Settings of the whole section (an Image section's shape and fit), the same on every screen size.
   const setProps = (patch: Record<string, unknown>) => {
     const at = item && getSelectorForId(item.props.id as string)
@@ -75,7 +82,7 @@ function useLook() {
   const from = (...k: (keyof ElementLook)[]) => (k.some((x) => own[x] !== undefined) ? 'here' : k.some((x) => shown[x] !== undefined) ? 'larger' : 'design')
   const resetAll = () => setLook(Object.fromEntries(Object.keys(own).map((k) => [k, undefined])))
   const background = ((item?.props as { design?: { background?: Colour } })?.design?.background ?? 'Off-white') as Colour
-  return { key, item, selected, screen, own, shown, setLook, setProps, from, resetAll, background }
+  return { key, item, selected, screen, own, shown, style, setLook, setLookFor, setProps, from, resetAll, background }
 }
 
 // Several elements, in any sections, change together as one change: one step to undo.
@@ -199,7 +206,7 @@ function MoreMenu({ name, children }: { name: string; children: (close: () => vo
   return (
     <span className="ctx-more-wrap" ref={wrap}>
       <button type="button" className="ctx-btn ctx-more" aria-label={`More options for ${name}`} aria-expanded={!!at} aria-haspopup="true" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setAt(at ? null : { left: r.left, top: r.bottom + 4 }) }}>
-        <span>More options</span> <span aria-hidden="true">▾</span>
+        <span className="ctx-dots"><DotsIcon /></span><span>More options</span> <span aria-hidden="true">▾</span>
       </button>
       {at && createPortal(
         <span className="ctx-menu ctx-more-menu" ref={menu} role="group" aria-label={`More options for ${name}`} style={{ left: Math.max(8, Math.min(at.left, window.innerWidth - 248)), top: at.top }} onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close() } }}>
@@ -265,7 +272,7 @@ export function ContextBar() {
     } else dispatch({ type: 'setUi', ui: { rightSideBarVisible: !ui.rightSideBarVisible } })
   }
   const more = (
-    <button type="button" className="ctx-btn" aria-pressed={phone() ? ui.plugin?.current === 'fields' : ui.rightSideBarVisible} onClick={toggleSettings}>
+    <button type="button" className="ctx-btn ctx-settings" aria-pressed={phone() ? ui.plugin?.current === 'fields' : ui.rightSideBarVisible} onClick={toggleSettings}>
       <SlidersIcon /><span className="ctx-long">All settings</span><span className="ctx-short">Settings</span>
     </button>
   )
@@ -308,7 +315,6 @@ export function ContextBar() {
           <Swatches value={design.background} onChange={setBackground} small />
           {design.background && <button type="button" className="ctx-icon" title="Background as designed" aria-label="Background as designed" onClick={() => setBackground(undefined)}><ResetIcon /></button>}
         </span>
-        {item.type === 'Image' && <button type="button" className="ctx-btn ctx-photo" onClick={() => openPhotoPicker(item.props.id as string)}><ImageIcon /><span>{(item.props as { image?: string }).image ? 'Replace photo' : 'Choose a photo'}</span></button>}
         <span className="ctx-group">
           <button type="button" className="ctx-btn" disabled={!at || at.index === 0} onClick={() => at && dispatch({ type: 'reorder', sourceIndex: at.index, destinationIndex: at.index - 1, destinationZone: at.zone })}><UpIcon /><span>Move up</span></button>
           <button type="button" className="ctx-btn" disabled={!at || last} onClick={() => at && dispatch({ type: 'reorder', sourceIndex: at.index, destinationIndex: at.index + 1, destinationZone: at.zone })}><DownIcon /><span>Move down</span></button>
@@ -397,7 +403,7 @@ export function ContextBar() {
               <button type="button" aria-label="Larger text" title="Larger" onClick={() => setLook({ size: SIZES[Math.min(SIZES.length - 1, currentSize(shown) + 1)] })}>+</button>
             </span>
           </span>
-          <button type="button" className="ctx-icon" aria-pressed={(shown.weight ?? 0) >= 600} aria-label="Bold" title="Bold" onClick={() => setLook({ weight: (shown.weight ?? 0) >= 600 ? 400 : 700 })}><BoldIcon /></button>
+          {el?.hasAttribute('data-rich') && <FormatButtons start={startTyping} />}
           <span className="ctx-group" role="group" aria-label="Colour">
             <span className="ctx-label ctx-label-plain">Colour</span>
             <Swatches value={shown.colour} onChange={(colour) => setLook({ colour })} small />
@@ -427,7 +433,7 @@ export function ContextBar() {
       <span className="ctx-gap" />
       {where}
       {more}
-      <button type="button" className="ctx-icon" aria-label="Done, deselect (Esc)" title="Done (Esc)" onClick={() => select(null)}>✕</button>
+      <button type="button" className="ctx-icon ctx-done" aria-label="Done, deselect (Esc)" title="Done (Esc)" onClick={() => select(null)}>✕</button>
       {live}
     </div>
   )
@@ -594,7 +600,7 @@ function Crumbs({ part }: { part?: string }) {
 }
 
 export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements) => void; p: Project }) {
-  const { key, item, selected, screen, own, shown, setLook, setProps, from, resetAll, background } = useLook()
+  const { key, item, selected, screen, own, shown, style, setLook, setLookFor, setProps, from, resetAll, background } = useLook()
   const words = useWords(p)
   const [snapping, setSnapping] = useState(snapOn)
   const { group } = useContext(Selection)
@@ -636,7 +642,8 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
 
       {selected?.field && (
         <Group title="Content" detail="Words">
-          <textarea className="el-words" rows={wordRows(words.read(selected.field, selected.blockId))} aria-label="Words" value={words.read(selected.field, selected.blockId)} onChange={(e) => words.write(selected.field!, e.target.value, selected.blockId)} />
+          <textarea className="el-words" rows={wordRows(words.read(selected.field, selected.blockId))} aria-label="Words" aria-describedby={el?.hasAttribute('data-rich') ? 'el-words-hint' : undefined} value={words.read(selected.field, selected.blockId)} onChange={(e) => words.write(selected.field!, e.target.value, selected.blockId)} />
+          {el?.hasAttribute('data-rich') && <p className="el-note" id="el-words-hint">To format words, select them on the page and use Bold, Italic or Underline. Here they show as *bold*, _italic_ and ++underline++.</p>}
         </Group>
       )}
 
@@ -657,6 +664,20 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
           setProps={setProps}
           reset={reset}
           measure={() => elFor(selected?.blockId, key)?.getBoundingClientRect().width ?? 0}
+          angleRow={angleRow}
+        />
+      ) : isProjectPhoto(key) ? (
+        <ProjectPhotoGroup
+          photoKey={key}
+          row={el ? rowOf(el) : [key]}
+          screen={screen}
+          desktop={style.desktop ?? {}}
+          width={width}
+          shown={shown}
+          from={from}
+          setLook={setLook}
+          setDesktop={(keys, patch) => setLookFor(keys, 'desktop', patch)}
+          reset={reset}
           angleRow={angleRow}
         />
       ) : isImage ? (
@@ -806,6 +827,60 @@ function PhotoGroup({ props, width, shown, from, setLook, setProps, reset, measu
   )
 }
 
+// A photo on a project page: it was placed in the website editor (/admin), which is where photos are
+// added or replaced; here only the way it is shown changes. Span and width can differ per screen size;
+// shape and fit are set once for every size. In a gallery row the shape is the row's, so the photos stay
+// lined up; each photo keeps its own fit and crop focus.
+export const isProjectPhoto = (key: string | null) => !!key && /^(key|image-\d+|moodboard|context)$/.test(key)
+const SPAN_OPTIONS: [string, string][] = [['narrow', 'Narrow'], ['text', 'Text column'], ['wide', 'Wide'], ['full', 'Full']]
+const PHOTO_SHAPE_OPTIONS: [string, string][] = [['', 'As designed'], ['auto', 'Its own shape'], ['1/1', 'Square'], ['4/5', 'Portrait 4:5'], ['3/4', 'Portrait 3:4'], ['16/9', 'Landscape 16:9']]
+// The photos sharing a gallery row with this one (itself included), or just this one.
+function rowOf(el: HTMLElement) {
+  const row = el.parentElement?.closest('.work-grid') ? [...el.parentElement!.children].map((n) => (n as HTMLElement).dataset.el).filter((k): k is string => !!k && /^image-\d+$/.test(k)) : []
+  return row.length > 1 ? row : [el.dataset.el!]
+}
+function ProjectPhotoGroup({ photoKey, row, screen, desktop, width, shown, from, setLook, setDesktop, reset, angleRow }: {
+  photoKey: string; row: string[]; screen: Screen; desktop: ElementLook; width: number; shown: ElementLook
+  from: (...k: (keyof ElementLook)[]) => string; setLook: (patch: Partial<ElementLook>) => void
+  setDesktop: (keys: string[], patch: Partial<ElementLook>) => void; reset: (...k: (keyof ElementLook)[]) => void; angleRow: ReactNode
+}) {
+  const inRow = row.length > 1
+  const shape = desktop.shape ?? ''
+  const fit = desktop.fit ?? 'cover'
+  const crops = shape !== 'auto'
+  const span = shown.span ?? 'full'
+  return (
+    <Group title="Look" detail="Photo">
+      <p className="el-note">This photo is placed in the website editor (/admin). Here you change how it is shown; the photo file stays as it is.</p>
+      {!inRow && (
+        <Row label="Size" hint={screen === 'phone' ? 'The space the photo can fill on phones.' : 'The space the photo can fill. Phones use their full width unless you set Phone.'} from={from('span')} onReset={() => reset('span')}>
+          <Segments label="Size" value={span} options={SPAN_OPTIONS} onChange={(v) => setLook({ span: screen === 'desktop' && v === 'full' ? undefined : (v as ElementLook['span']) })} />
+        </Row>
+      )}
+      <Row label="Width on this screen" hint={inRow ? 'A share of its place in the row, for this screen size only.' : 'A share of that space, for this screen size only.'} from={from('width')} onReset={() => reset('width')}>
+        <input type="range" min={20} max={100} step={5} value={width} aria-label="Width" aria-valuetext={`${width}%`} onChange={(e) => setLook({ width: Number(e.target.value) })} />
+        <NumberField label="Width in per cent" value={width} unit="%" step={5} min={20} max={100} onCommit={(w) => setLook({ width: w })} />
+      </Row>
+      <Row label="Shape" hint={inRow ? `The same on every screen size, and for all ${row.length} photos in this row, so they stay lined up.` : 'The same on every screen size. Its own shape shows the whole photo, uncropped.'} from={shape ? 'here' : 'design'} onReset={() => setDesktop(row, { shape: undefined, fit: undefined })}>
+        <select className="el-select" aria-label={inRow ? `Shape of the ${row.length} photos in this row` : 'Shape'} value={shape} onChange={(e) => setDesktop(row, { shape: (e.target.value || undefined) as ElementLook['shape'] })}>
+          {PHOTO_SHAPE_OPTIONS.map(([v, name]) => <option key={v} value={v}>{name}</option>)}
+        </select>
+      </Row>
+      {crops && (
+        <Row label="Fit" hint={fit === 'cover' ? 'The photo fills the frame; the edges that do not fit are hidden.' : 'All of the photo shows; the page colour fills the rest of the frame.'} from={desktop.fit ? 'here' : 'design'} onReset={() => setDesktop([photoKey], { fit: undefined })}>
+          <Segments label="Fit" value={fit} options={FITS} onChange={(f) => setDesktop([photoKey], { fit: f === 'cover' ? undefined : (f as ElementLook['fit']) })} />
+        </Row>
+      )}
+      {crops && fit === 'cover' && (
+        <Row label="Crop focus" hint="The part of the photo kept in view." from={from('focusX', 'focusY')} onReset={() => reset('focusX', 'focusY')}>
+          <FocusGrid x={shown.focusX ?? 50} y={shown.focusY ?? 50} onChange={(focusX, focusY) => setLook({ focusX, focusY })} />
+        </Row>
+      )}
+      {angleRow}
+    </Group>
+  )
+}
+
 // The panel's groups follow one order by intent: Content, Look, Layout, then Fine-tune (folded away).
 // "detail" says what the group is about for this selection (Look: Text, Look: Photo).
 function Group({ title, detail, children }: { title: string; detail?: string; children: ReactNode }) {
@@ -905,6 +980,23 @@ function StepField(props: Parameters<typeof NumberField>[0]) {
       <NumberField {...props} />
       <button type="button" aria-label={`${label}: more`} onClick={() => onCommit(Math.min(max, Math.round((value + step) * 100) / 100))}>+</button>
     </div>
+  )
+}
+
+// Bold, italic and underline for the selected words while typing, or for what is typed next. Pressing
+// one keeps the typing going (the press does not take the focus), and with no words being typed it
+// starts typing with the caret at the end. Whole-element weight stays in All settings › Weight.
+const FORMATS: [Command, string, string, () => ReactNode][] = [['bold', 'Bold', `${MOD}B`, BoldIcon], ['italic', 'Italic', `${MOD}I`, ItalicIcon], ['underline', 'Underline', `${MOD}U`, UnderlineIcon]]
+function FormatButtons({ start }: { start: () => void }) {
+  const [on, setOn] = useState<Formats | null>(null)
+  useEffect(() => { formatListeners.add(setOn); return () => { formatListeners.delete(setOn) } }, [])
+  return (
+    <span className="ctx-segment ctx-format" role="group" aria-label="Format the selected words">
+      {FORMATS.map(([command, name, keys, Icon]) => (
+        <button key={command} type="button" aria-pressed={!!on?.[command]} aria-label={name} title={`${name} (${keys}): the selected words, or what you type next`}
+          onPointerDown={(e) => e.preventDefault()} onClick={() => formatWords(command, start)}><Icon /></button>
+      ))}
+    </span>
   )
 }
 

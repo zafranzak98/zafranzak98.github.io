@@ -67,7 +67,7 @@ with sync_playwright() as p:
         pg.get_by_role("button", name=re.compile("^Phone")).first.click(); pg.wait_for_timeout(1300)
         s = pg.locator(".editor-strip")
         sb = s.bounding_box() if s.count() else None
-        check(f"{w}px, editing Phone: the strip shows and fits", sb and sb["x"] >= -1 and sb["x"] + sb["width"] <= w + 1 and "phones only" in s.inner_text(), str(sb))
+        check(f"{w}px, editing Phone: the strip shows and fits", sb and sb["x"] >= -1 and sb["x"] + sb["width"] <= w + 1 and "phones only" in s.inner_text().lower(), str(sb))
         open_sections(pg)
         t = pg.locator(".sec-row", has=pg.locator(".sec-name", has_text="Opening")).first.locator(".sec-toggle")
         if t.get_attribute("aria-expanded") != "true": t.click(); pg.wait_for_timeout(300)
@@ -129,10 +129,10 @@ with sync_playwright() as p:
     # Real changes, then Undo all the way back.
     tap(pg, "[data-el='line']")
     for _ in range(3): pg.locator(".ctx button[aria-label='Larger text']").click(); pg.wait_for_timeout(150)
-    pg.locator(".ctx button[aria-label='Bold']").click(); pg.wait_for_timeout(300)
+    pg.locator(".ctx button[aria-label='Larger text']").click(); pg.wait_for_timeout(300)
     pg.locator(".ctx .ctx-more").first.click(); pg.wait_for_timeout(200)
     pg.locator(".ctx-more-menu button", has_text="Hide on").click(); pg.wait_for_timeout(400)
-    tap(pg, "#outcomes [data-el='skills-label']"); pg.locator(".ctx button[aria-label='Bold']").click(); pg.wait_for_timeout(300)
+    tap(pg, "#outcomes [data-el='skills-label']"); pg.locator(".ctx button[aria-label='Larger text']").click(); pg.wait_for_timeout(300)
     steps = 0
     while not pg.locator(".editor-history button").first.is_disabled() and steps < 20:
         pg.locator(".editor-history button").first.click(); pg.wait_for_timeout(250); steps += 1
@@ -142,11 +142,11 @@ with sync_playwright() as p:
     # Changes made within about a quarter of a second become one Undo step (the editor's history works that way).
     check(f"Undo walks back every change ({steps} steps) to the untouched page", steps >= 3 and look == ["20.241px", "500", "1"] and status == "Same as the website", f"{steps} {look} {status}")
     for _ in range(steps): pg.locator(".editor-history button").nth(1).click(); pg.wait_for_timeout(200)
-    w8 = frame(pg).locator("[data-el='line']").first.evaluate("e => getComputedStyle(e).fontWeight")
-    check("Redo brings all of them back", int(w8) >= 600, w8)
+    w8 = frame(pg).locator("[data-el='line']").first.evaluate("e => getComputedStyle(e).fontSize")
+    check("Redo brings all of them back", float(w8[:-2]) > 20.3, w8)
     # Refresh: unsaved work comes back; Save draft, refresh, still there and marked saved.
     pg.reload(wait_until="networkidle"); pg.wait_for_timeout(2500)
-    check("After a refresh the unsaved changes are restored", int(frame(pg).locator("[data-el='line']").first.evaluate("e => getComputedStyle(e).fontWeight")) >= 600)
+    check("After a refresh the unsaved changes are restored", float(frame(pg).locator("[data-el='line']").first.evaluate("e => getComputedStyle(e).fontSize")[:-2]) > 20.3)
     pg.locator(".editor-save").click(); pg.wait_for_timeout(1200)
     pg.reload(wait_until="networkidle"); pg.wait_for_timeout(2500)
     check("After Save draft and a refresh: kept, and the status says the draft is saved", pg.locator(".editor-status").inner_text().startswith(("Draft saved", "Same as the draft")) or "draft" in pg.locator(".editor-status").inner_text().lower(), pg.locator(".editor-status").inner_text())
@@ -164,7 +164,7 @@ with sync_playwright() as p:
     ctx = br.new_context(viewport={"width": 1440, "height": 900}); a = ctx.new_page(); a.goto(URL, wait_until="networkidle"); a.evaluate("localStorage.clear()"); a.reload(wait_until="networkidle"); a.wait_for_timeout(2000)
     b2 = ctx.new_page(); b2.goto(URL, wait_until="networkidle"); b2.wait_for_timeout(2500)
     fb = [f for f in b2.frames if f != b2.main_frame][0]; el = fb.locator("[data-el='line']").first; bb = el.bounding_box()
-    b2.mouse.click(bb["x"] + 6, bb["y"] + bb["height"] / 2); b2.wait_for_timeout(600); b2.locator(".ctx button[aria-label='Bold']").click(); b2.wait_for_timeout(1500)
+    b2.mouse.click(bb["x"] + 6, bb["y"] + bb["height"] / 2); b2.wait_for_timeout(600); b2.locator(".ctx button[aria-label='Larger text']").click(); b2.wait_for_timeout(1500)
     note = a.locator(".editor-notice").inner_text() if a.locator(".editor-notice").count() else ""
     check("Two tabs on the same page: a change in one is pointed out in the other", "another tab" in note, note[:80])
     ctx.close()
