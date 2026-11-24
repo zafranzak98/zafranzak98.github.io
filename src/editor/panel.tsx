@@ -273,7 +273,7 @@ export function ContextBar() {
   // Undo and Redo can leave nothing selected in the page's sections; the part's selection goes with
   // it, so its frame does not stay behind and the same part can be clicked again straight away.
   const hadItem = useRef(!!item)
-  useEffect(() => { if (hadItem.current && !item && selected) select(null); hadItem.current = !!item }, [item])
+  useEffect(() => { if (hadItem.current && !item && selected && grouping.members.length < 2) select(null); hadItem.current = !!item }, [item])
   useEffect(() => { if (!message) return; const t = setTimeout(() => setMessage(''), 5000); return () => clearTimeout(t) }, [message])
 
   // On phones the editor uses a panel at the bottom of the screen, so settings open there.
