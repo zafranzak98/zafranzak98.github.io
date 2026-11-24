@@ -65,11 +65,15 @@ with sync_playwright() as p:
         check(f"{w}px: …and turns off from there", pg.locator(".ctx .ctx-more-sel").count() == 0)
 
         # Text sizes are named as sizes.
+        # On phones Size is in the Text sheet (the Aa button), from Demo 5.2.
+        if w < 638: pg.locator(".ctx .ctx-aa").click(); pg.wait_for_timeout(400)
+        at = ".ctx-sheet" if w < 638 else ".ctx"
         names = set()
         for _ in range(10):
-            names.add(pg.locator(".ctx-stepper output").first.inner_text()); pg.locator(".ctx button[aria-label='Larger text']").click(); pg.wait_for_timeout(150)
+            names.add(pg.locator(f"{at} .ctx-stepper output").first.inner_text()); pg.locator(f"{at} button[aria-label='Larger text']").click(); pg.wait_for_timeout(150)
         for _ in range(10):
-            pg.locator(".ctx button[aria-label='Smaller text']").click(); pg.wait_for_timeout(150); names.add(pg.locator(".ctx-stepper output").first.inner_text())
+            pg.locator(f"{at} button[aria-label='Smaller text']").click(); pg.wait_for_timeout(150); names.add(pg.locator(f"{at} .ctx-stepper output").first.inner_text())
+        if w < 638: pg.keyboard.press("Escape"); pg.wait_for_timeout(300)
         clash = names & {"Title", "Heading", "Label", "Statement", "Caption", "Note"}
         check(f"{w}px: text sizes never share a name with a part or a section style", len(names) == 9 and not clash, str(sorted(names)))
         pg.keyboard.press("Escape"); pg.wait_for_timeout(300)

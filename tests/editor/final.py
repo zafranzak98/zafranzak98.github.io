@@ -47,19 +47,19 @@ with sync_playwright() as p:
     # ---- F. Bold, italic and underline for selected words.
     pg, e = fresh(br); errors += e
     tap(pg, "[data-el='line']")
-    fmt = pg.locator(".ctx-format")
-    check("F: a part with formatted words shows Bold, Italic and Underline", fmt.count() == 1 and [b.get_attribute("aria-label") for b in fmt.locator("button").all()] == ["Bold", "Italic", "Underline"])
+    fmt = pg.locator(".ctx .ctx-format")
+    check("F: a part with formatted words shows Bold, Italic and Underline", fmt.count() == 1 and "is-off" not in (fmt.get_attribute("class") or "") and [b.get_attribute("aria-label") for b in fmt.locator("button").all()] == ["Bold", "Italic", "Underline"])
     tap(pg, "#outcomes [data-el='skills-label']")
-    check("F: a label (plain words) does not offer them", pg.locator(".ctx-format").count() == 0)
+    check("F: a label (plain words) shows them greyed, with the reason (Demo 5.2)", pg.locator(".ctx .ctx-format.is-off").count() == 1 and "styled as a whole" in (pg.locator(".ctx .ctx-format").get_attribute("title") or ""))
     tap(pg, "[data-el='line']")
     original = frame(pg).locator("[data-el='line']").inner_text().strip()
     f = frame(pg); el = f.locator("[data-el='line']").first; b = el.bounding_box(); pg.mouse.dblclick(b["x"] + 8, b["y"] + b["height"] / 2); pg.wait_for_timeout(500)
     box = f.locator(".el-typing")
     check("F: typing formatted words uses a rich copy", box.get_attribute("contenteditable") == "true")
     select_words(pg, 0, 5)  # "Three"
-    pg.locator(".ctx-format button[aria-label='Bold']").click(); pg.wait_for_timeout(200)
+    pg.locator(".ctx .ctx-format button[aria-label='Bold']").click(); pg.wait_for_timeout(200)
     check("F: Bold formats only the selected word and typing goes on", box.count() == 1 and box.locator("b").inner_text() == "Three" and box.inner_text().strip() == original)
-    check("F: Bold shows as pressed for the selection", pg.locator(".ctx-format button[aria-label='Bold']").get_attribute("aria-pressed") == "true")
+    check("F: Bold shows as pressed for the selection", pg.locator(".ctx .ctx-format button[aria-label='Bold']").get_attribute("aria-pressed") == "true")
     select_words(pg, 6, 15)  # "Instagram"
     pg.keyboard.press("Control+i"); pg.wait_for_timeout(150)
     select_words(pg, 16, 18)  # "AR"
@@ -67,7 +67,7 @@ with sync_playwright() as p:
     check("F: Ctrl+I and Ctrl+U format other words; the bold word stays bold", box.locator("i").inner_text() == "Instagram" and box.locator("u").inner_text() == "AR" and box.locator("b").inner_text() == "Three")
     # Caret with nothing selected: the format applies to what is typed next.
     frame(pg).evaluate("() => { const box = document.querySelector('.el-typing'); const r = document.createRange(); r.selectNodeContents(box); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r) }")
-    pg.locator(".ctx-format button[aria-label='Italic']").click(); pg.wait_for_timeout(100)
+    pg.locator(".ctx .ctx-format button[aria-label='Italic']").click(); pg.wait_for_timeout(100)
     pg.keyboard.type(" New"); pg.wait_for_timeout(100)
     check("F: with no selection, Italic applies to what is typed next", any(t.strip() == "New" for t in box.locator("i").all_inner_texts()), box.inner_html()[-120:])
     pg.keyboard.press("Enter"); pg.wait_for_timeout(900)
@@ -95,7 +95,8 @@ with sync_playwright() as p:
     pg.reload(wait_until="networkidle"); pg.wait_for_timeout(2500)
     check("F: after Save draft and reopening, the formatting is still there", frame(pg).locator("[data-el='line'] em").first.inner_text() == "Instagram" and frame(pg).locator("[data-el='line'] u").inner_text() == "AR")
     tap(pg, "[data-el='line']"); settings(pg)
-    check("F: the Words box explains the markers", "*bold*, _italic_ and ++underline++" in panel(pg).inner_text())
+    wb = pg.locator(".el-panel .el-words-rich >> visible=true")
+    check("F: the Words box shows the saved formatting, not markers (Demo 5.2)", wb.count() == 1 and wb.locator("i, em").first.inner_text() == "Instagram" and wb.locator("u").first.inner_text() == "AR" and "_" not in wb.inner_text() and "++" not in wb.inner_text())
     pg.close()
 
     # ---- A. Links in the page never replace the page being edited.
