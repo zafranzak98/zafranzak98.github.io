@@ -1,17 +1,17 @@
 import { kindName, showPartsOf } from './sections'
-import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { createUsePuck } from '@puckeditor/core'
 import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { COVER_NAMES, COVER_SIZES, TEXT_SIZES, lookAt, type ElementLook, type ElementStyle, type Elements, type Screen, type TextSize } from '#/layout/elements'
 import { photoSize, type Project } from '#/lib/site'
 import { ratioOptions } from '#/layout/free-blocks'
-import { MOD, formatListeners, formatWords, type Command, type Formats } from './formatting'
+import { MOD, fillBox, formatListeners, formatWords, readBox, type Command, type Formats } from './formatting'
 import { IMAGES, Selection, type Picked, partsOf, angleOf, groupMoveListeners, coverListeners, rotateListeners, stackListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
 import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DotsIcon, ItalicIcon, UnderlineIcon, DownIcon, LayersIcon, PenIcon, ResetIcon, RotateIcon, SelectMoreIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
 
 // The editing controls. The contextual bar under the top bar holds what you use most for the
-// selected text, image or section; the side panel ("All settings") holds everything, grouped.
+// selected text, image or section; the side panel ("Settings") holds everything, grouped.
 // Both read and change the same settings, for the screen size chosen in the top bar.
 
 const usePuck = createUsePuck()
@@ -25,6 +25,14 @@ const SIZE_NAMES: Record<TextSize, string> = { meta: 'Smallest', small: 'Small',
 const SPACING = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4]
 const SWATCH: Record<Colour, string> = { Olive: 'var(--olive)', Sage: 'var(--sage)', 'Light sage': 'var(--lsage)', 'Off-white': 'var(--off)', Terracotta: 'var(--terra)' }
 const WEIGHTS: [number, string][] = [[400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold']]
+// Why Bold, Italic and Underline are greyed for some text. They stay in place, so the tools never change shape.
+const WHOLE = 'Titles, headings, labels and names are styled as a whole. Use Size and Weight.'
+// The weight the text shows now, as one of the four named weights.
+const weightNow = (el: HTMLElement | null, set?: number) => {
+  if (set) return set
+  const w = el ? Number(getComputedStyle(el).fontWeight) || 400 : 400
+  return WEIGHTS.reduce((best, [v]) => (Math.abs(v - w) < Math.abs(best - w) ? v : best), 400)
+}
 const ALIGN: [NonNullable<ElementLook['align']>, string, () => ReactNode][] = [['left', 'Left', AlignLeftIcon], ['center', 'Centre', AlignCentreIcon], ['right', 'Right', AlignRightIcon]]
 const LOOKS: (keyof ElementLook)[] = ['place', 'hidden', 'cover', 'x', 'y', 'size', 'weight', 'colour', 'align', 'width', 'focusX', 'focusY', 'rotate', 'above', 'below']
 const BOX: [NonNullable<ElementLook['place']>, string, () => ReactNode][] = [['start', 'Left', BoxStartIcon], ['center', 'Centre', BoxCentreIcon], ['end', 'Right', BoxEndIcon]]
@@ -206,7 +214,7 @@ function MoreMenu({ name, children }: { name: string; children: (close: () => vo
   return (
     <span className="ctx-more-wrap" ref={wrap}>
       <button type="button" className="ctx-btn ctx-more" aria-label={`More options for ${name}`} aria-expanded={!!at} aria-haspopup="true" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setAt(at ? null : { left: r.left, top: r.bottom + 4 }) }}>
-        <span className="ctx-dots"><DotsIcon /></span><span>More options</span> <span aria-hidden="true">▾</span>
+        <span className="ctx-dots"><DotsIcon /></span><span>More</span> <span aria-hidden="true">▾</span>
       </button>
       {at && createPortal(
         <span className="ctx-menu ctx-more-menu" ref={menu} role="group" aria-label={`More options for ${name}`} style={{ left: Math.max(8, Math.min(at.left, window.innerWidth - 248)), top: at.top }} onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close() } }}>
@@ -231,6 +239,7 @@ export function ContextBar() {
   const latestGroup = useRef(grouping)
   latestGroup.current = grouping
   const [message, setMessage] = useState('')
+  const [sheet, setSheet] = useState(false)
   const [stack, setStack] = useState<{ for: string; parts: Picked[] }>({ for: '', parts: [] })
   useEffect(() => {
     const onStack = (parts: Picked[], picked: Picked | null) => setStack({ for: picked ? `${picked.blockId}|${picked.key}` : '', parts })
@@ -260,6 +269,11 @@ export function ContextBar() {
     setMessage(`Cover size: ${COVER_NAMES[next]}.`)
   }
   useEffect(() => setMessage(''), [key, item?.props.id])
+  useEffect(() => setSheet(false), [key, item?.props.id])
+  // Undo and Redo can leave nothing selected in the page's sections; the part's selection goes with
+  // it, so its frame does not stay behind and the same part can be clicked again straight away.
+  const hadItem = useRef(!!item)
+  useEffect(() => { if (hadItem.current && !item && selected && grouping.members.length < 2) select(null); hadItem.current = !!item }, [item])
   useEffect(() => { if (!message) return; const t = setTimeout(() => setMessage(''), 5000); return () => clearTimeout(t) }, [message])
 
   // On phones the editor uses a panel at the bottom of the screen, so settings open there.
@@ -273,7 +287,7 @@ export function ContextBar() {
   }
   const more = (
     <button type="button" className="ctx-btn ctx-settings" aria-pressed={phone() ? ui.plugin?.current === 'fields' : ui.rightSideBarVisible} onClick={toggleSettings}>
-      <SlidersIcon /><span className="ctx-long">All settings</span><span className="ctx-short">Settings</span>
+      <SlidersIcon /><span>Settings</span>
     </button>
   )
   // Moves and other news appear here briefly; otherwise, off Desktop, a reminder of which size you are changing.
@@ -366,6 +380,39 @@ export function ContextBar() {
     target.ownerDocument.defaultView?.focus()
     target.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, clientX: r.left + 2, clientY: r.top + 2 }))
   }
+  // Size, weight, colour and alignment: in the bar, and on phones in the Text sheet (the Aa button).
+  const textSize = (
+    <span className="ctx-group ctx-size" role="group" aria-label="Text size">
+      <span className="ctx-label ctx-label-plain">Size</span>
+      <span className="ctx-stepper">
+        <button type="button" aria-label="Smaller text" title="Smaller" onClick={() => setLook({ size: SIZES[Math.max(0, currentSize(shown) - 1)] })}>−</button>
+        <output>{sizeName(shown)}</output>
+        <button type="button" aria-label="Larger text" title="Larger" onClick={() => setLook({ size: SIZES[Math.min(SIZES.length - 1, currentSize(shown) + 1)] })}>+</button>
+      </span>
+    </span>
+  )
+  const textWeight = (
+    <label className="ctx-group ctx-weight">
+      <span className="ctx-label ctx-label-plain">Weight</span>
+      <select className="ctx-select" aria-label="Weight" value={weightNow(el, shown.weight)} onChange={(e) => setLook({ weight: Number(e.target.value) as ElementLook['weight'] })}>
+        {WEIGHTS.map(([v, name]) => <option key={v} value={v}>{name}</option>)}
+      </select>
+    </label>
+  )
+  const textColour = (
+    <span className="ctx-group" role="group" aria-label="Colour">
+      <span className="ctx-label ctx-label-plain">Colour</span>
+      <Swatches value={shown.colour} onChange={(colour) => setLook({ colour })} small />
+    </span>
+  )
+  const textAlign = (
+    <span className="ctx-group" role="group" aria-label="Text alignment">
+      <span className="ctx-label">Text</span>
+      <span className="ctx-segment">
+        {ALIGN.map(([v, name, AlignIcon]) => <button key={v} type="button" aria-pressed={shown.align === v} aria-label={`Text: align ${name.toLowerCase()}`} title={`Align the words ${name.toLowerCase()}`} onClick={() => setLook({ align: v })}><AlignIcon /></button>)}
+      </span>
+    </span>
+  )
   // Hiding applies to this screen size and the smaller ones, unless shown again there.
   const toggleHidden = () => setLook({ hidden: shown.hidden ? (screen === 'desktop' ? undefined : false) : true })
   return (
@@ -395,26 +442,21 @@ export function ContextBar() {
       )}
       {isImage ? null : (
         <>
-          <span className="ctx-group" role="group" aria-label="Text size">
-            <span className="ctx-label ctx-label-plain">Size</span>
-            <span className="ctx-stepper">
-              <button type="button" aria-label="Smaller text" title="Smaller" onClick={() => setLook({ size: SIZES[Math.max(0, currentSize(shown) - 1)] })}>−</button>
-              <output>{sizeName(shown)}</output>
-              <button type="button" aria-label="Larger text" title="Larger" onClick={() => setLook({ size: SIZES[Math.min(SIZES.length - 1, currentSize(shown) + 1)] })}>+</button>
-            </span>
-          </span>
-          {el?.hasAttribute('data-rich') && <FormatButtons start={startTyping} />}
-          <span className="ctx-group" role="group" aria-label="Colour">
-            <span className="ctx-label ctx-label-plain">Colour</span>
-            <Swatches value={shown.colour} onChange={(colour) => setLook({ colour })} small />
-          </span>
-          <span className="ctx-group" role="group" aria-label="Text alignment">
-            <span className="ctx-label">Text</span>
-            <span className="ctx-segment">
-              {ALIGN.map(([v, name, AlignIcon]) => <button key={v} type="button" aria-pressed={shown.align === v} aria-label={`Text: align ${name.toLowerCase()}`} title={`Align the words ${name.toLowerCase()}`} onClick={() => setLook({ align: v })}><AlignIcon /></button>)}
-            </span>
-          </span>
+          {textSize}
+          {textWeight}
+          {selected?.field && <FormatButtons start={startTyping} off={!el?.hasAttribute('data-rich')} />}
+          <button type="button" className="ctx-btn ctx-aa" aria-expanded={sheet} aria-haspopup="dialog" aria-label="Text: size, weight, colour and alignment" title="Text: size, weight, colour and alignment" onClick={() => setSheet(!sheet)}><span className="ctx-aa-text" aria-hidden="true">Aa</span></button>
+          {textColour}
+          {textAlign}
         </>
+      )}
+      {sheet && !isImage && (
+        <TextSheet name={nameOf(key)} onClose={() => setSheet(false)} onSettings={() => { setSheet(false); toggleSettings() }}>
+          {textSize}
+          {textWeight}
+          {textColour}
+          {textAlign}
+        </TextSheet>
       )}
       <SelectMore />
       <MoreMenu name={nameOf(key)}>{(close) => (
@@ -576,7 +618,7 @@ function GroupBar({ members, screen, apply, where, more, live, onDone, announce 
   )
 }
 
-// ---- The side panel ("All settings"): everything for the selection, grouped and labelled.
+// ---- The side panel ("Settings"): everything for the selection, grouped and labelled.
 
 // Where the selection sits: Page › Section › Part. The earlier steps are buttons that select the
 // section, or nothing (the page). It replaces Puck's own panel title, so the panel and the bar use
@@ -642,8 +684,20 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
 
       {selected?.field && (
         <Group title="Content" detail="Words">
-          <textarea className="el-words" rows={wordRows(words.read(selected.field, selected.blockId))} aria-label="Words" aria-describedby={el?.hasAttribute('data-rich') ? 'el-words-hint' : undefined} value={words.read(selected.field, selected.blockId)} onChange={(e) => words.write(selected.field!, e.target.value, selected.blockId)} />
-          {el?.hasAttribute('data-rich') && <p className="el-note" id="el-words-hint">To format words, select them on the page and use Bold, Italic or Underline. Here they show as *bold*, _italic_ and ++underline++.</p>}
+          {el?.hasAttribute('data-rich') ? (
+            <RichWords key={`${selected.blockId}|${selected.field}`} value={words.read(selected.field, selected.blockId)} onChange={(v) => words.write(selected.field!, v, selected.blockId)} />
+          ) : (
+            <>
+              <textarea className="el-words" rows={wordRows(words.read(selected.field, selected.blockId))} aria-label="Words" value={words.read(selected.field, selected.blockId)} onChange={(e) => words.write(selected.field!, e.target.value, selected.blockId)} />
+              {!isImage && (
+                <div className="el-row el-format-row">
+                  <div className="el-row-head"><span>Bold, italic, underline</span></div>
+                  <FormatButtons start={() => {}} off />
+                </div>
+              )}
+              {!isImage && <p className="el-note">{WHOLE}</p>}
+            </>
+          )}
         </Group>
       )}
 
@@ -697,7 +751,7 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
             <Step label="Size" text={sizeName(shown)} onLess={() => setLook({ size: SIZES[Math.max(0, currentSize(shown) - 1)] })} onMore={() => setLook({ size: SIZES[Math.min(SIZES.length - 1, currentSize(shown) + 1)] })} />
           </Row>
           <Row label="Weight" from={from('weight')} onReset={() => reset('weight')}>
-            <Segments label="Weight" value={shown.weight} options={WEIGHTS} onChange={(weight) => setLook({ weight: weight as ElementLook['weight'] })} />
+            <Segments label="Weight" value={weightNow(el, shown.weight)} options={WEIGHTS} onChange={(weight) => setLook({ weight: weight as ElementLook['weight'] })} />
           </Row>
           <Row label="Colour" from={from('colour')} onReset={() => reset('colour')}>
             <Swatches value={shown.colour} onChange={(colour) => setLook({ colour })} />
@@ -985,18 +1039,104 @@ function StepField(props: Parameters<typeof NumberField>[0]) {
 
 // Bold, italic and underline for the selected words while typing, or for what is typed next. Pressing
 // one keeps the typing going (the press does not take the focus), and with no words being typed it
-// starts typing with the caret at the end. Whole-element weight stays in All settings › Weight.
+// starts typing with the caret at the end. Whole-element weight is Weight, next to Size. Text that is
+// styled as a whole (titles, headings, labels, names) shows them greyed, with the reason.
 const FORMATS: [Command, string, string, () => ReactNode][] = [['bold', 'Bold', `${MOD}B`, BoldIcon], ['italic', 'Italic', `${MOD}I`, ItalicIcon], ['underline', 'Underline', `${MOD}U`, UnderlineIcon]]
-function FormatButtons({ start }: { start: () => void }) {
+function FormatButtons({ start, off }: { start: () => void; off?: boolean }) {
   const [on, setOn] = useState<Formats | null>(null)
   useEffect(() => { formatListeners.add(setOn); return () => { formatListeners.delete(setOn) } }, [])
   return (
-    <span className="ctx-segment ctx-format" role="group" aria-label="Format the selected words">
+    <span className={off ? 'ctx-segment ctx-format is-off' : 'ctx-segment ctx-format'} role="group" aria-label="Format the selected words" title={off ? WHOLE : undefined}>
       {FORMATS.map(([command, name, keys, Icon]) => (
-        <button key={command} type="button" aria-pressed={!!on?.[command]} aria-label={name} title={`${name} (${keys}): the selected words, or what you type next`}
-          onPointerDown={(e) => e.preventDefault()} onClick={() => formatWords(command, start)}><Icon /></button>
+        <button key={command} type="button" aria-pressed={off ? undefined : !!on?.[command]} aria-disabled={off || undefined} aria-label={off ? `${name}: not available here. ${WHOLE}` : name} title={off ? WHOLE : `${name} (${keys}): the selected words, or what you type next`}
+          onPointerDown={(e) => e.preventDefault()} onClick={() => { if (!off) formatWords(command, start) }}><Icon /></button>
       ))}
     </span>
+  )
+}
+
+// The Words box in Settings. Formatted words show as formatting, as on the page, never as markers;
+// Bold, Italic and Underline (buttons or shortcuts) format the words selected in it. Pasted words
+// arrive plain. Each change is saved as it is made, like typing on the page.
+function RichWords({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const box = useRef<HTMLDivElement>(null)
+  const shown = useRef<string | null>(null)
+  const [on, setOn] = useState<Formats>({ bold: false, italic: false, underline: false })
+  useLayoutEffect(() => {
+    if (box.current && value !== shown.current) { fillBox(box.current, value); shown.current = value }
+  }, [value])
+  useEffect(() => {
+    const doc = box.current?.ownerDocument
+    if (!doc) return
+    const state = (c: Command) => { try { return doc.queryCommandState(c) } catch { return false } }
+    const onSelection = () => { if (box.current && box.current.contains(doc.getSelection()?.anchorNode ?? null)) setOn({ bold: state('bold'), italic: state('italic'), underline: state('underline') }) }
+    doc.addEventListener('selectionchange', onSelection)
+    return () => doc.removeEventListener('selectionchange', onSelection)
+  }, [])
+  const commit = () => {
+    if (!box.current) return
+    const next = readBox(box.current)
+    shown.current = next
+    if (next !== value) onChange(next)
+  }
+  const format = (command: Command) => {
+    const b = box.current
+    if (!b) return
+    const doc = b.ownerDocument
+    if (doc.activeElement !== b) { b.focus(); const sel = doc.getSelection(); sel?.selectAllChildren(b); sel?.collapseToEnd() }
+    doc.execCommand('styleWithCSS', false, 'false')
+    doc.execCommand(command)
+    setOn((o) => ({ ...o, [command]: !o[command] }))
+    commit()
+  }
+  return (
+    <>
+      <div ref={box} className="el-words el-words-rich" contentEditable suppressContentEditableWarning role="textbox" aria-multiline="false" aria-label="Words" aria-describedby="el-words-hint"
+        onInput={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
+        onPaste={(e) => { e.preventDefault(); e.currentTarget.ownerDocument.execCommand('insertText', false, e.clipboardData.getData('text/plain').replace(/\s+/g, ' ')) }} />
+      <div className="el-row el-format-row">
+        <div className="el-row-head"><span>Bold, italic, underline</span></div>
+        <span className="ctx-segment ctx-format" role="group" aria-label="Format the selected words">
+          {FORMATS.map(([command, name, keys, Icon]) => (
+            <button key={command} type="button" aria-pressed={on[command]} aria-label={name} title={`${name} (${keys}): the selected words, or what you type next`} onPointerDown={(e) => e.preventDefault()} onClick={() => format(command)}><Icon /></button>
+          ))}
+        </span>
+      </div>
+      <p className="el-note" id="el-words-hint">Select words here or on the page, then use Bold, Italic or Underline ({MOD}B, {MOD}I, {MOD}U).</p>
+    </>
+  )
+}
+
+// Phones: the Aa button opens this short sheet with the text's look, the same controls as in the bar
+// on larger screens. The page scrolls so the selected text stays in view above it.
+function TextSheet({ name, onClose, onSettings, children }: { name: string; onClose: () => void; onSettings: () => void; children: ReactNode }) {
+  const sheet = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    sheet.current?.querySelector<HTMLElement>('button, select')?.focus()
+    // Keep the selected text in view above the sheet: the page (inside the preview frame, which may
+    // be drawn smaller than its real width) scrolls it up when the sheet would cover it.
+    const el = selectedEl()
+    const frame = document.getElementById('preview-frame')
+    const win = el?.ownerDocument.defaultView
+    if (el && frame && win && sheet.current) {
+      const box = frame.getBoundingClientRect()
+      const scale = box.width / (frame.offsetWidth || box.width)
+      const r = el.getBoundingClientRect()
+      const bottom = (sheet.current.getBoundingClientRect().top - box.top) / scale
+      if (r.top < 0 || r.top + Math.min(r.height, 64) > bottom - 8) win.scrollTo({ top: win.scrollY + r.top - 12, behavior: 'instant' as ScrollBehavior })
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose() } }
+    document.addEventListener('keydown', onKey, true)
+    return () => document.removeEventListener('keydown', onKey, true)
+  }, [])
+  return createPortal(
+    <div className="ctx-sheet" ref={sheet} role="dialog" aria-label={`Text: ${name}`}>
+      <div className="ctx-sheet-head"><b>Text</b><button type="button" className="ctx-btn" onClick={onClose}>Done</button></div>
+      <div className="ctx-sheet-body">{children}</div>
+      <button type="button" className="ctx-btn ctx-sheet-more" onClick={onSettings}><SlidersIcon /> Settings for this text</button>
+    </div>,
+    document.body,
   )
 }
 

@@ -61,7 +61,7 @@ function Home() {
               >
                 <span className="c work-title">{p.title}</span>
                 <span className="work-meta">
-                  <span>{p.homepage_label ?? p.role} · {yearOf(p)}</span>
+                  <span><Rich text={p.homepage_label ?? p.role} /> · {yearOf(p)}</span>
                   <span className="hover-arrow"> →</span>
                 </span>
                 <span className="work-arrow" aria-hidden="true">→</span>
