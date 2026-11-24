@@ -1,15 +1,22 @@
-import { Link } from '@tanstack/react-router'
+import { PageLink } from '#/components/page-link'
+import { useElement, type Elements } from '#/layout/elements'
+import { useFooterWords } from '#/lib/page-words'
 import { mailto, site } from '#/lib/site'
 
-export default function Footer() {
+// Shown on every page. Its words come from one place (src/lib/page-words.tsx), so a change in the
+// visual editor shows on every page at once.
+export default function Footer({ elements }: { elements?: Elements }) {
+  const w = useFooterWords()
+  const el = useElement(elements)
+  const [first, ...rest] = w.title.split(' ')
   return (
     <footer>
       <div className="footer-main">
         <div>
-          <p className="footer-kicker">Contact</p>
-          <h2 className="c footer-title">
-            Let's <br className="m-only" />
-            talk
+          <p {...el('kicker', { className: 'footer-kicker', field: 'kicker' })}>{w.kicker}</p>
+          <h2 {...el('title', { className: 'c footer-title', field: 'title' })}>
+            {first} <br className="m-only" />
+            {rest.join(' ')}
           </h2>
         </div>
         <div>
@@ -21,11 +28,11 @@ export default function Footer() {
         </div>
         <div className="footer-bottom">
           <nav aria-label="Pages">
-            <Link to="/">Home</Link>
-            <Link to="/about/">About</Link>
-            <Link to="/projects/">Projects</Link>
+            <PageLink to="/">{w.pages.home}</PageLink>
+            <PageLink to="/about/">{w.pages.about}</PageLink>
+            <PageLink to="/projects/">{w.pages.projects}</PageLink>
           </nav>
-          <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo(0, 0) }}>Back to top ↑</a>
+          <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo(0, 0) }} {...el('top', { field: 'top' })}>{w.top}</a>
         </div>
       </div>
       <div className="footer-credit">
