@@ -76,3 +76,5 @@ export const imageProps = (path?: string, sizes?: string) => {
 
 export const mailto = `mailto:${site.email}`
 export const cvUrl = asset(site.cv || undefined)
+// The name the CV is saved under when downloaded from the menu (the file itself stays where it is).
+export const cvFileName = 'Zafran-Zakaria-CV.pdf'

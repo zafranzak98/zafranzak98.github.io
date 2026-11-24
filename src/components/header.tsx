@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { asset, cvUrl, mailto, site } from '#/lib/site'
+import { asset, cvFileName, cvUrl, mailto, site } from '#/lib/site'
 
 export default function Header() {
   const [open, setOpen] = useState(false)
@@ -21,7 +21,7 @@ export default function Header() {
       <nav aria-label="Main" className="nav-desktop">
         <Link to="/about/">About</Link>
         <Link to="/projects/">Projects</Link>
-        {cvUrl && <a href={cvUrl}>CV</a>}
+        {cvUrl && <a href={cvUrl} download={cvFileName}>CV</a>}
         <a href={mailto} className="nav-gap">Email</a>
         {site.instagram && <a href={site.instagram} target="_blank" rel="noreferrer">Instagram</a>}
         {site.linkedin && <a href={site.linkedin} target="_blank" rel="noreferrer">LinkedIn</a>}
@@ -35,7 +35,7 @@ export default function Header() {
         <nav id="mobile-menu" aria-label="Menu" className="menu-panel">
           <Link to="/about/" onClick={done}>About</Link>
           <Link to="/projects/" onClick={done}>Projects</Link>
-          {cvUrl && <a href={cvUrl} onClick={done}>Download CV</a>}
+          {cvUrl && <a href={cvUrl} download={cvFileName} onClick={done}>Download CV</a>}
           <a href={mailto} className="menu-sep" onClick={done}>Email</a>
           {site.instagram && <a href={site.instagram} target="_blank" rel="noreferrer" onClick={done}>Instagram</a>}
           {site.linkedin && <a href={site.linkedin} target="_blank" rel="noreferrer" onClick={done}>LinkedIn</a>}

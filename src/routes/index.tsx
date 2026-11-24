@@ -25,8 +25,6 @@ function Home() {
           {cvUrl && (
             <span className="home-line-item">
               <a href={cvUrl}>View CV (PDF)</a>
-              <span className="home-sep" aria-hidden="true">/</span>
-              <a href={cvUrl} download>Download</a>
             </span>
           )}
         </p>
