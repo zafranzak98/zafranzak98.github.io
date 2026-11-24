@@ -57,10 +57,10 @@ with sync_playwright() as p:
     # Sections without parts have no arrow; adding a section updates the list.
     pg.keyboard.press("Escape"); pg.wait_for_timeout(300)
     pg.get_by_role("tab", name="Add a section").click(); pg.wait_for_timeout(300)
-    pg.locator(".sec-option", has_text="Two images").first.click(); pg.wait_for_timeout(1500)
+    pg.locator(".sec-option", has_text="Space").first.click(); pg.wait_for_timeout(1500)
     sections(pg)
     r = pg.locator(".sec-row.is-selected").first
-    check("A new, empty Two images section has no arrow until it has photos", r.count() == 1 and r.locator(".sec-toggle").count() == 0)
+    check("A new Space section has no arrow (it has no parts)", r.count() == 1 and r.locator(".sec-toggle").count() == 0)
     # A section with several images: every name in its list is distinct.
     multi = None
     for i in range(pg.locator(".sec-row").count()):

@@ -4,6 +4,7 @@
 # Run from the repository root after `bun run build` and `python3 tests/editor/serve.py dist 4302 &`.
 import re, json, os
 from playwright.sync_api import sync_playwright
+from seed import seed, image, PHOTOS
 res = []
 def check(n, ok, d=""): ok = bool(ok); res.append(ok); print(("PASS " if ok else "FAIL ") + n + (f"  [{d}]" if d else ""), flush=True)
 URL = os.environ.get("EDITOR_URL", "http://localhost:4302/admin/design/?project=about-face-beauty")
@@ -64,12 +65,12 @@ with sync_playwright() as p:
 
         if not pg.get_by_role("tab", name="Add a section").count(): pg.get_by_role("button", name="Sections").first.click(); pg.wait_for_timeout(500)
         pg.get_by_role("tab", name="Add a section").click(); pg.wait_for_timeout(300)
-        pg.locator(".sec-option", has_text="One image").first.click(); pg.wait_for_timeout(1200)
+        pg.locator(".sec-option", has_text="Space").first.click(); pg.wait_for_timeout(1200)
         if pg.locator(".sec-panel:visible").count() and w < 638: pg.keyboard.press("Escape"); pg.wait_for_timeout(300)
         state(pg, w, "a section")
 
-        pg.locator(".ctx-photo").click(); pg.wait_for_timeout(600)
-        pg.locator(".ph-pick").first.click(); pg.locator(".ph-alt input").fill("Test photo"); pg.keyboard.press("Enter"); pg.wait_for_timeout(1000)
+        seed(pg, [image(PHOTOS["brand proposal cover art"])])
+        if pg.locator(".sec-panel:visible").count() and w < 900: pg.keyboard.press("Escape"); pg.wait_for_timeout(300)
         tap(pg, ".free-photo")
         state(pg, w, "a photo")
         pg.close()

@@ -5,7 +5,6 @@ import { allCategories } from '../../.content-collections/generated'
 
 // Read straight from the content, so the saving code (and its tests) do not load the whole site.
 const categoryName = (slug: string) => allCategories.find((c) => c.slug === slug)?.name ?? slug
-import { openPhotoPicker } from './photos'
 import { boxOf, clearGuides, describeSnap, drawGuides, linesFor, snap, type Box } from './guides'
 import { LABELS, type LabelKey } from '#/layout/labels'
 
@@ -338,10 +337,6 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       // The second click of a double-click never changes the selection: the double-click types.
       if (previewing() || e.detail > 1) return
       if (dragged) { dragged = false; return }
-      // An empty Image section's frame opens the photo picker (Puck keeps clicks off the page itself,
-      // so the frame is found by where the click landed).
-      const empty = [...doc.querySelectorAll<HTMLElement>('.editor-empty-image')].find((n) => { const r = n.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom })
-      if (empty?.dataset.choosePhoto && !e.shiftKey && !latest.current.adding) { openPhotoPicker(empty.dataset.choosePhoto); return }
       const more = e.shiftKey || latest.current.adding
       const onFrame = (e.target as HTMLElement).closest?.('.el-frame, .el-gframe')
       if (onFrame && !more) return

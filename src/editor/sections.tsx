@@ -59,21 +59,16 @@ let nextId = 0
 const newId = (type: string) => `${type}-${Date.now().toString(36)}${(nextId++).toString(36)}`
 
 // What can be added. Each option is built from the site's own blocks; nothing here is a new
-// kind of block. Text and Image start ready to type into or to choose a photo for.
+// kind of block. Text starts ready to type into. Photos are not added here: they are uploaded and
+// placed in the website editor (Sveltia CMS), and adjusted here once they are on the page.
 type Option = { id: string; name: string; text: string; picture: React.ReactNode; make: () => Item }
 const text = (props: Record<string, unknown> = {}): Item => ({ type: 'Text', props: { id: newId('Text'), heading: 'Heading', text: 'Write here.', headingLevel: 'h2', size: 'body', ...props } })
-// A single Image section starts as wide as the text column, so a photo is never page-wide by
-// default; the width can be changed in All settings, Section design. In columns it fills its column.
-const image = (alone = false): Item => ({ type: 'Image', props: { id: newId('Image'), image: '', ratio: 'auto', focusX: 50, focusY: 50, ...(alone && { design: { width: 'text' } }) } })
-const cell = (start: number, span: number, content: Item[]): Item => ({ type: 'Cell', props: { id: newId('Cell'), start, span, content } })
-const grid = (cells: Item[]): Item => ({ type: 'Grid', props: { id: newId('Grid'), gap: 'normal', align: 'start', cells } })
 
 const P = { olive: '#484527', sage: '#A3B18A', light: '#CDD5BE', off: '#EEF1ED' }
 const Pic = ({ children }: { children: React.ReactNode }) => (
   <svg viewBox="0 0 64 40" width="64" height="40" aria-hidden="true" className="sec-pic"><rect width="64" height="40" rx="3" fill={P.off} />{children}</svg>
 )
 const lines = (x: number, y: number, w: number, n: number) => Array.from({ length: n }, (_, i) => <rect key={i} x={x} y={y + i * 5} width={i === n - 1 ? w * 0.6 : w} height="2" rx="1" fill={P.olive} opacity="0.45" />)
-const photo = (x: number, y: number, w: number, h: number) => <g><rect x={x} y={y} width={w} height={h} rx="1.5" fill={P.sage} /><path d={`M${x + 3} ${y + h - 3} l${w * 0.3} ${-h * 0.4} l${w * 0.2} ${h * 0.2} l${w * 0.2} ${-h * 0.15} l${w * 0.3 - 6} ${h * 0.35} Z`} fill={P.olive} opacity="0.5" /></g>
 
 const GROUPS: { title: string; options: Option[] }[] = [
   {
@@ -81,14 +76,6 @@ const GROUPS: { title: string; options: Option[] }[] = [
     options: [
       { id: 'text', name: 'Text', text: 'A heading and a paragraph.', make: () => text(), picture: <Pic><rect x="8" y="8" width="26" height="4" rx="1" fill={P.olive} />{lines(8, 17, 48, 3)}</Pic> },
       { id: 'statement', name: 'Statement', text: 'One short message in large type, for a key point or a quotation.', make: () => text({ heading: '', text: 'Your statement.', size: 'statement' }), picture: <Pic><rect x="8" y="12" width="48" height="6" rx="1.5" fill={P.olive} /><rect x="8" y="22" width="30" height="6" rx="1.5" fill={P.olive} /></Pic> },
-    ],
-  },
-  {
-    title: 'Images',
-    options: [
-      { id: 'image', name: 'Image', text: 'One image, with a caption if you want one.', make: () => image(true), picture: <Pic>{photo(12, 6, 40, 24)}<rect x="12" y="33" width="20" height="2" rx="1" fill={P.olive} opacity="0.45" /></Pic> },
-      { id: 'two-images', name: 'Two images', text: 'Two images side by side. On phones they stack.', make: () => grid([cell(1, 6, [image()]), cell(7, 6, [image()])]), picture: <Pic>{photo(6, 8, 24, 24)}{photo(34, 8, 24, 24)}</Pic> },
-      { id: 'image-text', name: 'Image and text', text: 'An image beside a heading and paragraph.', make: () => grid([cell(1, 6, [image()]), cell(7, 6, [text()])]), picture: <Pic>{photo(6, 8, 26, 24)}<rect x="36" y="10" width="16" height="3" rx="1" fill={P.olive} />{lines(36, 17, 22, 3)}</Pic> },
     ],
   },
   {
@@ -376,7 +363,7 @@ function AddSection({ onAdded, announce }: { onAdded: () => void; announce: (s: 
           ))}
         </section>
       )}
-      <p className="sec-intro sec-after">After adding, choose words or a photo in <b>All settings</b>, or double-click the words on the page.</p>
+      <p className="sec-intro sec-after">After adding, double-click the words on the page to type, or use <b>All settings</b>. Photos are added in the website editor (/admin); once a photo is on the page, select it here to adjust it.</p>
     </div>
   )
 }

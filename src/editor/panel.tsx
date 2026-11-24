@@ -1,5 +1,4 @@
 import { kindName, showPartsOf } from './sections'
-import { openPhotoPicker } from './photos'
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { createUsePuck } from '@puckeditor/core'
@@ -8,7 +7,7 @@ import { COVER_NAMES, COVER_SIZES, TEXT_SIZES, lookAt, type ElementLook, type El
 import { photoSize, type Project } from '#/lib/site'
 import { ratioOptions } from '#/layout/free-blocks'
 import { IMAGES, Selection, type Picked, partsOf, angleOf, groupMoveListeners, coverListeners, rotateListeners, stackListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
-import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, ResetIcon, RotateIcon, SelectMoreIcon, ImageIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
+import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, ResetIcon, RotateIcon, SelectMoreIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
 
 // The editing controls. The contextual bar under the top bar holds what you use most for the
 // selected text, image or section; the side panel ("All settings") holds everything, grouped.
@@ -308,7 +307,6 @@ export function ContextBar() {
           <Swatches value={design.background} onChange={setBackground} small />
           {design.background && <button type="button" className="ctx-icon" title="Background as designed" aria-label="Background as designed" onClick={() => setBackground(undefined)}><ResetIcon /></button>}
         </span>
-        {item.type === 'Image' && <button type="button" className="ctx-btn ctx-photo" onClick={() => openPhotoPicker(item.props.id as string)}><ImageIcon /><span>{(item.props as { image?: string }).image ? 'Replace photo' : 'Choose a photo'}</span></button>}
         <span className="ctx-group">
           <button type="button" className="ctx-btn" disabled={!at || at.index === 0} onClick={() => at && dispatch({ type: 'reorder', sourceIndex: at.index, destinationIndex: at.index - 1, destinationZone: at.zone })}><UpIcon /><span>Move up</span></button>
           <button type="button" className="ctx-btn" disabled={!at || last} onClick={() => at && dispatch({ type: 'reorder', sourceIndex: at.index, destinationIndex: at.index + 1, destinationZone: at.zone })}><DownIcon /><span>Move down</span></button>

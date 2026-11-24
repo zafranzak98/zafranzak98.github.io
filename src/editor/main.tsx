@@ -17,7 +17,7 @@ import { describeStep } from './history'
 import { LayoutNotes, checkOptions, settled, type Intended } from './notes'
 import { ContextBar, screenFor } from './panel'
 import { SectionsPanel, openSections } from './sections'
-import { PhotoPicker, emptyImages, openPhotoPicker } from './photos'
+import { emptyImages } from './photos'
 import { EyeIcon, LayersIcon, RedoIcon, SlidersIcon, UndoIcon } from './icons'
 
 // The design editor at /admin/design/. Arrange and restyle a page with its real blocks, then
@@ -432,7 +432,7 @@ function Actions() {
 
   const publish = () => run('Publishing', async () => {
     // Never publish an empty Image section, whichever way Publish was reached.
-    if (emptyImages(data.content as never).length) throw new Error('An Image section has no photo yet. Choose a photo or remove the section, then publish.')
+    if (emptyImages(data.content as never).length) throw new Error('An Image section has no photo. Remove the section, then publish.')
     setPanel('')
     if (DEMO) {
       const list = readLocal<Version[]>(localKey(p.slug, 'versions'), [])
@@ -505,7 +505,6 @@ function Actions() {
 
   return (
     <header className="editor-bar">
-      <PhotoPicker />
       <div className="editor-bar-start">
         <span className="editor-brand">Design editor</span>
         {DEMO && <span className="editor-chip" title="Everything works, but saving and publishing stay in this browser.">Demo</span>}
@@ -578,8 +577,7 @@ function Actions() {
           {warnings.map((w) => <p key={w} className="editor-warning-text">{w}</p>)}
           {empties.length > 0 && (
             <div className="editor-blocked" role="alert">
-              <p><b>{empties.length === 1 ? 'An Image section has no photo yet.' : `${empties.length} Image sections have no photo yet.`}</b> Choose a photo, or remove the section, before publishing. Saving a draft still works.</p>
-              <ul>{empties.map((id, k) => <li key={id}><button type="button" onClick={() => { setPanel(''); openPhotoPicker(id) }}>Choose a photo{empties.length > 1 ? ` (${k + 1})` : ''}</button></li>)}</ul>
+              <p><b>{empties.length === 1 ? 'An Image section has no photo.' : `${empties.length} Image sections have no photo.`}</b> Remove {empties.length === 1 ? 'it' : 'them'} in Sections before publishing. Photos are added in the website editor (/admin). Saving a draft still works.</p>
             </div>
           )}
           {findings === null ? (

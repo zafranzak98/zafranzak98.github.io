@@ -33,18 +33,18 @@ with sync_playwright() as p:
     w.locator(".sec-grip").drag_to(pg.locator(".sec-row", has=pg.locator(".sec-name", has_text="Research & thinking"))); pg.wait_for_timeout(700)
     check("2 Reorder: The work now comes before Research & thinking", names(pg).index("The work") < names(pg).index("Research & thinking"), str(names(pg)[5:9]))
 
-    # 3. Add an image section and a text section.
+    # 3. Add a space and a text section (photos are added in the website editor).
     pg.get_by_role("tab", name="Add a section").click(); pg.wait_for_timeout(300)
-    pg.locator(".sec-option", has_text="One image").click(); pg.wait_for_timeout(900)
+    pg.locator(".sec-option", has_text="Space").click(); pg.wait_for_timeout(900)
     pg.get_by_role("tab", name="Add a section").click(); pg.wait_for_timeout(300)
     pg.locator(".sec-option", has_text="A heading and a paragraph").click(); pg.wait_for_timeout(900)
     n = names(pg)
-    check("3 Add an image and a text section: both listed, in order", "Image" in n and "Text: Heading" in n and n.index("Text: Heading") == n.index("Image") + 1, str(n))
+    check("3 Add a space and a text section: both listed, in order", "Space" in n and "Text: Heading" in n and n.index("Text: Heading") == n.index("Space") + 1, str(n))
 
     # 4. Understand what each kind does: every option says so in a sentence, with a picture.
     pg.get_by_role("tab", name="Add a section").click(); pg.wait_for_timeout(300)
     hints = pg.locator(".sec-option .sec-hint").all_inner_texts()
-    check("4 Every kind to add is described in a sentence", len(hints) >= 6 and all(len(h.split()) >= 4 for h in hints), str(hints[:3]))
+    check("4 Every kind to add is described in a sentence", len(hints) >= 3 and all(len(h.split()) >= 4 for h in hints), str(hints[:3]))
     pg.get_by_role("tab", name="On this page").click(); pg.wait_for_timeout(300)
 
     # 5. Select one element and edit its words (the new text section's heading).
