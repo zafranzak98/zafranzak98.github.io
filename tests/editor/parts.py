@@ -43,8 +43,8 @@ with sync_playwright() as p:
     row(pg, "Opening").locator(".sec-parts button", has_text="Summary line").click(); pg.wait_for_timeout(800)
     check("Choosing a part selects it, the same as clicking it on the page", pg.locator(".ctx-name").first.inner_text() == "Summary line")
     check("The chosen part is marked as current in the list", row(pg, "Opening").locator(".sec-parts button[aria-current='true']").inner_text() == "Summary line")
-    pg.locator(".ctx button[aria-label='Bold']").click(); pg.wait_for_timeout(500)
-    check("The selected part can be changed straight away", frame(pg).locator("[data-el='line']").first.evaluate("e => getComputedStyle(e).fontWeight") in ("700", "bold"))
+    pg.locator(".ctx button[aria-label='Larger text']").click(); pg.wait_for_timeout(500)
+    check("The selected part can be changed straight away", float(frame(pg).locator("[data-el='line']").first.evaluate("e => getComputedStyle(e).fontSize")[:-2]) > 20.3)
     pg.keyboard.press("Escape"); pg.wait_for_timeout(300)
     # Clicking a part on the page opens its section in the list.
     out = row(pg, "Outcomes").locator(".sec-toggle")

@@ -148,11 +148,11 @@ with sync_playwright() as p:
     pg, f, errs = open_editor(br, "about-face-beauty", 1440, 900); errors += errs
     status = lambda: pg.locator(".editor-status").inner_text()
     check("Opens as Same as the website", status() == "Same as the website")
-    click(pg, f, "[data-el='line']"); pg.locator(".ctx button[aria-label='Bold']").click(); pg.wait_for_timeout(500)
+    click(pg, f, "[data-el='line']"); pg.locator(".ctx button[aria-label='Larger text']").click(); pg.wait_for_timeout(500)
     check("A change shows Not saved yet", status() == "Not saved yet")
     pg.locator(".editor-save").click(); pg.wait_for_timeout(600)
     check("Save draft shows Draft saved", status().startswith("Draft saved "), status())
-    pg.locator(".ctx button[aria-label='Bold']").click(); pg.wait_for_timeout(300)
+    pg.locator(".ctx button[aria-label='Larger text']").click(); pg.wait_for_timeout(300)
     pg.evaluate("() => { Storage.prototype._set = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (k.endsWith(':draft')) throw new Error('Storage is full.'); return this._set(k, v) } }")
     pg.locator(".editor-save").click(); pg.wait_for_timeout(600)
     check("A failed save says so, in the status", status() == "Not saved: see the message" and pg.locator(".editor-status.is-failed").count() == 1, status())

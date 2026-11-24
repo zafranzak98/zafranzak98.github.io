@@ -25,7 +25,7 @@ with sync_playwright() as p:
     # 3. Per-size dot: a Tablet-only change marks Tablet, not Desktop.
     pg.get_by_role("button", name="Tablet").first.click(); pg.wait_for_timeout(1200); f = frame(pg)
     click(pg, f, "[data-el='line']")
-    pg.locator(".ctx button[aria-label='Bold']").click(); pg.wait_for_timeout(500)
+    pg.locator(".ctx button[aria-label='Larger text']").click(); pg.wait_for_timeout(500)
     dots = pg.evaluate("[...document.querySelectorAll('.editor-screens button')].filter(b => b.querySelector('.editor-own-dot')).map(b => b.textContent.replace(/\\(.*\\)/, '').trim())")
     check("Tablet change puts a dot on Tablet only", dots == ["Tablet"], str(dots))
     pg.keyboard.press("Escape"); pg.wait_for_timeout(300)
@@ -36,25 +36,31 @@ with sync_playwright() as p:
     pg.keyboard.press("Escape"); pg.wait_for_timeout(200)
     pg.close()
 
-    # 4. Phone: arrows show that the tools continue, and reveal them.
-    pg, f, errs2 = open_editor(br, "about-face-beauty", 390, 844)
+    # 4. Tablet: arrows show that the tools continue, and reveal them. (Phones show every tool in two
+    #    rows instead, so they need no arrows: final.py checks that.)
+    pg, f, errs2 = open_editor(br, "about-face-beauty", 768, 1024)
     click(pg, f, "[data-el='line']")
     right = pg.locator(".ctx-scroll-right")
-    check("Phone: an arrow shows more tools to the right", right.count() == 1 and right.is_visible())
+    check("Tablet: an arrow shows more tools to the right", right.count() == 1 and right.is_visible())
     before = pg.evaluate("document.querySelector('.editor-bar-ctx .ctx').scrollLeft")
     for _ in range(6):
         if pg.locator(".ctx-scroll-right").count() == 0: break
         pg.locator(".ctx-scroll-right").click(); pg.wait_for_timeout(500)
     after = pg.evaluate("document.querySelector('.editor-bar-ctx .ctx').scrollLeft")
     reset = pg.locator(".ctx .ctx-more").bounding_box()
-    check("Phone: the arrow scrolls to More (Hide, Reset)", after > before and reset and reset["x"] + reset["width"] <= 390, f"{before}->{after}")
-    check("Phone: a left arrow appears once scrolled", pg.locator(".ctx-scroll-left").count() == 1)
-    check("Phone: arrows are not in the keyboard order", pg.evaluate("[...document.querySelectorAll('.ctx-scroll')].every(b => b.tabIndex === -1)"))
+    check("Tablet: the arrow scrolls to More (Hide, Reset)", after > before and reset and reset["x"] + reset["width"] <= 768, f"{before}->{after}")
+    check("Tablet: a left arrow appears once scrolled", pg.locator(".ctx-scroll-left").count() == 1)
+    check("Tablet: arrows are not in the keyboard order", pg.evaluate("[...document.querySelectorAll('.ctx-scroll')].every(b => b.tabIndex === -1)"))
+    pg.close()
+
+    pg, f, errs2b = open_editor(br, "about-face-beauty", 390, 844)
+    click(pg, f, "[data-el='line']")
+    check("Phone: every tool is on screen, so no arrows", pg.locator(".ctx-scroll").count() == 0 and pg.evaluate("(() => { const c = document.querySelector('.editor-bar-ctx .ctx'); return c.scrollWidth <= c.clientWidth + 1 })()"))
     pg.close()
 
     pg, f, errs3 = open_editor(br, "about-face-beauty", 1440, 900)
     click(pg, f, "[data-el='line']")
     check("Wide screen: no arrows when every tool fits", pg.locator(".ctx-scroll").count() == 0)
     pg.close()
-    check("No script errors", not (errs + errs2 + errs3), str((errs + errs2 + errs3)[:2]))
+    check("No script errors", not (errs + errs2 + errs2b + errs3), str((errs + errs2 + errs2b + errs3)[:2]))
     print(f"{sum(res)} of {len(res)} passed")

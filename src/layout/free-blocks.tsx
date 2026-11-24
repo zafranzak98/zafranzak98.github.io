@@ -28,7 +28,7 @@ export function TextBlock({ kicker, heading, headingLevel = 'h2', text, size = '
     <div {...designProps(design, 'free-block free-text')}>
       {kicker && <span {...el('kicker', { className: 'lab', field: 'prop:kicker' })}>{kicker}</span>}
       {heading && <H {...el('heading', { className: 'c free-heading', field: 'prop:heading' })}>{heading}</H>}
-      {text && <p {...el('text', { className: textClass, field: 'prop:text' })}><Rich text={text} highlight /></p>}
+      {text && <p {...el('text', { className: textClass, field: 'prop:text', rich: true })}><Rich text={text} highlight /></p>}
     </div>
   )
 }
@@ -47,7 +47,7 @@ export function ImageBlock({ image, alt, caption, ratio = 'auto', fit = 'cover',
       <div {...el('photo', { className: 'free-photo' })}>
         <Media img={{ image, alt }} ratio={ratio} focus={`${focusX}% ${focusY}%`} label={alt || 'image'} sizes="(max-width: 899px) 100vw, 75vw" />
       </div>
-      {caption && <figcaption {...el('caption', { className: 'cap', field: 'prop:caption' })}><Rich text={caption} /></figcaption>}
+      {caption && <figcaption {...el('caption', { className: 'cap', field: 'prop:caption', rich: true })}><Rich text={caption} /></figcaption>}
     </figure>
   )
 }

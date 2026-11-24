@@ -136,5 +136,63 @@ for w, h in [(1440, 900), (390, 844)]:
     finally:
         d.quit()
 
+# Final refinements in WebKit: formatted words, project photo presentation, page links, the settings panel.
+FR = "return document.getElementById('preview-frame').contentDocument"
+for w, h in [(1440, 900), (1024, 768), (390, 844)]:
+    d = start(w, h)
+    try:
+        if w < 638 and js(d, "return !!document.querySelector('.sec-panel') && document.querySelector('.sec-panel').offsetParent !== null"):
+            ActionChains(d).send_keys(Keys.ESCAPE).perform(); time.sleep(0.4)
+        # F: select one word while typing and make it bold with the toolbar button.
+        click_part(d, "[data-el='line']")
+        btn(d, ".ctx button[aria-label='Edit words']").click(); time.sleep(0.8)
+        typing = js(d, FR + ".querySelector('.el-typing')?.getAttribute('contenteditable')")
+        check(f"{w}px: formatted words are typed in a rich copy", typing == "true", str(typing))
+        js(d, """const doc = document.getElementById('preview-frame').contentDocument, box = doc.querySelector('.el-typing'), t = box.firstChild
+          const r = doc.createRange(); r.setStart(t, 0); r.setEnd(t, 5); const sel = doc.getSelection(); sel.removeAllRanges(); sel.addRange(r)""")
+        b = btn(d, ".ctx-format button[aria-label='Bold']")
+        a = ActionBuilder(d); a.pointer_action.move_to_location(*js(d, "const r = arguments[0].getBoundingClientRect(); return [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)]", b)).click(); a.perform(); time.sleep(0.4)
+        bolded = js(d, FR + ".querySelector('.el-typing b, .el-typing strong')?.innerText || ''")
+        check(f"{w}px: Bold formats only the selected word and typing continues", bolded == "Three" and js(d, FR + ".querySelector('.el-typing') !== null"), bolded)
+        js(d, FR + ".querySelector('.el-typing').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))"); time.sleep(1.2)
+        page = js(d, FR + ".querySelector(\"[data-el='line'] strong\")?.innerText || ''")
+        check(f"{w}px: the page shows the word bold after finishing", page == "Three", page)
+        # A: Enter on a page link keeps the editable page.
+        ActionChains(d).send_keys(Keys.ESCAPE).perform(); time.sleep(0.3)
+        url0 = js(d, FR + ".URL")
+        js(d, FR + ".querySelector(\"a[href='/projects/brand-communications/fc-yeah/']\").focus()")
+        js(d, FR + ".querySelector(\"a[href='/projects/brand-communications/fc-yeah/']\").click()"); time.sleep(1.5)
+        check(f"{w}px: a page link does not replace the page being edited", js(d, FR + ".URL") == url0 and js(d, FR + ".querySelectorAll('[data-el]').length") > 20)
+        errors += js(d, "return window.__errs")
+    finally:
+        d.quit()
+# C: a project photo's shape, in WebKit, on Cancel Me, Not!
+URL_CMN = URL.replace("about-face-beauty", "cancel-me-not")
+for w, h in [(1440, 900), (1024, 768)]:
+    o = webdriver.WebKitGTKOptions(); o.set_capability("webkitgtk:browserOptions", {"binary": BROWSER, "args": ["--automation", "--headless"]})
+    d = webdriver.WebKitGTK(options=o, service=webdriver.WebKitGTKService(executable_path="/usr/bin/WebKitWebDriver")); d.set_window_size(w, h)
+    try:
+        d.get(URL_CMN); time.sleep(2); d.execute_script("localStorage.clear()"); d.get(URL_CMN); time.sleep(4)
+        d.execute_script("window.__errs = []; addEventListener('error', e => __errs.push(String(e.message)))")
+        click_part(d, "#work [data-el='key']")
+        st = btn(d, ".ctx .ctx-settings")
+        if st and st.get_attribute("aria-pressed") != "true": st.click(); time.sleep(0.8)
+        # B: nothing in the settings panel sticks out of it.
+        out = js(d, """const p = [...document.querySelectorAll('.el-panel')].find(x => x.getBoundingClientRect().width > 0); const r = p.getBoundingClientRect()
+          return [...p.querySelectorAll('button, select, input')].filter(e => e.getClientRects().length && e.getBoundingClientRect().right > Math.min(r.right, innerWidth) + 1).length""")
+        check(f"{w}px: nothing in the photo settings is cut off", out == 0, str(out))
+        # Choose from the Shape list the way the browser reports a choice (WebDriver cannot open a native list here).
+        pick = """const s = document.querySelector("section.el-group[aria-label='Look: Photo'] select[aria-label='Shape']"); s.scrollIntoView({ block: 'center' })
+          Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, arguments[0]); s.dispatchEvent(new Event('change', { bubbles: true }))"""
+        js(d, pick, "1/1"); time.sleep(1)
+        ratio = js(d, FR + ".querySelector(\"#work [data-el='key'] img\").getBoundingClientRect(); return null") if False else js(d, "const r = document.getElementById('preview-frame').contentDocument.querySelector(\"#work [data-el='key'] img\").getBoundingClientRect(); return r.width / r.height")
+        check(f"{w}px: Shape Square makes the project photo square", abs(ratio - 1) < 0.02, f"{ratio:.3f}")
+        js(d, pick, "auto"); time.sleep(1)
+        own = js(d, "const i = document.getElementById('preview-frame').contentDocument.querySelector(\"#work [data-el='key'] img\"); const r = i.getBoundingClientRect(); return [r.width / r.height, i.naturalWidth / i.naturalHeight]")
+        check(f"{w}px: Its own shape shows the whole photo uncropped", abs(own[0] - own[1]) < 0.02, str(own))
+        errors += js(d, "return window.__errs")
+    finally:
+        d.quit()
+
 check("No script errors in WebKit", not errors, str(errors[:3]))
 print(f"{sum(res)} of {len(res)} passed")
