@@ -75,6 +75,10 @@ const projects = defineCollection({
     outcome_note: z.string().optional(),
     skills: z.array(z.string()).optional(),
     link: z.object({ label: z.string(), url: z.string() }).optional(),
+    // Section titles and small labels on the page; empty ones use the standard wording.
+    labels: z
+      .object(Object.fromEntries(['overview', 'research', 'work', 'outcomes', 'role', 'type', 'when', 'deliverables', 'tools', 'what_i_did', 'what_team_did', 'skills'].map((k) => [k, z.string().optional()])))
+      .optional(),
     // Search and sharing. Each one falls back to the title, summary or cover image when empty.
     seo: z
       .object({ title: z.string().max(60).optional(), description: z.string().max(160).optional(), image: z.string().optional() })
