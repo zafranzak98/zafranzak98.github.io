@@ -494,3 +494,21 @@ html[data-preview] [data-el-note] { outline: none; }
 .el-fine > .el-group { margin-inline: -1rem; }
 /* Puck's own panel title (Page › Section) gives way to our breadcrumb, which uses the editor's names. */
 [class*='_FieldsPlugin-header'], [class*='_SidebarSection-title']:has([class*='_Breadcrumbs']) { display: none; }
+
+/* Sections: each section's parts, opened with the arrow before its name. */
+.sec-row { flex-wrap: wrap; }
+.sec-toggle { all: unset; box-sizing: border-box; flex: none; width: 32px; min-height: 44px; display: grid; place-items: center; border-radius: 6px; color: #5d5b45; cursor: pointer; }
+.sec-toggle span { display: inline-block; transition: transform 0.15s; }
+.sec-toggle[aria-expanded='true'] span { transform: rotate(90deg); }
+.sec-toggle:hover { background: #ebece4; }
+.sec-toggle:focus-visible, .sec-parts button:focus-visible { outline: 2px solid var(--terra, #9a3f24); outline-offset: -2px; }
+.sec-toggle-none { flex: none; width: 32px; }
+.sec-parts { flex-basis: 100%; margin: 0 0 0.375rem; padding: 0 0.25rem 0 5.65rem; list-style: none; display: grid; gap: 0.125rem; }
+.sec-parts button { all: unset; box-sizing: border-box; display: block; width: 100%; min-height: 36px; padding: 0.5rem 0.625rem; border-radius: 6px; font-size: 14px; color: var(--olive); cursor: pointer; }
+.sec-parts button:hover { background: #ebece4; }
+.sec-parts button[aria-current='true'] { background: #f6e9e4; color: var(--terra, #9a3f24); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .sec-toggle span { transition: none; } }
+.el-parts-link { margin-top: 0.5rem; padding: 0.5rem 0.75rem; border: 1px solid #d5d9c9; border-radius: 6px; background: #fff; color: var(--olive); font: inherit; font-weight: 600; cursor: pointer; }
+.el-parts-link:focus-visible { outline: 2px solid var(--terra, #9a3f24); outline-offset: 2px; }
+/* Anything focused or scrolled to in the list stays clear of the sticky tabs above it (WCAG 2.4.11). */
+.sec-row, .sec-parts button { scroll-margin-top: 4.5rem; scroll-margin-bottom: 1rem; }

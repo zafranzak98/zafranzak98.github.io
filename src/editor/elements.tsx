@@ -21,6 +21,21 @@ const usePuck = createUsePuck()
 export type Edits = Record<string, string>
 export type Picked = { key: string; blockId: string; field?: string }
 type Selected = Picked | null
+// The parts of a section, in page order, read from the markers every part carries on the page. A part
+// belongs to the nearest block around it (a column of a grid is its own block). Used by Sections.
+export function partsOf(blockId: string): Picked[] {
+  const doc = (document.getElementById('preview-frame') as HTMLIFrameElement | null)?.contentDocument
+  const root = doc?.querySelector(`[data-puck-component="${blockId}"]`)
+  if (!root) return []
+  const seen = new Set<string>()
+  return [...root.querySelectorAll<HTMLElement>('[data-el]')].flatMap((el) => {
+    const owner = el.closest('[data-puck-component]')?.getAttribute('data-puck-component') ?? blockId
+    const id = `${owner}|${el.dataset.el}`
+    if (seen.has(id)) return []
+    seen.add(id)
+    return [{ key: el.dataset.el!, blockId: owner, field: el.dataset.edit }]
+  })
+}
 const same = (a: Picked, b: Picked) => a.key === b.key && a.blockId === b.blockId
 
 // One element is "selected" (its settings show in the panel). Shift-click adds more to a group;

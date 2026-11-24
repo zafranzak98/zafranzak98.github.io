@@ -1,4 +1,4 @@
-import { kindName } from './sections'
+import { kindName, showPartsOf } from './sections'
 import { openPhotoPicker } from './photos'
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -7,7 +7,7 @@ import { COLOURS, contrast, type Colour } from '#/layout/design'
 import { COVER_NAMES, COVER_SIZES, TEXT_SIZES, lookAt, type ElementLook, type ElementStyle, type Elements, type Screen, type TextSize } from '#/layout/elements'
 import { photoSize, type Project } from '#/lib/site'
 import { ratioOptions } from '#/layout/free-blocks'
-import { IMAGES, Selection, type Picked, angleOf, groupMoveListeners, coverListeners, rotateListeners, stackListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
+import { IMAGES, Selection, type Picked, partsOf, angleOf, groupMoveListeners, coverListeners, rotateListeners, stackListeners, widthNow, announceListeners, moveListeners, nameOf, round, setSnapOn, snapOn, useWords, widthListeners } from './elements'
 import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, ResetIcon, RotateIcon, SelectMoreIcon, ImageIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
 
 // The editing controls. The contextual bar under the top bar holds what you use most for the
@@ -723,27 +723,22 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
   )
 }
 
-// A section with no element selected: its parts, another way to select one (also by keyboard).
+// A section with no element selected: its parts are listed under it in Sections (one list for the
+// whole page), so the panel points there rather than keeping a second list.
 function Parts({ blockId }: { blockId?: string }) {
-  const { select } = useContext(Selection)
-  const [parts, setParts] = useState<{ key: string; field?: string }[]>([])
-  useEffect(() => {
-    const doc = canvas()
-    if (!doc || !blockId) return setParts([])
-    const seen = new Set<string>()
-    setParts([...doc.querySelectorAll<HTMLElement>(`[data-puck-component="${blockId}"] [data-el]`)].flatMap((el) => {
-      if (seen.has(el.dataset.el!)) return []
-      seen.add(el.dataset.el!)
-      return [{ key: el.dataset.el!, field: el.dataset.edit }]
-    }))
-  }, [blockId])
-  if (!parts.length) return null
+  const dispatch = usePuck((s) => s.dispatch)
+  const [count, setCount] = useState(0)
+  useEffect(() => { setCount(blockId ? partsOf(blockId).length : 0) }, [blockId])
+  if (!blockId || !count) return null
+  const show = () => {
+    dispatch({ type: 'setUi', ui: { leftSideBarVisible: true, plugin: { current: 'blocks' } } })
+    showPartsOf(blockId)
+  }
   return (
     <div className="el-panel">
       <Group title="Parts of this section">
-        <ul className="el-parts">
-          {parts.map((part) => <li key={part.key}><button type="button" onClick={() => select({ key: part.key, blockId: blockId!, field: part.field })}>{nameOf(part.key)}</button></li>)}
-        </ul>
+        <p className="el-note">Its {count} {count === 1 ? 'part is' : 'parts are'} listed under it in Sections. Choose one there, or click it on the page.</p>
+        <button type="button" className="el-parts-link" onClick={show}>Show its parts in Sections</button>
       </Group>
     </div>
   )
