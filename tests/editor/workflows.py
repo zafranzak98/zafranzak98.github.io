@@ -1,7 +1,7 @@
 # Complete editing workflows on real portfolio pages, as a person would do them: several kinds of change
 # on one part, then undo, redo, reset, saving and reloading. Run from the repository root after
 # `bun run build` and `python3 tests/editor/serve.py dist 4302 &`.
-import math
+import re, math
 _here = __file__.replace("workflows.py", "")
 exec(open(_here + "notes.py").read().split("\nwith sync_playwright() as p:")[0])
 exec(open(_here + "round2.py").read().split("\nwith sync_playwright() as p:")[0].split("\n", 5)[5])
@@ -10,6 +10,9 @@ def look(f, sel, prop): return f.evaluate(f"getComputedStyle(document.querySelec
 def undo(pg): pg.locator(".editor-history button").first.click(); pg.wait_for_timeout(700)  # the unsaved copy is written 0.4 s after a change
 def redo(pg): pg.locator(".editor-history button").nth(1).click(); pg.wait_for_timeout(700)
 
+def more(pg, item):
+    pg.locator(".ctx .ctx-more").first.click(); pg.wait_for_timeout(300)
+    pg.locator(".ctx-more-menu button", has_text=item).first.click(); pg.wait_for_timeout(500)
 with sync_playwright() as p:
     br = p.chromium.launch()
     errors = []
@@ -45,7 +48,7 @@ with sync_playwright() as p:
     click(pg, f, "[data-el='image-0']")
     w = pg.locator(".ctx input[aria-label='Width in per cent']"); w.click(); w.fill("60"); w.press("Enter"); pg.wait_for_timeout(700)
     a = pg.locator(angle_field); a.click(); a.fill("3"); a.press("Enter"); pg.wait_for_timeout(700)
-    pg.get_by_role("button", name="More settings").click(); pg.wait_for_timeout(700)
+    pg.get_by_role("button", name=re.compile("^(All )?[Ss]ettings$")).click(); pg.wait_for_timeout(700)
     focus = pg.locator(".el-focus button:visible")
     if focus.count(): focus.first.click(); pg.wait_for_timeout(700)
     o = own(pg, "about-face-beauty", "image-0", "desktop")
@@ -59,7 +62,7 @@ with sync_playwright() as p:
     # 3. Phone only: hide the summary line on Phone; Desktop keeps it; layout notes stay quiet.
     pg, f, errs = open_editor(br, "fc-yeah", 1440, 900); errors += errs
     pg.get_by_role("button", name="Phone").first.click(); pg.wait_for_timeout(1400); f = frame(pg)
-    click(pg, f, "[data-el='line']"); pg.locator(".ctx .ctx-hide").click(); pg.wait_for_timeout(2200)
+    click(pg, f, "[data-el='line']"); more(pg,"Hide on"); pg.wait_for_timeout(1700)
     check("Hidden on Phone only", own(pg, "fc-yeah", "line", "phone").get("hidden") is True and not own(pg, "fc-yeah", "line", "desktop"))
     check("No layout notes for hiding a part", pg.locator(chip).count() == 0)
     pg.get_by_role("button", name="Desktop").first.click(); pg.wait_for_timeout(1400); f = frame(pg)

@@ -3,7 +3,7 @@
 # the Sections panel. Needs axe-core, installed without changing the project's dependencies:
 #   npm i --no-save axe-core     (or set AXE to the path of axe.min.js)
 # Run from the repository root after `bun run build` and `python3 tests/editor/serve.py dist 4302 &`.
-import json, os
+import re, json, os
 from playwright.sync_api import sync_playwright
 res = []
 def check(n, ok, d=""): ok = bool(ok); res.append(ok); print(("PASS " if ok else "FAIL ") + n + (f"  [{d}]" if d else ""))
@@ -75,7 +75,7 @@ with sync_playwright() as p:
     axe(pg, "Sections, Add a section")
     f = frame(pg); el = f.locator(".cs-open-visual").first; b = el.bounding_box()
     pg.mouse.click(b["x"] + 10, b["y"] + 10); pg.wait_for_timeout(500)
-    pg.get_by_role("button", name="More settings").first.click(); pg.wait_for_timeout(500)
+    pg.get_by_role("button", name=re.compile("^(All )?[Ss]ettings$")).first.click(); pg.wait_for_timeout(500)
     axe(pg, "image selected with its settings")
 
     check("No script errors", not errors, str(errors[:2]))

@@ -1,7 +1,7 @@
 # UX round 2: image rotation, positioning and spacing suggestions, the "Also here" list, typed numbers,
 # save status and undo labels. Run from the repository root after `bun run build` and
 # `python3 tests/editor/serve.py dist 4302 &`.
-import math
+import re, math
 exec(open(__file__.replace("round2.py", "notes.py")).read().split("with sync_playwright")[0])
 
 def frame_click(pg, f):
@@ -34,6 +34,9 @@ def turn(pg, f, degrees, shift=False):
     return label
 angle_field = ".ctx input[aria-label='Angle in degrees']"
 
+def more(pg, item):
+    pg.locator(".ctx .ctx-more").first.click(); pg.wait_for_timeout(300)
+    pg.locator(".ctx-more-menu button", has_text=item).first.click(); pg.wait_for_timeout(500)
 with sync_playwright() as p:
     br = p.chromium.launch()
     errors = []
@@ -74,7 +77,7 @@ with sync_playwright() as p:
     check("Tablet angle is saved for Tablet only", own(pg, "about-face-beauty", "image", "tablet").get("rotate") == 3 and own(pg, "about-face-beauty", "image", "desktop").get("rotate") == -5.5)
     dots = pg.evaluate("[...document.querySelectorAll('.editor-screens button')].filter(b => b.querySelector('.editor-own-dot')).map(b => b.firstChild.textContent.trim())")
     check("Dots show Desktop and Tablet have their own settings", dots == ["Desktop", "Tablet"], str(dots))
-    pg.locator(".ctx .ctx-reset").click(); pg.wait_for_timeout(400)
+    more(pg,"Reset Tablet changes"); pg.wait_for_timeout(100)
     check("Reset at Tablet returns to Desktop's angle", "rotate" not in own(pg, "about-face-beauty", "image", "tablet") and tilt(f) == "-5.5deg", tilt(f))
     # Phone: no new clipping at a moderate angle; a steep angle is reported if it is cut off.
     pg.get_by_role("button", name="Phone").first.click(); pg.wait_for_timeout(1400); f = frame(pg)
@@ -131,7 +134,8 @@ with sync_playwright() as p:
     # 4. Typed numbers in More settings: width and position.
     pg, f, errs = open_editor(br, "cancel-me-not", 1440, 900); errors += errs
     click(pg, f, "[data-el='figure-0']")
-    pg.get_by_role("button", name="More settings").click(); pg.wait_for_timeout(500)
+    pg.get_by_role("button", name=re.compile("^(All )?[Ss]ettings$")).click(); pg.wait_for_timeout(500)
+    pg.locator("details.el-fine:visible summary").first.click(); pg.wait_for_timeout(300)  # exact position is in Fine-tune (Demo 5)
     across = pg.locator("input[aria-label='Across']:visible")
     across.click(); across.fill("32"); across.press("Enter"); pg.wait_for_timeout(400)
     check("Typing 32 in Across moves it 32px (2rem)", own(pg, "cancel-me-not", "figure-0", "desktop").get("x") == 2)

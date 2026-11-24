@@ -31,7 +31,8 @@ with sync_playwright() as p:
     pg.keyboard.press("Escape"); pg.wait_for_timeout(300)
     check("Escape from the toolbar deselects, and the dot goes", pg.locator(".editor-own-dot").count() == 0)
     click(pg, f, "[data-el='line']")
-    check("Select more has its own icon, not the Add icon", pg.locator(".ctx-more-sel svg rect").count() == 2)
+    pg.locator(".ctx .ctx-more").first.click(); pg.wait_for_timeout(300)
+    check("Select more has its own icon, not the Add icon", pg.locator(".ctx-more-menu button", has_text="Select more parts").locator("svg rect").count() == 2)
     pg.keyboard.press("Escape"); pg.wait_for_timeout(200)
     pg.close()
 
@@ -45,8 +46,8 @@ with sync_playwright() as p:
         if pg.locator(".ctx-scroll-right").count() == 0: break
         pg.locator(".ctx-scroll-right").click(); pg.wait_for_timeout(500)
     after = pg.evaluate("document.querySelector('.editor-bar-ctx .ctx').scrollLeft")
-    reset = pg.locator(".ctx .ctx-reset").bounding_box()
-    check("Phone: the arrow scrolls to Hide and Reset", after > before and reset and reset["x"] + reset["width"] <= 390, f"{before}->{after}")
+    reset = pg.locator(".ctx .ctx-more").bounding_box()
+    check("Phone: the arrow scrolls to More (Hide, Reset)", after > before and reset and reset["x"] + reset["width"] <= 390, f"{before}->{after}")
     check("Phone: a left arrow appears once scrolled", pg.locator(".ctx-scroll-left").count() == 1)
     check("Phone: arrows are not in the keyboard order", pg.evaluate("[...document.querySelectorAll('.ctx-scroll')].every(b => b.tabIndex === -1)"))
     pg.close()

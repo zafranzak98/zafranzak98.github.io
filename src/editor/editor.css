@@ -211,6 +211,9 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
 .ctx-name { flex: none; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; padding-right: 0.75rem; border-right: 1px solid #dfe3d6; font-weight: 700; white-space: nowrap; }
 .ctx > * { flex-shrink: 0; }
 .ctx-hint { white-space: nowrap; }
+/* The tip shown with nothing selected wraps rather than scrolling, so nothing in it is out of reach. */
+.ctx-empty { overflow: hidden; }
+.ctx-empty .ctx-hint { white-space: normal; line-height: 1.3; min-width: 0; flex: 1 1 auto; }
 .ctx-hint { margin: 0; color: #5c5a45; }
 .ctx-hint b { color: var(--olive); }
 .ctx-gap { flex: 1; }
@@ -250,7 +253,11 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
 @media (max-width: 639px) {
   .editor-bar-ctx { margin: 0 -0.5rem -0.5rem; }
   .ctx { gap: 0.375rem 0.5rem; padding: 0.375rem 0.5rem; }
-  .ctx .ctx-btn span, .ctx-label { display: none; }
+  .ctx-label { display: none; }
+  /* Icon-only on phones, but the words stay as each button's name for screen readers. */
+  .ctx .ctx-btn { position: relative; }
+  .ctx .ctx-btn span:not([aria-hidden]) { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .ctx .ctx-btn span[aria-hidden] { display: none; }
   .editor-bar .ctx-btn { padding: 0 0.5rem; }
   .ctx-name { max-width: 7rem; }
   .ctx-stepper output { min-width: 4rem; }
@@ -299,12 +306,21 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
 @media (max-width: 1439px) { .ctx-group-hint { display: none; } }
 
 /* Arrange menu for a group: a short list under its button, fixed so the bar does not clip it. */
-.ctx-arrange { position: relative; }
+.ctx-arrange, .ctx-more-wrap { position: relative; }
 .ctx-menu { position: fixed; z-index: 1000; display: grid; min-width: 12rem; padding: 0.25rem; border-radius: 8px; background: #fff; box-shadow: 0 6px 24px rgb(0 0 0 / 0.16); }
 .ctx-menu button { all: unset; box-sizing: border-box; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 14px; cursor: pointer; white-space: nowrap; }
 .ctx-menu button:hover:not(:disabled), .ctx-menu button:focus-visible { background: #f0efec; }
 .ctx-menu button:focus-visible { outline: 2px solid var(--terra, #9a3f24); outline-offset: -2px; }
 .ctx-menu button:disabled { color: #8a887a; cursor: default; }
+/* The bar's More menu: actions in words, with their icon; Box position as a labelled row. */
+.ctx-more-menu { min-width: 15rem; }
+.ctx-more-menu > button { display: flex; align-items: center; gap: 0.5rem; min-height: 2.25rem; }
+.ctx-more-menu svg { width: 18px; height: 18px; flex: none; }
+.ctx-more-menu button[aria-pressed='true'] { background: #e7f1fb; }
+.ctx-more-menu .ctx-danger { color: #a3261b; }
+.ctx-menu-row { display: flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.25rem 0.25rem 0.75rem; }
+.ctx-menu-label { flex: 1; font-size: 14px; }
+.ctx-menu-row button { display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; padding: 0; }
 
 /* Layout notes: a quiet count in the top bar, a short list on request, a faint dashed mark on the page. */
 .editor-notes { position: fixed; left: 1rem; bottom: 1rem; z-index: 70; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 0.5rem; max-width: min(30rem, calc(100vw - 2rem)); }
@@ -460,3 +476,21 @@ html[data-preview] [data-el-note] { outline: none; }
 /* The Shape list for an Image section's photo. */
 .el-select { width: 100%; min-height: 2.25rem; padding: 0.375rem 0.5rem; border: 1px solid #b9bea9; border-radius: 6px; background: #fff; color: var(--olive); font: inherit; }
 .el-select:focus-visible { outline: 2px solid var(--terra); outline-offset: 1px; }
+
+/* Editing Tablet or Phone: a steady strip above the tools says where changes apply. */
+.editor-strip { margin: 0; padding: 0.375rem 1rem; border-bottom: 1px solid #ecd9d1; background: #f6e9e4; color: #6e2a17; font-size: 13px; line-height: 1.35; }
+.editor-strip b { font-weight: 650; }
+@media (max-width: 899px) { .editor-strip { padding: 0.375rem 0.75rem; } .editor-strip-more { display: none; } }
+
+/* The side panel: Page › Section › Part at the top, and exact position folded away in Fine-tune. */
+.el-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; margin: 0 0 0.25rem; font-size: 13px; color: #5c5a45; }
+.el-crumbs button { all: unset; cursor: pointer; padding: 0.25rem 0.125rem; min-height: 24px; color: var(--olive); text-decoration: underline; text-underline-offset: 2px; }
+.el-crumbs button:focus-visible { outline: 2px solid var(--terra, #9a3f24); outline-offset: 2px; border-radius: 3px; }
+.el-crumbs [aria-current] { font-weight: 600; color: var(--olive); }
+.el-panel-crumbs { padding-bottom: 0; }
+.el-fine { margin: 0.5rem 1rem 0; border-top: 1px solid var(--lsage); }
+.el-fine summary { padding: 0.875rem 0; font-size: 14px; font-weight: 600; color: var(--olive); cursor: pointer; }
+.el-fine-set { font-weight: 500; color: var(--terra); }
+.el-fine > .el-group { margin-inline: -1rem; }
+/* Puck's own panel title (Page › Section) gives way to our breadcrumb, which uses the editor's names. */
+[class*='_FieldsPlugin-header'], [class*='_SidebarSection-title']:has([class*='_Breadcrumbs']) { display: none; }

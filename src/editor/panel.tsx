@@ -11,7 +11,7 @@ import { IMAGES, Selection, type Picked, angleOf, groupMoveListeners, coverListe
 import { BoxCentreIcon, BoxEndIcon, BoxStartIcon, EyeOffIcon, AlignCentreIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, CopyIcon, DownIcon, LayersIcon, PenIcon, ResetIcon, RotateIcon, SelectMoreIcon, ImageIcon, SlidersIcon, TrashIcon, UpIcon } from './icons'
 
 // The editing controls. The contextual bar under the top bar holds what you use most for the
-// selected text, image or section; the side panel ("More settings") holds everything, grouped.
+// selected text, image or section; the side panel ("All settings") holds everything, grouped.
 // Both read and change the same settings, for the screen size chosen in the top bar.
 
 const usePuck = createUsePuck()
@@ -19,6 +19,9 @@ const usePuck = createUsePuck()
 const SCREEN_LABEL: Record<Screen, string> = { desktop: 'Desktop', tablet: 'Tablet', phone: 'Phone' }
 export const screenFor = (width: number): Screen => (width >= 1280 ? 'desktop' : width >= 900 ? 'tablet' : 'phone')
 const SIZES = Object.keys(TEXT_SIZES) as TextSize[]
+// Text sizes are named as sizes, so they never share a name with a part (Title, Heading, Label) or a
+// section style (Statement). The site's own names in src/layout/elements.ts stay as they are.
+const SIZE_NAMES: Record<TextSize, string> = { meta: 'Smallest', small: 'Small', body: 'Body', lead: 'Large body', statement: 'Extra large body', h3: 'Small heading', h2: 'Medium heading', d2: 'Large heading', d1: 'Largest heading' }
 const SPACING = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4]
 const SWATCH: Record<Colour, string> = { Olive: 'var(--olive)', Sage: 'var(--sage)', 'Light sage': 'var(--lsage)', 'Off-white': 'var(--off)', Terracotta: 'var(--terra)' }
 const WEIGHTS: [number, string][] = [[400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold']]
@@ -161,16 +164,51 @@ function currentSize(look: ElementLook, of: HTMLElement | null = selectedEl()): 
 // A project's opening cover is sized in steps rather than by width.
 const isCover = (type: string | undefined, key: string) => type === 'Opening' && key === 'image'
 const COVER_OPTIONS = COVER_SIZES.map((c) => [c, COVER_NAMES[c]] as [string, string])
-const sizeName = (look: ElementLook) => TEXT_SIZES[SIZES[currentSize(look)]][0]
+const sizeName = (look: ElementLook) => SIZE_NAMES[SIZES[currentSize(look)]]
 
 export const sectionName = kindName
 
 // ---- The contextual bar: under the top bar, it changes with what is selected.
 
 // "Select more": the touchscreen way to Shift-click. On, each tap adds or removes a part.
+// It lives in the More menu; while it is on, the bar shows it too, so it can be turned off.
 function SelectMore() {
   const { adding, setAdding } = useContext(Selection)
-  return <button type="button" className="ctx-btn ctx-more-sel" aria-label="Select more" aria-pressed={adding} title="Tap more parts to change them together (or Shift-click)" onClick={() => setAdding(!adding)}><SelectMoreIcon /><span className="ctx-reset-word">Select more</span></button>
+  if (!adding) return null
+  return <button type="button" className="ctx-btn ctx-more-sel" aria-pressed="true" title="Tap more parts to change them together (or Shift-click)" onClick={() => setAdding(false)}><SelectMoreIcon /><span>Selecting more: stop</span></button>
+}
+function SelectMoreItem({ close }: { close: () => void }) {
+  const { adding, setAdding } = useContext(Selection)
+  return <button type="button" aria-pressed={adding} title="Tap more parts to change them together (or Shift-click)" onClick={() => { setAdding(!adding); close() }}><SelectMoreIcon /> Select more parts</button>
+}
+
+// The bar's "More" menu: the actions used less often, in words. Drawn at the top level of the page so
+// nothing covers it; it takes focus, and Escape or a click elsewhere closes it and returns focus.
+function MoreMenu({ name, children }: { name: string; children: (close: () => void) => ReactNode }) {
+  const [at, setAt] = useState<{ left: number; top: number } | null>(null)
+  const wrap = useRef<HTMLSpanElement>(null)
+  const menu = useRef<HTMLSpanElement>(null)
+  const close = () => { setAt(null); wrap.current?.querySelector('button')?.focus() }
+  useEffect(() => {
+    if (!at) return
+    const away = (e: PointerEvent) => { if (!wrap.current?.contains(e.target as Node) && !menu.current?.contains(e.target as Node)) setAt(null) }
+    document.addEventListener('pointerdown', away)
+    menu.current?.querySelector<HTMLElement>('button:not([disabled])')?.focus()
+    return () => document.removeEventListener('pointerdown', away)
+  }, [at])
+  return (
+    <span className="ctx-more-wrap" ref={wrap}>
+      <button type="button" className="ctx-btn ctx-more" aria-label={`More options for ${name}`} aria-expanded={!!at} aria-haspopup="true" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setAt(at ? null : { left: r.left, top: r.bottom + 4 }) }}>
+        <span>More options</span> <span aria-hidden="true">▾</span>
+      </button>
+      {at && createPortal(
+        <span className="ctx-menu ctx-more-menu" ref={menu} role="group" aria-label={`More options for ${name}`} style={{ left: Math.max(8, Math.min(at.left, window.innerWidth - 248)), top: at.top }} onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close() } }}>
+          {children(close)}
+        </span>,
+        document.body,
+      )}
+    </span>
+  )
 }
 
 export function ContextBar() {
@@ -228,14 +266,13 @@ export function ContextBar() {
   }
   const more = (
     <button type="button" className="ctx-btn" aria-pressed={phone() ? ui.plugin?.current === 'fields' : ui.rightSideBarVisible} onClick={toggleSettings}>
-      <SlidersIcon /><span className="ctx-long">{ui.rightSideBarVisible ? 'Hide settings' : 'More settings'}</span><span className="ctx-short">Settings</span>
+      <SlidersIcon /><span className="ctx-long">All settings</span><span className="ctx-short">Settings</span>
     </button>
   )
   // Moves and other news appear here briefly; otherwise, off Desktop, a reminder of which size you are changing.
   const where = (
     <>
       {message && <span className="ctx-live">{message}</span>}
-      {screen !== 'desktop' && <span className="ctx-where"><span className="ctx-long">Changes apply to </span>{SCREEN_LABEL[screen]} only</span>}
     </>
   )
   const live = <span className="sr-only" role="status" aria-live="polite">{message}</span>
@@ -245,8 +282,8 @@ export function ContextBar() {
   // Nothing selected: what to do first. Adding and rearranging sections is in the side rail.
   if (!item) {
     return (
-      <div className="ctx" role="toolbar" aria-label="Editing tools">
-        <p className="ctx-hint"><b>Click</b> anything on the page to change it. <b>Double-click</b> words to type. To add or reorder sections, open <b>Sections</b> on the left.</p>
+      <div className="ctx ctx-empty">
+        <p className="ctx-hint"><b>Click</b> anything on the page to change it. <b>Double-click</b> words to type.<span className="ctx-long"> To add or reorder sections, open <b>Sections</b> on the left.</span></p>
         {live}
       </div>
     )
@@ -275,9 +312,13 @@ export function ContextBar() {
         <span className="ctx-group">
           <button type="button" className="ctx-btn" disabled={!at || at.index === 0} onClick={() => at && dispatch({ type: 'reorder', sourceIndex: at.index, destinationIndex: at.index - 1, destinationZone: at.zone })}><UpIcon /><span>Move up</span></button>
           <button type="button" className="ctx-btn" disabled={!at || last} onClick={() => at && dispatch({ type: 'reorder', sourceIndex: at.index, destinationIndex: at.index + 1, destinationZone: at.zone })}><DownIcon /><span>Move down</span></button>
-          <button type="button" className="ctx-btn" disabled={!at} onClick={() => at && dispatch({ type: 'duplicate', sourceIndex: at.index, sourceZone: at.zone })}><CopyIcon /><span>Duplicate</span></button>
-          <button type="button" className="ctx-btn ctx-danger" disabled={!at} onClick={() => at && dispatch({ type: 'remove', index: at.index, zone: at.zone })}><TrashIcon /><span>Remove</span></button>
         </span>
+        <MoreMenu name={sectionName(item.type)}>{(close) => (
+          <>
+            <button type="button" disabled={!at} onClick={() => { close(); if (at) dispatch({ type: 'duplicate', sourceIndex: at.index, sourceZone: at.zone }) }}><CopyIcon /> Duplicate section</button>
+            <button type="button" className="ctx-danger" disabled={!at} onClick={() => { close(); if (at) dispatch({ type: 'remove', index: at.index, zone: at.zone }) }}><TrashIcon /> Remove section</button>
+          </>
+        )}</MoreMenu>
         <span className="ctx-gap" />
         {more}
         {live}
@@ -367,19 +408,22 @@ export function ContextBar() {
               {ALIGN.map(([v, name, AlignIcon]) => <button key={v} type="button" aria-pressed={shown.align === v} aria-label={`Text: align ${name.toLowerCase()}`} title={`Align the words ${name.toLowerCase()}`} onClick={() => setLook({ align: v })}><AlignIcon /></button>)}
             </span>
           </span>
-          {placeable() && (
-            <span className="ctx-group ctx-box" role="group" aria-label="Box position">
-              <span className="ctx-label">Box</span>
-              <span className="ctx-segment">
-                {BOX.map(([v, name, BoxIcon]) => <button key={v} type="button" aria-pressed={shown.place === v} aria-label={`Box: ${name.toLowerCase()} of its area`} title={`Place the whole box at the ${name.toLowerCase()} of its area`} onClick={() => setLook({ place: shown.place === v ? undefined : v })}><BoxIcon /></button>)}
-              </span>
-            </span>
-          )}
         </>
       )}
-      <button type="button" className="ctx-btn ctx-hide" aria-pressed={!!shown.hidden} aria-label={shown.hidden ? `Hidden on ${SCREEN_LABEL[screen]}: show it` : `Hide on ${SCREEN_LABEL[screen]}`} onClick={toggleHidden} title={shown.hidden ? `Show it again on ${SCREEN_LABEL[screen]}` : `Leave it out on ${SCREEN_LABEL[screen]}${screen === 'phone' ? '' : ' (and smaller screens)'}`}><EyeOffIcon /><span className="ctx-reset-word">{shown.hidden ? "Hidden here" : "Hide here"}</span></button>
       <SelectMore />
-      <button type="button" className="ctx-btn ctx-reset" aria-label="Reset changes" disabled={from(...LOOKS) !== 'here'} onClick={resetAll} title={`Reset: undo every change to this at ${SCREEN_LABEL[screen]} size`}><ResetIcon /><span className="ctx-reset-word">Reset</span></button>
+      <MoreMenu name={nameOf(key)}>{(close) => (
+        <>
+          {!isImage && placeable() && (
+            <span className="ctx-menu-row" role="group" aria-label="Box position">
+              <span className="ctx-menu-label">Box position</span>
+              {BOX.map(([v, name, BoxIcon]) => <button key={v} type="button" aria-pressed={shown.place === v} aria-label={`Box: ${name.toLowerCase()} of its area`} title={`Place the whole box at the ${name.toLowerCase()} of its area`} onClick={() => setLook({ place: shown.place === v ? undefined : v })}><BoxIcon /></button>)}
+            </span>
+          )}
+          <button type="button" className="ctx-hide" aria-pressed={!!shown.hidden} onClick={() => { toggleHidden(); close() }} title={shown.hidden ? `Show it again on ${SCREEN_LABEL[screen]}` : `Leave it out on ${SCREEN_LABEL[screen]}${screen === 'phone' ? '' : ' (and smaller screens)'}`}><EyeOffIcon /> {shown.hidden ? `Hidden on ${SCREEN_LABEL[screen]}: show it` : `Hide on ${SCREEN_LABEL[screen]}`}</button>
+          <SelectMoreItem close={close} />
+          <button type="button" className="ctx-reset" disabled={from(...LOOKS) !== 'here'} onClick={() => { resetAll(); close() }} title={`Undo every change to this at ${SCREEN_LABEL[screen]} size`}><ResetIcon /> Reset {SCREEN_LABEL[screen]} changes</button>
+        </>
+      )}</MoreMenu>
       <span className="ctx-gap" />
       {where}
       {more}
@@ -476,7 +520,7 @@ function GroupBar({ members, screen, apply, where, more, live, onDone, announce 
             <span className="ctx-label ctx-label-plain">Size</span>
             <span className="ctx-stepper">
               <button type="button" aria-label="Smaller text, all selected" title="Smaller" onClick={() => step(-1)}>−</button>
-              <output>{allSame(sizes) ? TEXT_SIZES[SIZES[sizes[0]]][0] : 'Mixed'}</output>
+              <output>{allSame(sizes) ? SIZE_NAMES[SIZES[sizes[0]]] : 'Mixed'}</output>
               <button type="button" aria-label="Larger text, all selected" title="Larger" onClick={() => step(1)}>+</button>
             </span>
           </span>
@@ -493,14 +537,6 @@ function GroupBar({ members, screen, apply, where, more, live, onDone, announce 
           </span>
         </>
       )}
-      {placeAll && (
-        <span className="ctx-group ctx-box" role="group" aria-label="Box position">
-          <span className="ctx-label">Box</span>
-          <span className="ctx-segment">
-            {BOX.map(([v, name, BoxIcon]) => <button key={v} type="button" aria-pressed={place === v} aria-label={`Box: ${name.toLowerCase()} of its area, all selected`} title={`Place each box at the ${name.toLowerCase()} of its area`} onClick={() => apply(() => ({ place: place === v ? undefined : v }))}><BoxIcon /></button>)}
-          </span>
-        </span>
-      )}
       <span className="ctx-arrange" onKeyDown={(e) => { if (e.key === 'Escape' && arranging) { e.preventDefault(); setArranging(null) } }}>
         <button type="button" className="ctx-btn" aria-expanded={!!arranging} aria-haspopup="true" disabled={movable < 2} title="Line the selected parts up, or space them evenly" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setArranging(arranging ? null : { left: r.left, top: r.bottom + 4 }) }}>Arrange <span aria-hidden="true">▾</span></button>
         {/* Drawn at the top level of the page, so no editor panel or control can cover it. */}
@@ -511,9 +547,20 @@ function GroupBar({ members, screen, apply, where, more, live, onDone, announce 
           document.body,
         )}
       </span>
-      <button type="button" className="ctx-btn ctx-hide" aria-pressed={hidden} aria-label={hidden ? `All hidden on ${SCREEN_LABEL[screen]}: show them` : `Hide all on ${SCREEN_LABEL[screen]}`} onClick={() => apply(() => ({ hidden: hidden ? (screen === 'desktop' ? undefined : false) : true }))}><EyeOffIcon /><span className="ctx-reset-word">{hidden ? 'Hidden here' : 'Hide here'}</span></button>
-      <button type="button" className="ctx-btn ctx-reset" aria-label="Reset changes, all selected" disabled={!changed} title={`Reset: undo every change to these at ${SCREEN_LABEL[screen]} size`} onClick={() => apply((m) => Object.fromEntries(Object.keys(m.own).map((k) => [k, undefined])))}><ResetIcon /><span className="ctx-reset-word">Reset</span></button>
       <SelectMore />
+      <MoreMenu name={`${members.length} selected parts`}>{(close) => (
+        <>
+          {placeAll && (
+            <span className="ctx-menu-row" role="group" aria-label="Box position">
+              <span className="ctx-menu-label">Box position</span>
+              {BOX.map(([v, name, BoxIcon]) => <button key={v} type="button" aria-pressed={place === v} aria-label={`Box: ${name.toLowerCase()} of its area, all selected`} title={`Place each box at the ${name.toLowerCase()} of its area`} onClick={() => apply(() => ({ place: place === v ? undefined : v }))}><BoxIcon /></button>)}
+            </span>
+          )}
+          <button type="button" className="ctx-hide" aria-pressed={hidden} onClick={() => { apply(() => ({ hidden: hidden ? (screen === 'desktop' ? undefined : false) : true })); close() }}><EyeOffIcon /> {hidden ? `All hidden on ${SCREEN_LABEL[screen]}: show them` : `Hide all on ${SCREEN_LABEL[screen]}`}</button>
+          <SelectMoreItem close={close} />
+          <button type="button" className="ctx-reset" disabled={!changed} title={`Undo every change to these at ${SCREEN_LABEL[screen]} size`} onClick={() => { apply((m) => Object.fromEntries(Object.keys(m.own).map((k) => [k, undefined]))); close() }}><ResetIcon /> Reset {SCREEN_LABEL[screen]} changes, all selected</button>
+        </>
+      )}</MoreMenu>
       <span className="ctx-gap" />
       {where}
       {more}
@@ -523,7 +570,28 @@ function GroupBar({ members, screen, apply, where, more, live, onDone, announce 
   )
 }
 
-// ---- The side panel ("More settings"): everything for the selection, grouped and labelled.
+// ---- The side panel ("All settings"): everything for the selection, grouped and labelled.
+
+// Where the selection sits: Page › Section › Part. The earlier steps are buttons that select the
+// section, or nothing (the page). It replaces Puck's own panel title, so the panel and the bar use
+// the same names.
+function Crumbs({ part }: { part?: string }) {
+  const { select } = useContext(Selection)
+  const item = usePuck((s) => s.selectedItem)
+  const dispatch = usePuck((s) => s.dispatch)
+  const getSelectorForId = usePuck((s) => s.getSelectorForId)
+  if (!item) return null
+  const section = sectionName(item.type)
+  const toSection = () => { const at = getSelectorForId(item.props.id as string); select(null); if (at) dispatch({ type: 'setUi', ui: { itemSelector: at } }) }
+  return (
+    <nav className="el-crumbs" aria-label="Selected">
+      <button type="button" onClick={() => { select(null); dispatch({ type: 'setUi', ui: { itemSelector: null } }) }}>Page</button>
+      <span aria-hidden="true">›</span>
+      {part ? <button type="button" onClick={toSection}>{section}</button> : <span aria-current="location">{section}</span>}
+      {part && <><span aria-hidden="true">›</span><span aria-current="location">{part}</span></>}
+    </nav>
+  )
+}
 
 export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements) => void; p: Project }) {
   const { key, item, selected, screen, own, shown, setLook, setProps, from, resetAll, background } = useLook()
@@ -533,7 +601,7 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
 
   if (group.length > 1) return <div className="el-panel"><div className="el-head"><p className="el-name">{group.length} parts selected</p><p className="el-note">Settings they share are in the bar above and change all of them at once. Click one part on its own to see all of its settings.</p></div></div>
 
-  if (!key) return <Parts blockId={item?.props.id as string | undefined} />
+  if (!key) return <><div className="el-panel el-panel-crumbs"><Crumbs /></div><Parts blockId={item?.props.id as string | undefined} /></>
 
   if (key.startsWith('cat-') && selected?.field) {
     return (
@@ -560,6 +628,7 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
 
   return (
     <div className="el-panel">
+      <Crumbs part={nameOf(key)} />
       <div className="el-head">
         <p className="el-name">{nameOf(key)}</p>
         <p className="el-note">Changes apply to <b>{SCREEN_LABEL[screen]}</b>{screen === 'desktop' ? '; Tablet and Phone follow.' : ' only.'}</p>
@@ -616,37 +685,38 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
           <Row label="Text alignment" hint="How the words line up inside the box." from={from('align')} onReset={() => reset('align')}>
             <Segments label="Text alignment" value={shown.align} options={ALIGN.map(([v, name]) => [v, name])} onChange={(align) => setLook({ align: align as ElementLook['align'] })} />
           </Row>
-          {placeable() && (
-            <Row label="Box position" hint="Where the whole box sits in its area. The words keep their own alignment." from={from('place')} onReset={() => reset('place')}>
-              <Segments label="Box position" value={shown.place} options={BOX.map(([v, name]) => [v, name])} onChange={(place) => setLook({ place: place as ElementLook['place'] })} />
-            </Row>
-          )}
         </Group>
       )}
 
-      <Group title="Visibility">
-        <label className="el-switch"><input type="checkbox" checked={!!shown.hidden} onChange={(e) => setLook({ hidden: e.target.checked ? true : screen === 'desktop' ? undefined : false })} /> Hide on {SCREEN_LABEL[screen]}{screen !== 'phone' && ' (and smaller screens unless shown there)'}</label>
-      </Group>
-
-      <Group title="Position">
-        <Row label="Across" from={from('x')} onReset={() => reset('x')}>
-          <StepField label="Across" value={Math.round((shown.x ?? 0) * 16)} unit="px" step={4} min={-4000} max={4000} onCommit={(n) => setLook({ x: n ? round(n / 16) : undefined })} />
-        </Row>
-        <Row label="Down" from={from('y')} onReset={() => reset('y')}>
-          <StepField label="Down" value={Math.round((shown.y ?? 0) * 16)} unit="px" step={4} min={-4000} max={4000} onCommit={(n) => setLook({ y: n ? round(n / 16) : undefined })} />
-        </Row>
-        <label className="el-switch"><input type="checkbox" checked={snapping} onChange={(e) => { setSnapOn(e.target.checked); setSnapping(e.target.checked) }} /> Snap to alignment guides</label>
-        <p className="el-note">Or drag it on the page. Arrow keys move it too; hold Option to move without snapping.</p>
-      </Group>
-
-      <Group title="Spacing">
+      <Group title="Layout">
+        {!isImage && placeable() && (
+          <Row label="Box position" hint="Where the whole box sits in its area. The words keep their own alignment." from={from('place')} onReset={() => reset('place')}>
+            <Segments label="Box position" value={shown.place} options={BOX.map(([v, name]) => [v, name])} onChange={(place) => setLook({ place: place as ElementLook['place'] })} />
+          </Row>
+        )}
         <Row label="Space above" hint="This also moves what comes after it." from={from('above')} onReset={() => reset('above')}>
           <Step label="Space above" text={shown.above === undefined ? 'As designed' : px(shown.above)} onLess={() => setLook({ above: nextSpace(shown.above, -1) })} onMore={() => setLook({ above: nextSpace(shown.above, 1) })} />
         </Row>
         <Row label="Space below" from={from('below')} onReset={() => reset('below')}>
           <Step label="Space below" text={shown.below === undefined ? 'As designed' : px(shown.below)} onLess={() => setLook({ below: nextSpace(shown.below, -1) })} onMore={() => setLook({ below: nextSpace(shown.below, 1) })} />
         </Row>
+        <label className="el-switch"><input type="checkbox" checked={!!shown.hidden} onChange={(e) => setLook({ hidden: e.target.checked ? true : screen === 'desktop' ? undefined : false })} /> Hide on {SCREEN_LABEL[screen]}{screen !== 'phone' && ' (and smaller screens unless shown there)'}</label>
       </Group>
+
+      {/* Exact position in pixels: rarely needed, as dragging on the page does the same. Closed by default. */}
+      <details className="el-fine">
+        <summary>Fine-tune: exact position{from('x', 'y') === 'here' && <span className="el-fine-set"> (set on {SCREEN_LABEL[screen]})</span>}</summary>
+        <section className="el-group" aria-label="Position">
+          <Row label="Across" from={from('x')} onReset={() => reset('x')}>
+            <StepField label="Across" value={Math.round((shown.x ?? 0) * 16)} unit="px" step={4} min={-4000} max={4000} onCommit={(n) => setLook({ x: n ? round(n / 16) : undefined })} />
+          </Row>
+          <Row label="Down" from={from('y')} onReset={() => reset('y')}>
+            <StepField label="Down" value={Math.round((shown.y ?? 0) * 16)} unit="px" step={4} min={-4000} max={4000} onCommit={(n) => setLook({ y: n ? round(n / 16) : undefined })} />
+          </Row>
+          <label className="el-switch"><input type="checkbox" checked={snapping} onChange={(e) => { setSnapOn(e.target.checked); setSnapping(e.target.checked) }} /> Snap to alignment guides</label>
+          <p className="el-note">Or drag it on the page. Arrow keys move it too; hold Option to move without snapping.</p>
+        </section>
+      </details>
 
       <button type="button" className="el-reset" disabled={!Object.keys(own).length} onClick={resetAll}><ResetIcon /> Reset all {SCREEN_LABEL[screen]} changes</button>
     </div>

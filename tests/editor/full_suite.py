@@ -30,6 +30,9 @@ def axe(pg, ctx="document"):
     pg.add_script_tag(content=AXE)
     return pg.evaluate(f"axe.run({ctx},{{runOnly:['wcag2a','wcag2aa','wcag21aa']}}).then(r=>r.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>[v.id,v.nodes.length,v.nodes.slice(0,2).map(n=>n.target.join(' '))]))")
 
+def more(pg, item):
+    pg.locator(".ctx .ctx-more").first.click(); pg.wait_for_timeout(300)
+    pg.locator(".ctx-more-menu button", has_text=item).first.click(); pg.wait_for_timeout(500)
 with sync_playwright() as p:
     b=p.chromium.launch(); errs=[]
     ctx=b.new_context(viewport={"width":1440,"height":900},bypass_csp=True); pg=ctx.new_page(); pg.on("pageerror",lambda e: errs.append(str(e)))
@@ -65,7 +68,7 @@ with sync_playwright() as p:
     # remove section with undo
     n=len(unsaved(pg).get("content",[]) or [])
     o=frame(pg).locator("#overview").first; o.scroll_into_view_if_needed(); ob=o.bounding_box(); pg.mouse.click(ob["x"]+ob["width"]-20,ob["y"]+12); pg.wait_for_timeout(600)
-    pg.locator(".ctx button",has_text="Remove").click(); pg.wait_for_timeout(800)
+    more(pg,"Remove section"); pg.wait_for_timeout(300)
     note=pg.locator(".editor-notice").inner_text() if pg.locator(".editor-notice").count() else ""
     pg.locator(".editor-notice button",has_text="Undo").click(); pg.wait_for_timeout(800)
     check("Removing a section offers Undo, which brings it back", "removed" in note and frame(pg).locator("#overview").count()==1)
@@ -87,7 +90,7 @@ with sync_playwright() as p:
     check("Arrow keys move 4 px", abs(look(pg,"Outcomes","figure-label-0").get("desktop",{}).get("y",0)-before-0.25)<0.01)
     pg.locator(".editor-screens button",has_text="Phone").click(); pg.wait_for_timeout(1500)
     check("Phone shows Desktop's move until changed there", frame(pg).locator("#outcomes [data-el='figure-label-0']").first.evaluate("e=>parseFloat(getComputedStyle(e).left)")>0)
-    check("Off Desktop, the bar says changes apply to that size only", "Phone only" in pg.locator(".ctx").inner_text())
+    check("Off Desktop, the strip says changes apply to that size only", "apply to phones only" in pg.locator(".editor-strip").inner_text())
     pg.locator(".editor-screens button",has_text="Desktop").click(); pg.wait_for_timeout(1500)
     # ---- 3 Keyboard and accessibility
     fresh(pg); f=frame(pg)
