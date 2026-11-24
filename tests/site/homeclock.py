@@ -18,6 +18,17 @@ with sync_playwright() as p:
         pg.clock.install(time=when); pg.goto(BASE + "/", wait_until="networkidle"); pg.clock.run_for(1500)
         t = pg.locator(".home-clock time").inner_text()
         check(f"Europe/London at {when[:10]} 13:00 UTC shows {expect}x", t.startswith(expect), t); pg.close()
+    # Keeps running correctly: after 61 seconds of running, the clock still matches the real time.
+    pg = br.new_page(viewport={"width": 1440, "height": 900})
+    pg.clock.install(time="2026-03-29T00:59:30Z"); pg.goto(BASE + "/", wait_until="networkidle"); pg.clock.run_for(61000)
+    t = pg.locator(".home-clock time").inner_text()
+    check("After 61 seconds of running it shows the right time, across the March clock change (02:00:31 BST)", t == "02:00:31", t); pg.close()
+    # Another city and time zone, as if changed in /admin: the build reads them from Site settings.
+    if os.environ.get("CLOCK_TZ_CHECK"):
+        pg = br.new_page(viewport={"width": 1440, "height": 900})
+        pg.clock.install(time="2026-07-15T13:00:00Z"); pg.goto(BASE + "/", wait_until="networkidle"); pg.clock.run_for(1500)
+        txt = pg.locator(".home-clock").inner_text().replace("\n", " ")
+        check("Kuala Lumpur setting shows 21:00 and the city name", "21:00:0" in txt and "in Kuala Lumpur." in txt, txt); pg.close()
     pg = br.new_page(viewport={"width": 1440, "height": 900}, bypass_csp=True); errors = []
     pg.on("pageerror", lambda e: errors.append(str(e)))
     pg.goto(BASE + "/", wait_until="networkidle")
