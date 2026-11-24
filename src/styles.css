@@ -517,6 +517,11 @@ h3.free-heading { font-size: var(--h3); }
 .free-statement { max-width: var(--measure); font-size: var(--t-statement); line-height: 1.3; }
 .free-image { margin-top: 0; margin-bottom: 0; }
 .free-image .media { width: 100%; object-fit: cover; }
+/* An Image section's photo: its width is set in the editor; "Show the whole photo" fits it inside a
+   fixed shape without cropping, and the section's background shows around it. */
+.free-photo { display: block; }
+.free-fit-contain .media { object-fit: contain; }
+@media (max-width: 899px) { .free-image.d-w-wide, .free-image.d-w-narrow, .free-image.d-w-text { max-width: none; } }
 .free-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); row-gap: 1.5rem; }
 .free-gap-none { column-gap: 0; row-gap: 0; }
 .free-gap-tight { column-gap: 0.75rem; row-gap: 0.75rem; }
@@ -557,3 +562,122 @@ h3.free-heading { font-size: var(--h3); }
   .d-shift { left: 0; top: 0; }
   .d-w-wide, .d-w-text, .d-w-narrow { max-width: none; }
 }
+
+/* Single-element settings from the design editor (src/layout/elements.ts). Tablet and Phone
+   follow the larger size unless set, because their rules come later. */
+/* A whole box placed at the start, centre or end of its area (its words keep their own alignment). */
+.el-place-d-start { width: fit-content !important; max-width: 100% !important; margin-left: 0 !important; margin-right: auto !important; justify-self: start !important; }
+.el-place-d-center { width: fit-content !important; max-width: 100% !important; margin-left: auto !important; margin-right: auto !important; justify-self: center !important; }
+.el-place-d-end { width: fit-content !important; max-width: 100% !important; margin-left: auto !important; margin-right: 0 !important; justify-self: end !important; }
+@media (max-width: 1279px) {
+.el-place-t-start { width: fit-content !important; max-width: 100% !important; margin-left: 0 !important; margin-right: auto !important; justify-self: start !important; }
+.el-place-t-center { width: fit-content !important; max-width: 100% !important; margin-left: auto !important; margin-right: auto !important; justify-self: center !important; }
+.el-place-t-end { width: fit-content !important; max-width: 100% !important; margin-left: auto !important; margin-right: 0 !important; justify-self: end !important; }
+}
+@media (max-width: 899px) {
+.el-place-p-start { width: fit-content !important; max-width: 100% !important; margin-left: 0 !important; margin-right: auto !important; justify-self: start !important; }
+.el-place-p-center { width: fit-content !important; max-width: 100% !important; margin-left: auto !important; margin-right: auto !important; justify-self: center !important; }
+.el-place-p-end { width: fit-content !important; max-width: 100% !important; margin-left: auto !important; margin-right: 0 !important; justify-self: end !important; }
+}
+/* Parts hidden at one screen size in the design editor. */
+@media (min-width: 1280px) { .el-hidden-d { display: none !important; } }
+@media (min-width: 900px) and (max-width: 1279px) { .el-hidden-t { display: none !important; } }
+@media (max-width: 899px) { .el-hidden-p { display: none !important; } }
+/* A project's opening cover at one of four sizes, chosen in the design editor. Each size takes
+   more of the grid, and the text beside it gives way; phones keep the stacked layout. */
+.el-cover-d-small { grid-column: 10 / span 3 !important; max-width: 20vw !important; }
+.cs-open-grid:has(> .el-cover-d-small) > .cs-open-text { grid-column: 1 / span 8; }
+.el-cover-d-standard { grid-column: 9 / span 4 !important; max-width: 26vw !important; }
+.cs-open-grid:has(> .el-cover-d-standard) > .cs-open-text { grid-column: 1 / span 7; }
+.el-cover-d-large { grid-column: 8 / span 5 !important; max-width: 32vw !important; }
+.cs-open-grid:has(> .el-cover-d-large) > .cs-open-text { grid-column: 1 / span 6; }
+.el-cover-d-xl { grid-column: 7 / span 6 !important; max-width: 38vw !important; }
+.cs-open-grid:has(> .el-cover-d-xl) > .cs-open-text { grid-column: 1 / span 5; }
+@media (max-width: 1279px) {
+.el-cover-t-small { grid-column: 10 / span 3 !important; max-width: 20vw !important; }
+.cs-open-grid:has(> .el-cover-t-small) > .cs-open-text { grid-column: 1 / span 8; }
+.el-cover-t-standard { grid-column: 9 / span 4 !important; max-width: 26vw !important; }
+.cs-open-grid:has(> .el-cover-t-standard) > .cs-open-text { grid-column: 1 / span 7; }
+.el-cover-t-large { grid-column: 8 / span 5 !important; max-width: 32vw !important; }
+.cs-open-grid:has(> .el-cover-t-large) > .cs-open-text { grid-column: 1 / span 6; }
+.el-cover-t-xl { grid-column: 7 / span 6 !important; max-width: 38vw !important; }
+.cs-open-grid:has(> .el-cover-t-xl) > .cs-open-text { grid-column: 1 / span 5; }
+}
+@media (max-width: 899px) {
+  .el-cover-d-small { max-width: 12rem !important; }
+  .el-cover-d-standard { max-width: 15.625rem !important; }
+  .el-cover-d-large { max-width: 19rem !important; }
+  .el-cover-d-xl { max-width: 22rem !important; }
+  .el-cover-t-small { max-width: 12rem !important; }
+  .el-cover-t-standard { max-width: 15.625rem !important; }
+  .el-cover-t-large { max-width: 19rem !important; }
+  .el-cover-t-xl { max-width: 22rem !important; }
+  .el-cover-p-small { max-width: 12rem !important; }
+  .el-cover-p-standard { max-width: 15.625rem !important; }
+  .el-cover-p-large { max-width: 19rem !important; }
+  .el-cover-p-xl { max-width: 22rem !important; }
+}
+.el-x-d { position: relative !important; left: var(--el-x-d) !important; }
+.el-y-d { position: relative !important; top: var(--el-y-d) !important; }
+.el-above-d { margin-top: var(--el-above-d) !important; }
+.el-below-d { margin-bottom: var(--el-below-d) !important; }
+.el-align-d { text-align: var(--el-align-d) !important; }
+.el-size-d { font-size: var(--el-size-d) !important; }
+.el-weight-d { font-weight: var(--el-weight-d) !important; }
+.el-colour-d { color: var(--el-colour-d) !important; }
+.el-width-d { width: var(--el-width-d) !important; max-width: var(--el-cap, none) !important; }
+.el-focus-d img { object-position: var(--el-focus-d) !important; }
+/* An angle set in the editor: a cover's own tilt takes the new angle; any other image turns as a whole.
+   The image file is never changed; the browser draws it turned. */
+.el-rotate-d > .tilt:only-child { --tilt: var(--el-rotate-d) !important; }
+.el-rotate-d:not(:has(> .tilt:only-child)) { rotate: var(--el-rotate-d); }
+@media (max-width: 1279px) {
+  .el-x-t { position: relative !important; left: var(--el-x-t) !important; }
+  .el-y-t { position: relative !important; top: var(--el-y-t) !important; }
+  .el-above-t { margin-top: var(--el-above-t) !important; }
+  .el-below-t { margin-bottom: var(--el-below-t) !important; }
+  .el-align-t { text-align: var(--el-align-t) !important; }
+  .el-size-t { font-size: var(--el-size-t) !important; }
+  .el-weight-t { font-weight: var(--el-weight-t) !important; }
+  .el-colour-t { color: var(--el-colour-t) !important; }
+  .el-width-t { width: var(--el-width-t) !important; max-width: var(--el-cap, none) !important; }
+  .el-focus-t img { object-position: var(--el-focus-t) !important; }
+  .el-rotate-t > .tilt:only-child { --tilt: var(--el-rotate-t) !important; }
+  .el-rotate-t:not(:has(> .tilt:only-child)) { rotate: var(--el-rotate-t); }
+}
+@media (max-width: 899px) {
+  .el-x-p { position: relative !important; left: var(--el-x-p) !important; }
+  .el-y-p { position: relative !important; top: var(--el-y-p) !important; }
+  .el-above-p { margin-top: var(--el-above-p) !important; }
+  .el-below-p { margin-bottom: var(--el-below-p) !important; }
+  .el-align-p { text-align: var(--el-align-p) !important; }
+  .el-size-p { font-size: var(--el-size-p) !important; }
+  .el-weight-p { font-weight: var(--el-weight-p) !important; }
+  .el-colour-p { color: var(--el-colour-p) !important; }
+  .el-width-p { width: var(--el-width-p) !important; max-width: var(--el-cap, none) !important; }
+  .el-focus-p img { object-position: var(--el-focus-p) !important; }
+  .el-rotate-p > .tilt:only-child { --tilt: var(--el-rotate-p) !important; }
+  .el-rotate-p:not(:has(> .tilt:only-child)) { rotate: var(--el-rotate-p); }
+}
+/* A photo on a project page, presented in the editor without changing the file. Span is the space it
+   can fill (Tablet follows Desktop; phones use their full width unless Phone has its own). Shape and
+   fit are set once for every screen size: a fixed shape fills its frame (cropped, with the crop focus)
+   or shows the whole photo with the page colour around it; its own shape shows it uncropped. */
+.el-span-d-narrow { --el-cap: 30rem; }
+.el-span-d-text { --el-cap: var(--measure); }
+.el-span-d-wide { --el-cap: 80%; }
+@media (max-width: 1279px) {
+  .el-span-t-narrow { --el-cap: 30rem; }
+  .el-span-t-text { --el-cap: var(--measure); }
+  .el-span-t-wide { --el-cap: 80%; }
+  .el-span-t-full { --el-cap: none; }
+}
+@media (max-width: 899px) {
+  [class*='el-span-'] { --el-cap: none; }
+  .el-span-p-narrow { --el-cap: 30rem; }
+  .el-span-p-text { --el-cap: var(--measure); }
+  .el-span-p-wide { --el-cap: 80%; }
+}
+[class*='el-span-'] { max-width: var(--el-cap, none) !important; }
+.el-shape-d .media, .el-shape-d .ph { aspect-ratio: var(--el-shape-d) !important; height: auto; }
+.el-fit-d .media { object-fit: var(--el-fit-d) !important; }

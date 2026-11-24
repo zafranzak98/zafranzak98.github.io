@@ -2,6 +2,7 @@ import type { CSSProperties, ComponentType, ReactNode } from 'react'
 import { Media } from '#/components/media'
 import { Rich } from '#/components/rich'
 import { designProps, type Design } from './design'
+import { useElement, type Elements } from './elements'
 import { RenderItems, type Item } from './render'
 
 // Blocks for your own content, placed anywhere on a page: text, an image, a grid that places
@@ -17,27 +18,36 @@ function SlotContent({ slot, className, style }: { slot?: Slot; className?: stri
   return <div className={className} style={style}><RenderItems items={slot} /></div>
 }
 
-export function TextBlock({ kicker, heading, headingLevel = 'h2', text, size = 'body', design }: {
-  kicker?: string; heading?: string; headingLevel?: 'h2' | 'h3'; text?: string; size?: 'body' | 'lead' | 'statement'; design?: Design
+export function TextBlock({ kicker, heading, headingLevel = 'h2', text, size = 'body', design, elements }: {
+  kicker?: string; heading?: string; headingLevel?: 'h2' | 'h3'; text?: string; size?: 'body' | 'lead' | 'statement'; design?: Design; elements?: Elements
 }) {
+  const el = useElement(elements)
   const H = headingLevel
   const textClass = size === 'lead' ? 'lead' : size === 'statement' ? 'free-statement' : 'body-text'
   return (
     <div {...designProps(design, 'free-block free-text')}>
-      {kicker && <span className="lab">{kicker}</span>}
-      {heading && <H className="c free-heading">{heading}</H>}
-      {text && <p className={textClass}><Rich text={text} highlight /></p>}
+      {kicker && <span {...el('kicker', { className: 'lab', field: 'prop:kicker' })}>{kicker}</span>}
+      {heading && <H {...el('heading', { className: 'c free-heading', field: 'prop:heading' })}>{heading}</H>}
+      {text && <p {...el('text', { className: textClass, field: 'prop:text', rich: true })}><Rich text={text} highlight /></p>}
     </div>
   )
 }
 
-export function ImageBlock({ image, alt, caption, ratio = 'auto', focusX = 50, focusY = 50, design }: {
-  image?: string; alt?: string; caption?: string; ratio?: string; focusX?: number; focusY?: number; design?: Design
+// The shapes an Image section's frame can take; 'auto' keeps the photo's own proportions.
+export const ratioOptions = [{ label: 'Its own shape', value: 'auto' }, { label: 'Square', value: '1/1' }, { label: 'Portrait 4:5', value: '4/5' }, { label: 'Portrait 3:4', value: '3/4' }, { label: 'Tall 9:16', value: '9/16' }, { label: 'Landscape 16:9', value: '16/9' }, { label: 'Wide 21:9', value: '21/9' }]
+
+export function ImageBlock({ image, alt, caption, ratio = 'auto', fit = 'cover', focusX = 50, focusY = 50, design, elements }: {
+  image?: string; alt?: string; caption?: string; ratio?: string; fit?: 'cover' | 'contain'; focusX?: number; focusY?: number; design?: Design; elements?: Elements
 }) {
+  const el = useElement(elements)
+  // Showing the whole photo only means something in a frame of a fixed shape.
+  const contain = fit === 'contain' && ratio !== 'auto'
   return (
-    <figure {...designProps(design, 'free-block free-image')}>
-      <Media img={{ image, alt }} ratio={ratio} focus={`${focusX}% ${focusY}%`} label={alt || 'image'} sizes="(max-width: 899px) 100vw, 75vw" />
-      {caption && <figcaption className="cap"><Rich text={caption} /></figcaption>}
+    <figure {...designProps(design, contain ? 'free-block free-image free-fit-contain' : 'free-block free-image')}>
+      <div {...el('photo', { className: 'free-photo' })}>
+        <Media img={{ image, alt }} ratio={ratio} focus={`${focusX}% ${focusY}%`} label={alt || 'image'} sizes="(max-width: 899px) 100vw, 75vw" />
+      </div>
+      {caption && <figcaption {...el('caption', { className: 'cap', field: 'prop:caption', rich: true })}><Rich text={caption} /></figcaption>}
     </figure>
   )
 }
