@@ -86,6 +86,8 @@ with sync_playwright() as p:
 
     # 6. Reordering by dragging the grip.
     src = row(pg, "Outcomes").locator(".sec-grip"); dst = row(pg, "Overview")
+    # Names now wrap to two lines, so the list may scroll: bring both rows into view before dragging.
+    dst.evaluate("e => e.scrollIntoView({ block: 'start' })"); pg.wait_for_timeout(200)
     src.drag_to(dst); pg.wait_for_timeout(700)
     check("Dragging Outcomes onto Overview moves it there", rows(pg).index("Outcomes") == 5, str(rows(pg)))
     check("…and on the page", page_order(pg)[5] == "Outcomes", str(page_order(pg)))

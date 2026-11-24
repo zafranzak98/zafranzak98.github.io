@@ -58,7 +58,7 @@ with sync_playwright() as p:
     def change(pg, wait=600):
         f = frame(pg); el = f.locator("[data-el='line']").first; el.scroll_into_view_if_needed(); bx = el.bounding_box()
         pg.mouse.click(bx["x"] + 6, bx["y"] + bx["height"] / 2); pg.wait_for_timeout(300)
-        pg.locator(".ctx button[aria-label='Bold']").click(); pg.wait_for_timeout(wait)
+        pg.locator(".ctx button[aria-label='Larger text']").click(); pg.wait_for_timeout(wait)
     unsaved_copy = lambda pg: pg.evaluate("localStorage.getItem('design-editor:about-face-beauty:unsaved')")
     puts = lambda: len([c for c in calls if c[0] == "PUT"])
 
@@ -109,16 +109,16 @@ with sync_playwright() as p:
     # 5. Reload straight after a change (before the usual pause): nothing is lost, and it says so.
     ctx, pg = fresh(); change(pg, wait=50)
     pg.reload(wait_until="networkidle"); pg.wait_for_timeout(2500)
-    weight = frame(pg).evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontWeight")
-    check("A change made just before reloading is kept", weight in ("700", "bold"), weight)
+    weight = frame(pg).evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontSize")
+    check("A change made just before reloading is kept", float(weight[:-2]) > 20.3, weight)
     check("After reloading the change is marked Not saved yet", status(pg) == "Not saved yet", status(pg))
     check("The message explains how to go back to the published page", "Discard changes" in notice(pg) and "Undo removes them" not in notice(pg), notice(pg)[:120])
     # Discard is undoable, so it never silently throws work away.
     pg.locator(".editor-more-wrap > button").click(); pg.get_by_role("button", name="Discard changes").click(); pg.wait_for_timeout(600)
     check("Discard returns to the published page", status(pg) == "Same as the website", status(pg))
     pg.locator(".editor-notice button", has_text="Undo").click(); pg.wait_for_timeout(800)
-    weight = frame(pg).evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontWeight")
-    check("Undo after Discard brings the changes back", weight in ("700", "bold") and status(pg) == "Not saved yet", f"{weight} {status(pg)}")
+    weight = frame(pg).evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontSize")
+    check("Undo after Discard brings the changes back", float(weight[:-2]) > 20.3 and status(pg) == "Not saved yet", f"{weight} {status(pg)}")
     ctx.close()
 
     # 6. Closing the tab: no question when work is kept; a question when it could be lost.
@@ -158,8 +158,8 @@ with sync_playwright() as p:
     load = pg.locator(".editor-panel button", has_text="standard")
     if load.count(): load.first.click(); pg.wait_for_timeout(600)
     pg.locator(".editor-history button").first.click(); pg.wait_for_timeout(800)
-    weight = frame(pg).evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontWeight")
-    check("Undo after loading the standard layout brings the page back", weight in ("700", "bold"), weight)
+    weight = frame(pg).evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontSize")
+    check("Undo after loading the standard layout brings the page back", float(weight[:-2]) > 20.3, weight)
     ctx.close()
 
     # 10. Fix 1, repeated saves: three saves with a change between each send three saves; a failed save,
@@ -177,19 +177,19 @@ with sync_playwright() as p:
 
     # 11. Fix 2, Discard and Undo: twice in a row, and again after a reload, nothing is lost.
     ctx, pg = fresh(); change(pg)
-    w = lambda: frame(pg).evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontWeight")
+    w = lambda: frame(pg).evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontSize")
     ok = True
     for k in range(2):
         pg.locator(".editor-more-wrap > button").click(); pg.get_by_role("button", name="Discard changes").click(); pg.wait_for_timeout(600)
-        ok &= w() not in ("700", "bold")
+        ok &= float(w()[:-2]) <= 20.3
         pg.locator(".editor-notice button", has_text="Undo").click(); pg.wait_for_timeout(800)
-        ok &= w() in ("700", "bold")
+        ok &= float(w()[:-2]) > 20.3
     check("Discard then Undo, twice in a row, brings the changes back each time", ok)
     pg.reload(wait_until="networkidle"); pg.wait_for_timeout(2500)
-    check("After those, a reload still has the changes", w() in ("700", "bold") and status(pg) == "Not saved yet", status(pg))
+    check("After those, a reload still has the changes", float(w()[:-2]) > 20.3 and status(pg) == "Not saved yet", status(pg))
     pg.locator(".editor-more-wrap > button").click(); pg.get_by_role("button", name="Discard changes").click(); pg.wait_for_timeout(600)
     pg.reload(wait_until="networkidle"); pg.wait_for_timeout(2500)
-    check("A Discard that is not undone stays discarded after a reload", w() not in ("700", "bold") and status(pg) == "Same as the website", status(pg))
+    check("A Discard that is not undone stays discarded after a reload", float(w()[:-2]) <= 20.3 and status(pg) == "Same as the website", status(pg))
     ctx.close()
 
     # 12. Fix 3, sudden interruption: the tab closed (no time for the usual pause), or hidden, straight
@@ -202,8 +202,8 @@ with sync_playwright() as p:
             pg.evaluate("() => { Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true }); document.dispatchEvent(new Event('visibilitychange')) }")
             pg.wait_for_timeout(50); kept = pg.evaluate("localStorage.getItem('design-editor:about-face-beauty:unsaved')"); pg.close()
         pg2 = ctx.new_page(); pg2.goto(URL, wait_until="networkidle"); pg2.wait_for_timeout(2500)
-        weight = [fr for fr in pg2.frames if fr != pg2.main_frame][0].evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontWeight")
-        check(f"Tab {how} 30 ms after a change: the change is still there in a new tab", weight in ("700", "bold"), weight)
+        weight = [fr for fr in pg2.frames if fr != pg2.main_frame][0].evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontSize")
+        check(f"Tab {how} 30 ms after a change: the change is still there in a new tab", float(weight[:-2]) > 20.3, weight)
         ctx.close()
 
     # 13. Loading an earlier version can be undone: Undo names the step and brings the page back.
@@ -211,14 +211,14 @@ with sync_playwright() as p:
     ctx, pg = fresh(); change(pg)
     pg.locator(".editor-more-wrap > button").click(); pg.get_by_role("button", name="Versions").click(); pg.wait_for_timeout(1500)
     pg.locator(".editor-panel button", has_text="Load into editor").first.click(); pg.wait_for_timeout(900)
-    w = lambda: frame(pg).evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontWeight")
+    w = lambda: frame(pg).evaluate("getComputedStyle(document.querySelector(\"[data-el='line']\")).fontSize")
     loaded = w()
-    check("Loading an earlier version replaces the page in the editor", loaded not in ("700", "bold"), loaded)
+    check("Loading an earlier version replaces the page in the editor", float(loaded[:-2]) <= 20.3, loaded)
     check("The message says nothing is published and Undo goes back", "Undo takes you back" in notice(pg), notice(pg)[:120])
     pg.locator(".editor-history button").first.click(); pg.wait_for_timeout(800)
-    check("Undo after loading a version brings the page back exactly", w() in ("700", "bold"), w())
+    check("Undo after loading a version brings the page back exactly", float(w()[:-2]) > 20.3, w())
     pg.locator(".editor-history button").nth(1).click(); pg.wait_for_timeout(800)
-    check("Redo loads the version again", w() not in ("700", "bold"), w())
+    check("Redo loads the version again", float(w()[:-2]) <= 20.3, w())
     ctx.close(); VERSION["on"] = False
 
     check("No script errors", not errors, str(errors[:2]))

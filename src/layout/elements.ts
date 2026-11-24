@@ -37,7 +37,15 @@ export type ElementLook = {
   place?: Place // where the whole box sits in its area (start, centre, end), apart from its text alignment
   hidden?: boolean // left out at this screen size (and smaller ones, unless shown there)
   cover?: CoverSize // a project's opening cover: a step on the grid, so the text beside it reflows
+  // A photo on a project page (placed in the website editor), presented without changing the file:
+  span?: PhotoSpan // the space it can fill: Narrow, Text column, Wide or Full (phones: full unless set there)
+  shape?: PhotoShape // its frame: its own shape or a fixed one; set once for every screen size
+  fit?: 'cover' | 'contain' // in a frame of a fixed shape: fill it (cropped) or show the whole photo
 }
+export const PHOTO_SPANS = ['narrow', 'text', 'wide', 'full'] as const
+export type PhotoSpan = (typeof PHOTO_SPANS)[number]
+export const PHOTO_SHAPES = ['auto', '1/1', '4/5', '3/4', '16/9'] as const
+export type PhotoShape = (typeof PHOTO_SHAPES)[number]
 export const PLACES = ['start', 'center', 'end'] as const
 export type Place = (typeof PLACES)[number]
 export const COVER_SIZES = ['small', 'standard', 'large', 'xl'] as const
@@ -63,6 +71,8 @@ function cssFor(look: ElementLook): [string, string][] {
   if (look.width) out.push(['width', `${look.width}%`])
   if (look.rotate !== undefined && Number.isFinite(look.rotate)) out.push(['rotate', `${look.rotate}deg`])
   if (look.focusX !== undefined || look.focusY !== undefined) out.push(['focus', `${look.focusX ?? 50}% ${look.focusY ?? 50}%`])
+  if (look.shape && PHOTO_SHAPES.includes(look.shape)) out.push(['shape', look.shape])
+  if (look.fit === 'contain' || look.fit === 'cover') out.push(['fit', look.fit])
   return out
 }
 
@@ -70,11 +80,11 @@ function cssFor(look: ElementLook): [string, string][] {
 // so an element without settings keeps exactly the markup it always had.
 export const Editing = createContext(false)
 
-export type ElementOptions = { className?: string; style?: CSSProperties; field?: string }
+export type ElementOptions = { className?: string; style?: CSSProperties; field?: string; rich?: boolean }
 
 export function useElement(elements: Elements | undefined) {
   const editing = useContext(Editing)
-  return (key: string, { className, style, field }: ElementOptions = {}) => {
+  return (key: string, { className, style, field, rich }: ElementOptions = {}) => {
     const classes = className ? [className] : []
     const vars: Record<string, string> = {}
     // Hidden at a size: the website leaves it out there; the editor shows it faded, so it can be shown again.
@@ -85,6 +95,8 @@ export function useElement(elements: Elements | undefined) {
       if (cover && COVER_SIZES.includes(cover)) classes.push(`el-cover-${SHORT[screen]}-${cover}`)
       const place = elements?.[key]?.[screen]?.place
       if (place && PLACES.includes(place)) classes.push(`el-place-${SHORT[screen]}-${place}`)
+      const span = elements?.[key]?.[screen]?.span
+      if (span && PHOTO_SPANS.includes(span)) classes.push(`el-span-${SHORT[screen]}-${span}`)
       for (const [name, value] of cssFor(elements?.[key]?.[screen] ?? {})) {
         classes.push(`el-${name}-${SHORT[screen]}`)
         vars[`--el-${name}-${SHORT[screen]}`] = value
@@ -94,7 +106,7 @@ export function useElement(elements: Elements | undefined) {
     return {
       className: classes.length ? classes.join(' ') : undefined,
       style: Object.keys(merged).length ? merged : undefined,
-      ...(editing && { 'data-el': key, ...(field && { 'data-edit': field }), ...(hiddenAt.length && { 'data-el-hidden': hiddenAt.map((s) => SHORT[s]).join(' ') }) }),
+      ...(editing && { 'data-el': key, ...(field && { 'data-edit': field }), ...(field && rich && { 'data-rich': '' }), ...(hiddenAt.length && { 'data-el-hidden': hiddenAt.map((s) => SHORT[s]).join(' ') }) }),
     }
   }
 }

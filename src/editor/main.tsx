@@ -222,7 +222,8 @@ function ScreenStrip({ width }: { width: number }) {
   return (
     <p className={`editor-strip is-${screen}`}>
       <b>Editing {SCREEN_NAME[screen]}.</b>{' '}
-      {screen === 'tablet' ? 'Changes here apply to tablets, and to phones unless Phone has its own setting.' : 'Changes here apply to phones only.'}
+      <span className="editor-strip-main">{screen === 'tablet' ? 'Changes here apply to tablets, and to phones unless Phone has its own setting.' : 'Changes here apply to phones only.'}</span>
+      <span className="editor-strip-short">{screen === 'tablet' ? 'Tablets, and phones unless set there.' : 'Phones only.'}</span>
       <span className="editor-strip-more"> Anything not changed here follows {screen === 'tablet' ? 'Desktop' : 'Tablet and Desktop'}. A dot on a size button means the selected part has its own settings there.</span>
     </p>
   )
@@ -538,12 +539,13 @@ function Actions() {
           <button type="button" onClick={history.back} disabled={!history.hasPast} title={history.hasPast ? `Undo: ${undoWhat} (Cmd+Z)` : 'Nothing to undo'} aria-label={history.hasPast ? `Undo: ${undoWhat}` : 'Undo'}><UndoIcon /><span className="editor-word">Undo</span></button>
           <button type="button" onClick={history.forward} disabled={!history.hasFuture} title={history.hasFuture ? `Redo: ${redoWhat} (Cmd+Shift+Z)` : 'Nothing to redo'} aria-label={history.hasFuture ? `Redo: ${redoWhat}` : 'Redo'}><RedoIcon /><span className="editor-word">Redo</span></button>
         </div>
-        <span className={`editor-status is-${state}`} role="status" title={statusHint}><span className="editor-status-mark" aria-hidden="true" />{status}</span>
+        <span className={`editor-status is-${state}`} role="status" title={`${status}. ${statusHint}`}><span className="editor-status-mark" aria-hidden="true" /><span className="editor-status-text">{status}</span></span>
         <LayoutNotes p={p} screen={SCREEN_NAME[screenFor(Number(ui.viewports.current.width) || 1440)]} preview={preview} checkSizes={checkSizes} />
         <button type="button" className="editor-quiet editor-preview" aria-pressed={preview} onClick={togglePreview}><EyeIcon /><span>{preview ? 'Back to editing' : 'Preview'}</span></button>
         <div className="editor-more-wrap" ref={moreRef}>
-          <button type="button" className="editor-quiet" aria-expanded={more} aria-haspopup="true" onClick={() => setMore(!more)}>More <span aria-hidden="true">▾</span></button>
+          <button type="button" className="editor-quiet editor-more-btn" aria-expanded={more} aria-haspopup="true" onClick={() => setMore(!more)}><span className="editor-more-word">More </span><span className="editor-more-caret" aria-hidden="true">▾</span><span className="editor-more-dots" aria-hidden="true">⋯</span></button>
           <div className={more ? 'editor-more open' : 'editor-more'}>
+            <button type="button" className="editor-more-preview" onClick={choose(togglePreview)}>{preview ? 'Back to editing' : 'Preview'} <small>{preview ? 'change the page again' : 'the page as visitors see it'}</small></button>
             <button type="button" onClick={choose(openHistory)} disabled={!!busy}>Versions <small>bring back an earlier version</small></button>
             <button type="button" onClick={choose(discardUnsaved)} disabled={!!busy || !unpublished}>Discard changes <small>go back to the published page</small></button>
             <button type="button" onClick={choose(() => setPanel('reset'))} disabled={!!busy}>Standard layout <small>start again from the template</small></button>

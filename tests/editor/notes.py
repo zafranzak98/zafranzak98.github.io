@@ -31,7 +31,7 @@ with sync_playwright() as p:
     pg, f, errs = open_editor(br, "about-face-beauty")
     # 2. Approved exception: restyling text on AF-Binary's Sage opening gives no contrast note.
     click(pg, f, "[data-el='line']")
-    pg.locator(".ctx button[aria-label='Bold']").click(); pg.wait_for_timeout(2500)
+    pg.locator(".ctx button[aria-label='Larger text']").click(); pg.wait_for_timeout(2500)
     txt = pg.locator(chip).inner_text() if pg.locator(chip).count() else ""
     check("Approved Sage exception is not reported", "hard to read" not in pg.evaluate("document.querySelector('.editor-notes-list')?.innerText || ''") and pg.locator(chip).count() == 0, txt)
     # 3. Reminder after a Desktop change
