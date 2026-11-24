@@ -33,7 +33,16 @@ export type ElementLook = {
   width?: number // per cent of the space it sits in (images)
   focusX?: number // crop focus in per cent (images)
   focusY?: number
+  rotate?: number // degrees (images); replaces a cover's designed tilt, otherwise turns the whole part
+  place?: Place // where the whole box sits in its area (start, centre, end), apart from its text alignment
+  hidden?: boolean // left out at this screen size (and smaller ones, unless shown there)
+  cover?: CoverSize // a project's opening cover: a step on the grid, so the text beside it reflows
 }
+export const PLACES = ['start', 'center', 'end'] as const
+export type Place = (typeof PLACES)[number]
+export const COVER_SIZES = ['small', 'standard', 'large', 'xl'] as const
+export type CoverSize = (typeof COVER_SIZES)[number]
+export const COVER_NAMES: Record<CoverSize, string> = { small: 'Small', standard: 'Standard', large: 'Large', xl: 'Extra large' }
 export type ElementStyle = Partial<Record<Screen, ElementLook>>
 export type Elements = Record<string, ElementStyle>
 
@@ -52,6 +61,7 @@ function cssFor(look: ElementLook): [string, string][] {
   if (look.weight) out.push(['weight', String(look.weight)])
   if (look.colour && COLOURS.includes(look.colour)) out.push(['colour', COLOUR_VAR[look.colour]])
   if (look.width) out.push(['width', `${look.width}%`])
+  if (look.rotate !== undefined && Number.isFinite(look.rotate)) out.push(['rotate', `${look.rotate}deg`])
   if (look.focusX !== undefined || look.focusY !== undefined) out.push(['focus', `${look.focusX ?? 50}% ${look.focusY ?? 50}%`])
   return out
 }
@@ -67,7 +77,14 @@ export function useElement(elements: Elements | undefined) {
   return (key: string, { className, style, field }: ElementOptions = {}) => {
     const classes = className ? [className] : []
     const vars: Record<string, string> = {}
+    // Hidden at a size: the website leaves it out there; the editor shows it faded, so it can be shown again.
+    const hiddenAt = SCREENS.filter((screen) => lookAt(elements?.[key], screen).hidden)
+    if (!editing) for (const screen of hiddenAt) classes.push(`el-hidden-${SHORT[screen]}`)
     for (const screen of SCREENS) {
+      const cover = elements?.[key]?.[screen]?.cover
+      if (cover && COVER_SIZES.includes(cover)) classes.push(`el-cover-${SHORT[screen]}-${cover}`)
+      const place = elements?.[key]?.[screen]?.place
+      if (place && PLACES.includes(place)) classes.push(`el-place-${SHORT[screen]}-${place}`)
       for (const [name, value] of cssFor(elements?.[key]?.[screen] ?? {})) {
         classes.push(`el-${name}-${SHORT[screen]}`)
         vars[`--el-${name}-${SHORT[screen]}`] = value
@@ -77,7 +94,7 @@ export function useElement(elements: Elements | undefined) {
     return {
       className: classes.length ? classes.join(' ') : undefined,
       style: Object.keys(merged).length ? merged : undefined,
-      ...(editing && { 'data-el': key, ...(field && { 'data-edit': field }) }),
+      ...(editing && { 'data-el': key, ...(field && { 'data-edit': field }), ...(hiddenAt.length && { 'data-el-hidden': hiddenAt.map((s) => SHORT[s]).join(' ') }) }),
     }
   }
 }

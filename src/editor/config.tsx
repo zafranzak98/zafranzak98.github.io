@@ -2,11 +2,14 @@ import { createUsePuck, type ComponentConfig, type Config, type Fields } from '@
 import imageWidths from 'virtual:image-widths'
 import type { Project } from '#/lib/site'
 import * as caseBlocks from '#/layout/case-blocks'
-import { COLOURS, SPACES, designWarnings, type Design } from '#/layout/design'
-import { CellBlock, GridBlock, ImageBlock, SpacerBlock, TextBlock } from '#/layout/free-blocks'
+import { COLOURS, SPACES, designProps, designWarnings, type Design } from '#/layout/design'
+import { CellBlock, GridBlock, ImageBlock, SpacerBlock, TextBlock, ratioOptions } from '#/layout/free-blocks'
 import { CaseFrame } from '#/layout/render'
 import { Editing, type Elements } from '#/layout/elements'
-import { ElementPanel, applyEdits, useCanvasEditing, type Edits } from './elements'
+import { CategoryNames } from '#/components/category-index'
+import { CATEGORY_FIELD, applyEdits, categoryEdits, useCanvasEditing, type Edits } from './elements'
+import { ElementPanel } from './panel'
+import { EmptyImage } from './photos'
 
 // The design editor's building blocks: the website's own blocks (src/layout), plus the controls
 // shown for each. Adding a block here makes it available in the editor for every page.
@@ -51,24 +54,27 @@ function block(label: string, Render: (props: any) => React.ReactNode, extra: Re
     label,
     ...extra,
     fields: { ...((extra.fields as object) ?? {}), design: designField },
-    render: ({ puck, ...props }) => (
-      <>
-        {puck.isEditing && <Warnings messages={designWarnings(props.design as Design)} />}
-        <Render {...props} />
-      </>
-    ),
+    render: ({ puck, ...props }) => {
+      // While editing, a block may draw itself differently (an Image section with no photo yet).
+      const editing = puck.isEditing && (extra.whileEditing as ((p: Record<string, unknown>) => React.ReactNode) | undefined)?.(props)
+      return (
+        <>
+          {puck.isEditing && <Warnings messages={designWarnings(props.design as Design)} />}
+          {editing || <Render {...props} />}
+        </>
+      )
+    },
   } as ComponentConfig
 }
 
 // Settings for single elements inside a block, shown for the element clicked on the page.
 const elementsField = (p: Project) => ({
   type: 'custom',
-  label: 'Selected element',
+  label: 'Single elements',
   render: ({ value, onChange }: { value: Elements | undefined; onChange: (v: Elements) => void }) => <ElementPanel value={value} onChange={onChange} p={p} />,
 })
 
 const photos = Object.keys(imageWidths).sort()
-const ratioOptions = [{ label: 'Its own shape', value: 'auto' }, { label: 'Square', value: '1/1' }, { label: 'Portrait 4:5', value: '4/5' }, { label: 'Portrait 3:4', value: '3/4' }, { label: 'Tall 9:16', value: '9/16' }, { label: 'Landscape 16:9', value: '16/9' }, { label: 'Wide 21:9', value: '21/9' }]
 const SIZES = [['Small', 'small'], ['Medium', 'medium'], ['Large', 'large'], ['Extra large', 'xlarge']].map(([label, value]) => ({ label, value }))
 const percent = (label: string) => ({ type: 'number' as const, label, min: 0, max: 100, step: 5 })
 
@@ -80,7 +86,7 @@ export function editorConfig(p: Project): Config {
       render: ({ children, edits }: { children: React.ReactNode; edits?: Edits }) => <EditorFrame p={p} edits={edits ?? {}}>{children}</EditorFrame>,
     },
     categories: {
-      page: { title: 'This project (content from the website editor)', components: ['CategoryNav', 'Opening', 'Facts', 'SectionNav', 'Gap', 'Overview', 'Research', 'Work', 'Outcomes', 'AlsoIn', 'PrevNext'] },
+      page: { title: 'Sections of this project', components: ['CategoryNav', 'Opening', 'Facts', 'SectionNav', 'Gap', 'Overview', 'Research', 'Work', 'Outcomes', 'AlsoIn', 'PrevNext'] },
       free: { title: 'Your own blocks', components: ['Text', 'Image', 'Grid', 'Cell', 'Spacer'] },
     },
     components: {
@@ -113,10 +119,13 @@ export function editorConfig(p: Project): Config {
           alt: { type: 'text', label: 'Description (what the photo shows)' },
           caption: { type: 'text', label: 'Caption' },
           ratio: { type: 'select', label: 'Shape', options: ratioOptions },
+          fit: { type: 'radio', label: 'Fit', options: [{ label: 'Fill the frame', value: 'cover' }, { label: 'Show the whole photo', value: 'contain' }] },
           focusX: percent('Crop focus across (%)'),
           focusY: percent('Crop focus down (%)'),
         } as never,
-        defaultProps: { image: '', ratio: 'auto', focusX: 50, focusY: 50 } as never,
+        defaultProps: { image: '', ratio: 'auto', fit: 'cover', focusX: 50, focusY: 50 } as never,
+        // No photo yet: an empty frame with "Choose a photo", only in the editor.
+        whileEditing: (props: Record<string, unknown>) => (props.image ? null : <EmptyImage id={props.id as string} {...designProps(props.design as Design, 'free-block free-image')} />),
       }),
       Grid: block('Free grid', GridBlock, {
         fields: {
@@ -159,8 +168,10 @@ function EditorFrame({ p, edits, children }: { p: Project; edits: Edits; childre
   const anchor = useCanvasEditing(p, edits)
   return (
     <Editing.Provider value={true}>
-      <span ref={anchor} hidden />
-      <CaseFrame p={applyEdits(p, edits)} content={content}>{children}</CaseFrame>
+      <CategoryNames.Provider value={Object.fromEntries(categoryEdits(edits).map(([field, words]) => [field.match(CATEGORY_FIELD)![1], words]))}>
+        <span ref={anchor} hidden />
+        <CaseFrame p={applyEdits(p, edits)} content={content}>{children}</CaseFrame>
+      </CategoryNames.Provider>
     </Editing.Provider>
   )
 }
