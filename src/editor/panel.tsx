@@ -635,13 +635,13 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
       </div>
 
       {selected?.field && (
-        <Group title="Words">
-          <textarea className="el-words" rows={2} aria-label="Words" value={words.read(selected.field, selected.blockId)} onChange={(e) => words.write(selected.field!, e.target.value, selected.blockId)} />
+        <Group title="Content" detail="Words">
+          <textarea className="el-words" rows={wordRows(words.read(selected.field, selected.blockId))} aria-label="Words" value={words.read(selected.field, selected.blockId)} onChange={(e) => words.write(selected.field!, e.target.value, selected.blockId)} />
         </Group>
       )}
 
       {isCover(item?.type, key) ? (
-        <Group title="Cover">
+        <Group title="Look" detail="Cover">
           <Row label="Cover size" hint="Larger covers take more of the page; the words beside them make room." from={from('cover')} onReset={() => reset('cover')}>
             <Segments label="Cover size" value={shown.cover ?? 'standard'} options={COVER_OPTIONS} onChange={(cover) => setLook({ cover: cover as ElementLook['cover'] })} />
           </Row>
@@ -660,7 +660,7 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
           angleRow={angleRow}
         />
       ) : isImage ? (
-        <Group title="Image">
+        <Group title="Look" detail="Image">
           <Row label="Width" from={from('width')} onReset={() => reset('width')}>
             <input type="range" min={20} max={100} step={5} value={width} aria-label="Width" aria-valuetext={`${width}%`} onChange={(e) => setLook({ width: Number(e.target.value) })} />
             <NumberField label="Width in per cent" value={width} unit="%" step={5} min={20} max={100} onCommit={(w) => setLook({ width: w })} />
@@ -671,7 +671,7 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
           </Row>
         </Group>
       ) : (
-        <Group title="Text">
+        <Group title="Look" detail="Text">
           <Row label="Size" from={from('size')} onReset={() => reset('size')}>
             <Step label="Size" text={sizeName(shown)} onLess={() => setLook({ size: SIZES[Math.max(0, currentSize(shown) - 1)] })} onMore={() => setLook({ size: SIZES[Math.min(SIZES.length - 1, currentSize(shown) + 1)] })} />
           </Row>
@@ -744,6 +744,9 @@ function Parts({ blockId }: { blockId?: string }) {
   )
 }
 
+// Enough rows to show the words without a scrollbar (about 34 characters a row), from 2 to 8.
+const wordRows = (text: string) => Math.min(8, Math.max(2, text.split('\n').reduce((n, line) => n + Math.ceil((line.length || 1) / 34), 0)))
+
 const nextSpace = (now: number | undefined, dir: 1 | -1) => {
   const i = now === undefined ? (dir > 0 ? SPACING.indexOf(1) - 1 : SPACING.indexOf(1) + 1) : SPACING.findIndex((s) => s >= now)
   return SPACING[Math.max(0, Math.min(SPACING.length - 1, i + dir))]
@@ -774,7 +777,7 @@ function PhotoGroup({ props, width, shown, from, setLook, setProps, reset, measu
   useEffect(() => { const id = requestAnimationFrame(() => requestAnimationFrame(() => setDisplayed(Math.round(measure())))); return () => cancelAnimationFrame(id) })
   const soft = original > 0 && displayed > original
   return (
-    <Group title="Photo">
+    <Group title="Look" detail="Photo">
       <Row label="Size" hint="The space the photo can fill on larger screens. Phones use their full width unless you set Phone below." from="design" onReset={() => {}}>
         <Segments label="Size" value={props.design?.width ?? 'full'} options={SIZE_PRESETS} onChange={setSize} />
       </Row>
@@ -803,8 +806,11 @@ function PhotoGroup({ props, width, shown, from, setLook, setProps, reset, measu
   )
 }
 
-function Group({ title, children }: { title: string; children: ReactNode }) {
-  return <section className="el-group" aria-label={title}><h3>{title}</h3>{children}</section>
+// The panel's groups follow one order by intent: Content, Look, Layout, then Fine-tune (folded away).
+// "detail" says what the group is about for this selection (Look: Text, Look: Photo).
+function Group({ title, detail, children }: { title: string; detail?: string; children: ReactNode }) {
+  const name = detail ? `${title}: ${detail}` : title
+  return <section className="el-group" aria-label={name}><h3>{title}{detail && <span className="el-group-detail"> · {detail}</span>}</h3>{children}</section>
 }
 
 function Row({ label, hint, from, onReset, children }: { label: string; hint?: string; from: string; onReset: () => void; children: ReactNode }) {

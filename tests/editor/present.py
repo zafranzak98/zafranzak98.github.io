@@ -29,9 +29,9 @@ def add_photo(pg, name):
 def select_photo(pg):
     ph = frame(pg).locator(".free-photo").first; ph.scroll_into_view_if_needed(); pg.wait_for_timeout(300); b = ph.bounding_box()
     pg.mouse.click(b["x"] + b["width"] / 2, b["y"] + b["height"] / 2); pg.wait_for_timeout(700)
-    if not pg.locator("section.el-group[aria-label='Photo']:visible").count():
+    if not pg.locator("section.el-group[aria-label='Look: Photo']:visible").count():
         pg.get_by_role("button", name=re.compile("^(All )?[Ss]ettings$")).first.click(); pg.wait_for_timeout(600)
-def panel(pg): return pg.locator("section.el-group[aria-label='Photo']:visible").first
+def panel(pg): return pg.locator("section.el-group[aria-label='Look: Photo']:visible").first
 def img(pg): return frame(pg).evaluate("""() => { const i = document.querySelector('.free-photo img'); const f = i.closest('figure'); const c = getComputedStyle(i)
     return { w: i.getBoundingClientRect().width, h: i.getBoundingClientRect().height, nat: i.naturalWidth / i.naturalHeight, fit: c.objectFit, pos: c.objectPosition,
              fig: f.getBoundingClientRect().width, cls: f.className, box: i.parentElement.getBoundingClientRect().width } }""")
