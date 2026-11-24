@@ -82,8 +82,6 @@ export function HomeLine({ design, elements }: BlockProps) {
       {cvUrl && (
         <span className="home-line-item">
           <a href={cvUrl} {...el('cv-view', { field: 'labels:cv_view' })}>{w.labels.cv_view}</a>
-          <span className="home-sep" aria-hidden="true">/</span>
-          <a href={cvUrl} download {...el('cv-download', { field: 'labels:cv_download' })}>{w.labels.cv_download}</a>
         </span>
       )}
     </p>

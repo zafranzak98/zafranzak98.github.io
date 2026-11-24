@@ -658,3 +658,22 @@ html[data-preview] .shared-note { display: none; }
   .adm-group, .adm-note, .adm-item small { display: none; }
   .adm-item { width: auto; white-space: nowrap; }
 }
+
+/* The homepage in the canvas: the editor wraps each section in its own box, so the page grid is
+   passed down (subgrid) and each box takes the place its section has on the website. */
+@media (min-width: 900px) {
+  .home > [data-puck-dropzone] { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: start; }
+  .home > [data-puck-dropzone] > [data-puck-component] { grid-column: 1 / -1; }
+  .home > [data-puck-dropzone] > [data-puck-component^='HomeIntro'] { grid-column: 1 / span 7; grid-row: 1; }
+  .home > [data-puck-dropzone] > [data-puck-component^='HomeClock'] { grid-column: 9 / span 4; grid-row: 1 / span 2; }
+  .home > [data-puck-dropzone] > [data-puck-component^='HomeLine'] { grid-column: 1 / span 8; grid-row: 2; align-self: end; }
+  .home > [data-puck-dropzone] > [data-puck-component^='HomeFocus'] { grid-column: 1 / span 3; }
+  .home > [data-puck-dropzone] > [data-puck-component^='HomeWork'] { grid-column: 4 / -1; display: grid; grid-template-columns: subgrid; align-items: start; }
+  .home [data-puck-component^='HomeWork'] > .home-work { grid-column: 1 / span 7; }
+  .home [data-puck-component^='HomeWork'] > .home-preview { grid-column: 8 / span 2; }
+}
+@media (min-width: 900px) and (max-width: 1279px) {
+  .home [data-puck-component^='HomeWork'] > .home-work { grid-column: 1 / -1; }
+}
+/* The canvas page shows the website's own background colour, as visitors see it. */
+.page:has(> .shared-part) { background: var(--off); }

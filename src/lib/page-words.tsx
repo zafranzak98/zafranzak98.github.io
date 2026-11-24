@@ -9,7 +9,7 @@ export const homeWords = () => ({
   home_intro: site.home_intro,
   availability: site.availability ?? '',
   clock: { city: site.clock?.city ?? '', time_zone: site.clock?.time_zone ?? 'Europe/London', line: site.clock?.line ?? '', show: site.clock?.show !== false && !!site.clock },
-  labels: { focus: 'Areas of Focus', work: 'Selected Projects', cv_view: 'View CV (PDF)', cv_download: 'Download' },
+  labels: { focus: 'Areas of Focus', work: 'Selected Projects', cv_view: 'View CV (PDF)' },
 })
 export type HomeWords = ReturnType<typeof homeWords>
 
