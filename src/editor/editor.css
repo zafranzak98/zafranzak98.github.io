@@ -512,3 +512,6 @@ html[data-preview] [data-el-note] { outline: none; }
 .el-parts-link:focus-visible { outline: 2px solid var(--terra, #9a3f24); outline-offset: 2px; }
 /* Anything focused or scrolled to in the list stays clear of the sticky tabs above it (WCAG 2.4.11). */
 .sec-row, .sec-parts button { scroll-margin-top: 4.5rem; scroll-margin-bottom: 1rem; }
+
+/* "Look · Text": the group's intent first, then what it covers for this selection. */
+.el-group-detail { font-weight: 500; letter-spacing: 0.02em; text-transform: none; color: #5c5a45; }

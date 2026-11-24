@@ -132,7 +132,7 @@ with sync_playwright() as p:
     check("The panel starts with Page › Opening › Summary line", re.sub(r"\s+", " ", crumbs) == "Page › Opening › Summary line", crumbs)
     check("Puck's own panel title is hidden", pg.locator("[class*='_FieldsPlugin-header']:visible").count() == 0)
     groups = pg.locator(".el-panel:visible section.el-group > h3").all_inner_texts()
-    check("Groups by intent: Words, Text, Layout", [g.upper() for g in groups][:3] == ["WORDS", "TEXT", "LAYOUT"], str(groups))
+    check("Groups by intent: Content, Look, Layout, then Fine-tune", [g.upper().split(" ·")[0] for g in groups][:3] == ["CONTENT", "LOOK", "LAYOUT"] and pg.locator("details.el-fine:visible").count() == 1, str(groups))
     layout = pg.locator("section.el-group[aria-label='Layout']:visible")
     check("Layout holds Box position, spacing and Hide", all(layout.get_by_text(t).count() for t in ["Box position", "Space above", "Space below", "Hide on Desktop"]))
     fine = pg.locator("details.el-fine:visible")
