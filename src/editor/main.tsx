@@ -691,7 +691,7 @@ function Actions() {
         <Panel title="Publish this page?" onClose={() => setPanel('')}>
           {DEMO && <p className="editor-sim-note"><b>Simulated.</b> In this demo, publishing stays in this browser. Nothing is sent to GitHub, /admin or either website.</p>}
           {page?.shared && <div className="editor-impact" role="note"><p><b>This changes every page.</b> The {page.shared} is shared: Homepage, About, Projects, every category and every case study show it.</p></div>}
-          <p>The test site will show this layout for {page?.label ?? p.title} in about a minute, after the usual checks. The current version stays in Versions, so you can bring it back at any time.</p>
+          <p>{DEMO ? <>In the real editor, the test site would show this layout for {page?.label ?? p.title} in about a minute, after the usual checks.</> : <>The test site will show this layout for {page?.label ?? p.title} in about a minute, after the usual checks.</>} The current version stays in Versions, so you can bring it back at any time.</p>
           {renames.length > 0 && (
             <div className="editor-impact" role="note">
               <p><b>This also changes other pages.</b> These shared names will change on every project page, the Projects page and the filters:</p>
