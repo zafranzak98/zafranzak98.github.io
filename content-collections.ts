@@ -152,7 +152,7 @@ const site = defineSingleton({
     projects_intro: z.string().optional(),
     cv: z.string().optional(),
     availability: z.string().optional(),
-    clock: z.object({ show: z.boolean().optional(), city: z.string(), time_zone: z.string(), line: z.string().optional() }).optional(),
+    clock: z.object({ show: z.boolean().optional(), city: z.string(), time_zone: z.string(), line: z.string().optional(), weather: z.boolean().optional(), latitude: z.number().optional(), longitude: z.number().optional() }).optional(),
     email: z.string(),
     instagram: z.string().optional(),
     linkedin: z.string().optional(),

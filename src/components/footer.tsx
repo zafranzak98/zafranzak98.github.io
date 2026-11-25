@@ -1,6 +1,9 @@
 import { Link } from '@tanstack/react-router'
 import { mailto, site } from '#/lib/site'
 
+// The homepage weather is switched on in Site settings (clock: weather).
+const weatherOn = !!site.clock && site.clock.show !== false && site.clock.weather === true
+
 export default function Footer() {
   return (
     <footer>
@@ -30,6 +33,14 @@ export default function Footer() {
       </div>
       <div className="footer-credit">
         <p>© {new Date().getFullYear()} Zafran Zakaria. All rights reserved.</p>
+        {weatherOn && (
+          // Open-Meteo's data is shared under CC BY 4.0, which asks for this credit wherever it is shown.
+          <p className="credit">
+            <a href="https://open-meteo.com/" target="_blank" rel="noreferrer" className="credit-link">
+              Weather data by <span>Open-Meteo.com</span>
+            </a>
+          </p>
+        )}
         {site.credit_name && (
           <p className="credit">
             <a href={site.credit_url} target="_blank" rel="noreferrer" className="credit-link">

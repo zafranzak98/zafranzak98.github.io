@@ -19,6 +19,9 @@ linkedin: https://www.linkedin.com/in/zafranzakaria
 availability: Open to junior roles across the UK
 clock:
   city: Harrogate
+  latitude: 53.9921
   line: A mind full of ideas, always.
+  longitude: -1.5418
   show: true
   time_zone: Europe/London
+  weather: true
