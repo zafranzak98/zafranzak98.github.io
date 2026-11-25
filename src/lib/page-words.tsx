@@ -7,6 +7,7 @@ import { about, categoryBySlug, projectsIn, site } from './site'
 
 export const homeWords = () => ({
   home_intro: site.home_intro,
+  areas_of_focus: site.areas_of_focus,
   availability: site.availability ?? '',
   clock: { city: site.clock?.city ?? '', time_zone: site.clock?.time_zone ?? 'Europe/London', line: site.clock?.line ?? '', show: site.clock?.show !== false && !!site.clock },
   labels: { focus: 'Areas of Focus', work: 'Selected Projects', cv_view: 'View CV (PDF)' },
@@ -25,7 +26,7 @@ export type ListingWords = { slug?: string; title: string; intro: string; count?
 
 export const headerWords = () => ({ name: site.name, nav: { about: 'About', projects: 'Projects', cv: 'CV', email: 'Email', instagram: 'Instagram', linkedin: 'LinkedIn', menu_cv: 'Download CV' } })
 export type HeaderWords = ReturnType<typeof headerWords>
-export const footerWords = () => ({ kicker: 'Contact', title: "Let's talk", email: site.email, top: 'Back to top ↑', pages: { home: 'Home', about: 'About', projects: 'Projects' } })
+export const footerWords = () => ({ kicker: 'Contact', title: "Let's talk", email: site.email, top: 'Back to top ↑', pages: { home: 'Home', about: 'About', projects: 'Projects' }, social: { instagram: 'Instagram ↗', linkedin: 'LinkedIn ↗' }, credit: 'Zafran Zakaria. All rights reserved.' })
 export type FooterWords = ReturnType<typeof footerWords>
 
 // The words of the page being shown (one page at a time).

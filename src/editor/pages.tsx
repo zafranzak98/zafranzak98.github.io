@@ -10,6 +10,7 @@ import { caseStudies, categories, projects, type Project } from '#/lib/site'
 import { block, editorConfig, elementsField } from './config'
 import { CATEGORY_FIELD, applyEdits, categoryEdits, useCanvasEditing, type Edits } from './elements'
 import { SharedAround, sharedEdits } from './shared'
+import { ClockSettings, wordsWithEdits } from './page-settings'
 
 // Demo only (the visual editor demo): every page of the website in one list. A case study keeps
 // its own editor (config.tsx); every other page is described here: its name, its words, its
@@ -41,7 +42,8 @@ export const pageFor = (key: string | null) => PAGES.find((x) => x.key === key)
 export const caseList = caseStudies
 
 // The page's words stand in for a project wherever the editor reads or writes words.
-export const asProject = (page: PageDef) => ({ ...page.words, slug: `page-${page.key.replace(':', '-')}`, title: page.label }) as unknown as Project
+// The page's own words keep their own title (the Projects page's "Projects", the footer's "Let's talk").
+export const asProject = (page: PageDef) => ({ ...page.words, slug: `page-${page.key.replace(':', '-')}` }) as unknown as Project
 
 export function standardLayout(page: PageDef): Data {
   return { root: { props: page.shared ? { edits: sharedEdits(page.shared) } : {} }, content: page.sections.map((type) => ({ type, props: { id: `${type}-standard` } })) } as Data
@@ -74,7 +76,9 @@ export function pageConfig(page: PageDef): Config {
     const Section = (pageBlocks as Record<string, unknown>)[type] as (props: object) => ReactNode
     return (props) => <Section {...props} category={category} />
   }
-  const sections = Object.fromEntries(page.sections.map((type) => [type, block(NAMES[type] ?? type, render(type), { fields: { elements: elementsField(p) } })]))
+  // The homepage clock's settings show in Settings when its section is chosen (and when its line is).
+  const extra = (type: string) => (type === 'HomeClock' ? { clock: { type: 'custom', label: 'Clock settings', render: () => <ClockSettings p={p} /> } } : {})
+  const sections = Object.fromEntries(page.sections.map((type) => [type, block(NAMES[type] ?? type, render(type), { fields: { elements: elementsField(p), ...extra(type) } })]))
   return {
     root: { fields: {}, render: ({ children, edits }: { children: ReactNode; edits?: Edits }) => <PageEditorFrame page={page} edits={edits ?? {}}>{children}</PageEditorFrame> },
     categories: {
@@ -90,7 +94,7 @@ export function pageConfig(page: PageDef): Config {
 function PageEditorFrame({ page, edits, children }: { page: PageDef; edits: Edits; children: ReactNode }) {
   usePuck((s) => s.appState.data.content)
   const anchor = useCanvasEditing(page.words as never, edits)
-  const words = useMemo(() => applyEdits(page.words as never, edits) as unknown as Record<string, unknown>, [page, edits])
+  const words = useMemo(() => (page.shared ? (applyEdits(page.words as never, edits) as unknown as Record<string, unknown>) : wordsWithEdits(page.words as never, edits)), [page, edits])
   const renamed = Object.fromEntries(categoryEdits(edits).map(([field, to]) => [field.match(CATEGORY_FIELD)![1], to]))
   return (
     <Editing.Provider value={true}>

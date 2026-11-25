@@ -662,6 +662,11 @@ h3.free-heading { font-size: var(--h3); }
   .el-rotate-p > .tilt:only-child { --tilt: var(--el-rotate-p) !important; }
   .el-rotate-p:not(:has(> .tilt:only-child)) { rotate: var(--el-rotate-p); }
 }
+/* The About portrait has its own designed size on phones, so a width chosen for larger screens does
+   not carry to phones; a width set for Phone itself still applies. */
+@media (max-width: 899px) {
+  .about-portrait:is(.el-width-d, .el-width-t):not(.el-width-p) { width: 8.75rem !important; }
+}
 /* A photo on a project page, presented in the editor without changing the file. Span is the space it
    can fill (Tablet follows Desktop; phones use their full width unless Phone has its own). Shape and
    fit are set once for every screen size: a fixed shape fills its frame (cropped, with the crop focus)

@@ -23,6 +23,9 @@ import { PAGES, asProject, pageConfig, pageFor, standardLayout, type PageDef } f
 import { publishShared } from './shared'
 import { setStandardSections } from './sections'
 import { AdminShell } from './admin-demo'
+import { keepCanvasClear } from './float-room'
+import { pageProblems, type Problem } from './page-settings'
+import { clashes, clearRemote, editsOf, fieldName, readRemote, short, writeRemote, type Clash } from './safeguards'
 
 // The design editor at /admin/design/. Arrange and restyle a page with its real blocks, then
 // save a draft or publish. Undo and redo cover every change; unsaved work is kept in this
@@ -43,7 +46,10 @@ const writeLocal = (key: string, value: unknown) => { try { localStorage.setItem
 const removeLocal = (key: string) => { try { localStorage.removeItem(key) } catch { /* nothing to remove */ } }
 
 // The page as published: a case study's saved layout, or (demo) any other page's standard one.
-const publishedOf = (p: Project, page: PageDef | null) => (page ? standardLayout(page) : ((savedLayoutFor(p) ?? standardCaseLayout()) as Data))
+// Demo: a page published here (simulated) opens as last published in this browser. The shared header
+// and footer keep their own published copy (shared.ts).
+const demoPublished = (p: Project) => (DEMO ? readLocal<Version[]>(localKey(p.slug, 'versions'), [])[0]?.layout : undefined)
+const publishedOf = (p: Project, page: PageDef | null) => (page ? ((!page.shared && demoPublished(p)) || standardLayout(page)) : ((demoPublished(p) ?? savedLayoutFor(p) ?? standardCaseLayout()) as Data))
 const standardOf = (page: PageDef | null) => (page ? standardLayout(page) : (standardCaseLayout() as Data))
 function startingLayout(p: Project, page: PageDef | null): { data: Data; restored: boolean } {
   const unsaved = readLocal<Data | null>(localKey(p.slug, 'unsaved'), null)
@@ -134,13 +140,19 @@ function EditorApp() {
   // so say so rather than let one tab quietly replace the other's.
   const [elsewhere, setElsewhere] = useState(false)
   useEffect(() => {
-    const other = (e: StorageEvent) => { if (e.key === localKey(p.slug, 'unsaved') && e.newValue) setElsewhere(true) }
+    const other = (e: StorageEvent) => {
+      if (e.key !== localKey(p.slug, 'unsaved') || !e.newValue) return
+      // The same words changed differently in both tabs: the top bar asks which to keep instead.
+      try { if (DEMO && clashes(editsOf(latestData.current), editsOf(JSON.parse(e.newValue) as Data)).length) return } catch { /* not readable: say so below */ }
+      setElsewhere(true)
+    }
     window.addEventListener('storage', other)
     return () => window.removeEventListener('storage', other)
   }, [p.slug])
   useEffect(() => { if (elsewhere) setNotice('This page was also changed in another tab of this browser. Keep working in one tab: the last tab to change it is the one kept if you reload.') }, [elsewhere])
 
   useEffect(labelPuckControls, [])
+  useEffect(keepCanvasClear, [])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   // GitHub refused this sign-in. Your own is forgotten; the shared one is left for Sveltia to renew.
@@ -356,6 +368,73 @@ function Actions() {
     return () => { document.removeEventListener('keydown', key); document.removeEventListener('pointerdown', away); window.removeEventListener('blur', blur) }
   }, [more])
   const warnings = layoutWarnings(data.content as never)
+  // Demo safeguards (simulated in this browser): what stops publishing, and the same words changed
+  // in another tab or by someone else.
+  const edits = editsOf(data)
+  const problems: Problem[] = page && !page.shared ? pageProblems(page.words as never, edits) : []
+  const latest = useRef(data)
+  latest.current = data
+  const [tabClash, setTabClash] = useState<{ found: Clash[]; theirs: Data } | null>(null)
+  useEffect(() => {
+    if (!DEMO) return
+    const other = (e: StorageEvent) => {
+      if (e.key !== localKey(p.slug, 'unsaved') || !e.newValue) return
+      try {
+        const theirs = JSON.parse(e.newValue) as Data
+        const found = clashes(editsOf(latest.current), editsOf(theirs))
+        setTabClash(found.length ? { found, theirs } : null)
+      } catch { /* not readable */ }
+    }
+    window.addEventListener('storage', other)
+    return () => window.removeEventListener('storage', other)
+  }, [p.slug])
+  const setEdits = (next: Edits) => dispatch({ type: 'replaceRoot', root: { ...data.root, props: { ...data.root.props, edits: next } } as never })
+  const keepThisTab = () => {
+    writeLocal(localKey(p.slug, 'unsaved'), data)
+    setTabClash(null)
+    setNotice('Kept the words in this tab. This browser now keeps this tab’s version; reload the other tab to see it there.')
+  }
+  const useOtherTab = () => {
+    if (!tabClash) return
+    const next = { ...edits }
+    for (const c of tabClash.found) next[c.field] = c.theirs
+    setEdits(next)
+    setNotice(`Used the other tab’s words for ${tabClash.found.map((c) => `“${fieldName(c.field)}”`).join(', ')}. Undo brings yours back.`, true)
+    setTabClash(null)
+  }
+  const [remote, setRemote] = useState(() => (DEMO ? readRemote(p.slug) : null))
+  const remoteClashes = remote ? clashes(edits, remote.edits) : []
+  const simulateOther = () => {
+    const fields = Object.keys(edits).filter((f) => !CATEGORY_FIELD.test(f) && f !== 'clock:show' && f !== 'portrait:image')
+    const field = fields[fields.length - 1]
+    if (!field) { setNotice('Change some words first (double-click words on the page and type). This then simulates someone else changing the same words in the website editor, to show how both versions are protected.'); return }
+    const theirs = field === 'clock:time_zone' ? 'Asia/Kuala_Lumpur' : `${wordsOf(p, field).replace(/\s+$/, '')} (changed by someone else)`
+    const next = { edits: { ...(remote?.edits ?? {}), [field]: theirs }, at: new Date().toISOString() }
+    writeRemote(p.slug, next)
+    setRemote(next)
+    setNotice(`Simulated: someone else changed “${fieldName(field)}” in the website editor (/admin) a moment ago, while you had unpublished changes to it. Choose Publish to see the safeguard. Nothing was sent anywhere.`)
+  }
+  const resolveRemote = (c: Clash, keep: 'mine' | 'theirs') => {
+    if (!remote) return
+    const rest = { ...remote.edits }
+    delete rest[c.field]
+    const next = { ...remote, edits: rest }
+    if (Object.keys(rest).length) writeRemote(p.slug, next); else clearRemote(p.slug)
+    setRemote(Object.keys(rest).length ? next : null)
+    if (keep === 'theirs') { setEdits({ ...edits, [c.field]: c.theirs }); setNotice(`Using their words for “${fieldName(c.field)}”. Undo brings yours back.`, true) }
+    else setNotice(`Keeping your words for “${fieldName(c.field)}”. Publishing will replace theirs.`)
+  }
+  const showProblem = (pr: Problem) => {
+    setPanel('')
+    const item = (data.content as { type: string; props: { id: string } }[]).find((x) => x.type === pr.section)
+    if (!item) return
+    const doc = (document.getElementById('preview-frame') as HTMLIFrameElement | null)?.contentDocument
+    const el = doc?.querySelector<HTMLElement>(`[data-puck-component="${item.props.id}"] [data-el="${pr.key}"]`)
+    el?.scrollIntoView({ block: 'center' })
+    select({ key: pr.key, blockId: item.props.id, field: el?.dataset.edit })
+    if (window.innerWidth < 638) [...document.querySelectorAll<HTMLElement>("[class*='NavItem-link']")].find((b) => b.textContent?.trim() === 'Settings')?.click()
+    else dispatch({ type: 'setUi', ui: { rightSideBarVisible: true } })
+  }
   // Image sections with no photo: publishing waits until each has one (a draft can still be saved).
   const empties = emptyImages(data.content as never)
   const renames = categoryEdits(((data.root.props as { edits?: Edits } | undefined)?.edits) ?? {}).map(([field, to]) => [field.match(CATEGORY_FIELD)![1], to] as const)
@@ -446,6 +525,8 @@ function Actions() {
   const publish = () => run('Publishing', async () => {
     // Never publish an empty Image section, whichever way Publish was reached.
     if (emptyImages(data.content as never).length) throw new Error('An Image section has no photo. Remove the section, then publish.')
+    if (problems.length) throw new Error(problems.map((x) => x.text).join(' '))
+    if (remoteClashes.length) throw new Error(`${remoteClashes.map((c) => `“${fieldName(c.field)}”`).join(', ')} was changed by someone else since you opened this page. Choose whose words to keep in Publish.`)
     setPanel('')
     if (DEMO) {
       const list = readLocal<Version[]>(localKey(p.slug, 'versions'), [])
@@ -453,6 +534,11 @@ function Actions() {
       removeLocal(localKey(p.slug, 'unsaved'))
       clean.current = JSON.stringify(data)
       setSaved({ json: clean.current, text: `Published ${time()}` })
+      // Someone else's changes to other words are kept as well (they merge); the simulation ends here.
+      const merged = remote ? Object.keys(remote.edits) : []
+      clearRemote(p.slug)
+      setRemote(null)
+      if (merged.length) return `Published in this demo only (simulated). Someone else’s change to ${merged.map((f) => `“${fieldName(f)}”`).join(', ')} did not touch your words, so both are kept. In the real editor this saves the page and the test site updates in about a minute.`
       if (page?.shared) {
         publishShared(page.shared, ((data.root.props as { edits?: Edits } | undefined)?.edits) ?? {})
         return `Published in this demo only (simulated). The ${page.shared} now shows your change on every page of this demo: open any page in the list to see it. In the real editor this saves one shared file and the test site updates in about a minute.`
@@ -576,6 +662,7 @@ function Actions() {
             <button type="button" onClick={choose(openHistory)} disabled={!!busy}>Versions <small>bring back an earlier version</small></button>
             <button type="button" onClick={choose(discardUnsaved)} disabled={!!busy || !unpublished}>Discard changes <small>go back to the published page</small></button>
             <button type="button" onClick={choose(() => setPanel('reset'))} disabled={!!busy}>Standard layout <small>start again from the template</small></button>
+            {DEMO && <button type="button" onClick={choose(simulateOther)} disabled={!!busy}>Simulate someone else’s edit <small>demo: tests the same-words safeguard</small></button>}
             {!DEMO && token && <button type="button" onClick={choose(signOut)} disabled={!!busy}>Sign out <small>{login ? `signed in as ${login}` : 'signed in'}{shared ? ', shared with the website editor' : ''}; signs out of both here</small></button>}
           </div>
         </div>
@@ -586,6 +673,12 @@ function Actions() {
       <div className="editor-bar-ctx" onKeyDown={(e) => { if (e.key === 'Escape' && !e.defaultPrevented && !(e.target as HTMLElement).closest('input, textarea, select, .ctx-menu')) select(null) }}>{!preview && <MoreTools />}{!preview && <ScreenStrip width={Number(ui.viewports.current.width) || 1440} />}{preview ? <p className="ctx ctx-hint">Previewing the page exactly as visitors see it. Nothing here can be changed until you go back to editing.</p> : <ContextBar />}</div>
       {warnings.length > 0 && <p className="editor-demo editor-checks">{warnings.join(' ')}</p>}
       {undone && <p className="editor-undone" role="status">{undone}</p>}
+      {tabClash && (
+        <div className="editor-notice editor-conflict" role="alert">
+          <p><b>The same words were changed in another tab.</b> {tabClash.found.map((c) => `“${fieldName(c.field)}”: here “${short(c.mine)}”, there “${short(c.theirs)}”.`).join(' ')} Which words do you want to keep?</p>
+          <span className="editor-conflict-actions"><button type="button" onClick={keepThisTab}>Keep this tab’s words</button><button type="button" onClick={useOtherTab}>Use the other tab’s words</button></span>
+        </div>
+      )}
       {notice.text && (
         <div className="editor-notice" role="status">
           <p>{notice.text}</p>
@@ -598,7 +691,7 @@ function Actions() {
         <Panel title="Publish this page?" onClose={() => setPanel('')}>
           {DEMO && <p className="editor-sim-note"><b>Simulated.</b> In this demo, publishing stays in this browser. Nothing is sent to GitHub, /admin or either website.</p>}
           {page?.shared && <div className="editor-impact" role="note"><p><b>This changes every page.</b> The {page.shared} is shared: Homepage, About, Projects, every category and every case study show it.</p></div>}
-          <p>The test site will show this layout for {p.title} in about a minute, after the usual checks. The current version stays in Versions, so you can bring it back at any time.</p>
+          <p>The test site will show this layout for {page?.label ?? p.title} in about a minute, after the usual checks. The current version stays in Versions, so you can bring it back at any time.</p>
           {renames.length > 0 && (
             <div className="editor-impact" role="note">
               <p><b>This also changes other pages.</b> These shared names will change on every project page, the Projects page and the filters:</p>
@@ -611,6 +704,23 @@ function Actions() {
               <p><b>{empties.length === 1 ? 'An Image section has no photo.' : `${empties.length} Image sections have no photo.`}</b> Remove {empties.length === 1 ? 'it' : 'them'} in Sections before publishing. Photos are added in the website editor (/admin). Saving a draft still works.</p>
             </div>
           )}
+          {problems.length > 0 && (
+            <div className="editor-blocked" role="alert">
+              <p><b>Not ready to publish.</b> {problems.length === 1 ? 'Fix this first' : `Fix these ${problems.length} first`}. Saving a draft still works.</p>
+              <ul className="editor-blocked-list">{problems.map((pr) => <li key={pr.text}><span>{pr.text}</span><button type="button" onClick={() => showProblem(pr)}>Show me</button></li>)}</ul>
+            </div>
+          )}
+          {remoteClashes.length > 0 && (
+            <div className="editor-blocked editor-conflict" role="alert">
+              <p><b>Someone else changed the same words.</b> Since you opened this page, {remoteClashes.length === 1 ? 'this was' : 'these were'} changed in the website editor (simulated). Nothing is published until you choose whose words to keep; your version stays safe in this browser.</p>
+              <ul className="editor-blocked-list">{remoteClashes.map((c) => (
+                <li key={c.field}>
+                  <span><b>{fieldName(c.field)}</b>. Yours: “{short(c.mine)}”. Theirs: “{short(c.theirs)}”.</span>
+                  <span className="editor-conflict-actions"><button type="button" onClick={() => resolveRemote(c, 'mine')}>Keep mine</button><button type="button" onClick={() => resolveRemote(c, 'theirs')}>Use theirs</button></span>
+                </li>
+              ))}</ul>
+            </div>
+          )}
           {findings === null ? (
             <p role="status">Checking Desktop, Tablet and Phone…</p>
           ) : findings.length ? (
@@ -621,7 +731,7 @@ function Actions() {
           ) : (
             <p role="status">Checked on Desktop, Tablet and Phone: nothing overlaps, runs off the screen, is too small or is hard to read.</p>
           )}
-          <button type="button" className="editor-primary" onClick={publish} disabled={findings === null || empties.length > 0}>{findings?.length ? 'Publish anyway' : 'Publish'}</button>
+          <button type="button" className="editor-primary" onClick={publish} disabled={findings === null || empties.length > 0 || problems.length > 0 || remoteClashes.length > 0}>{findings?.length ? 'Publish anyway' : 'Publish'}</button>
         </Panel>
       )}
       {panel === 'reset' && (

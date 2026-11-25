@@ -1,4 +1,5 @@
 import { kindName, showPartsOf } from './sections'
+import { ClockSettings, PORTRAIT_WIDTH, PortraitContent } from './page-settings'
 import { useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { createUsePuck } from '@puckeditor/core'
@@ -47,6 +48,12 @@ const selectedEl = () => canvas()?.querySelector<HTMLElement>('[data-el-selected
 const elFor = (blockId?: string, key?: string | null) => {
   const found = blockId && key ? canvas()?.querySelector<HTMLElement>(`[data-puck-component="${blockId}"] [data-el="${key}"]`) : null
   return found ?? selectedEl()
+}
+
+// The About portrait's width now, as a share of the page width (it hangs at the side of the page).
+const portraitWidth = (el: HTMLElement | null, fallback: number) => {
+  const page = el?.parentElement?.getBoundingClientRect().width
+  return el && page ? Math.round((el.getBoundingClientRect().width / page) * 200) / 2 : fallback
 }
 
 // The selected element's settings at the screen size being edited, and a way to change them.
@@ -227,7 +234,7 @@ function MoreMenu({ name, children }: { name: string; children: (close: () => vo
 }
 
 export function ContextBar() {
-  const { key, item, selected, screen, shown, setLook, from, resetAll } = useLook()
+  const { key, item, selected, screen, own, shown, setLook, from, resetAll } = useLook()
   const { select } = useContext(Selection)
   const ui = usePuck((s) => s.appState.ui)
   const dispatch = usePuck((s) => s.dispatch)
@@ -362,6 +369,30 @@ export function ContextBar() {
         <span className="ctx-shared">Shared: renaming it changes every page, the Projects page and the filters when you publish</span>
         <span className="ctx-gap" />
         {message ? <span className="ctx-live">{message}</span> : null}
+        <button type="button" className="ctx-icon" aria-label="Done, deselect (Esc)" title="Done (Esc)" onClick={() => select(null)}>✕</button>
+        {live}
+      </div>
+    )
+  }
+
+  // The About portrait: its width here; the photo, its description and the crop focus in Settings.
+  // Its slight tilt and paperclip are the approved design, so it has no angle control.
+  if (key === 'portrait') {
+    const [lo, standard, hi] = PORTRAIT_WIDTH[screen]
+    // Phones have their own designed size: a width set for larger screens does not carry to them.
+    const width = (screen === 'phone' ? own.width : shown.width) ?? portraitWidth(elFor(selected?.blockId, key), standard)
+    return (
+      <div className="ctx" role="toolbar" aria-label="Portrait tools">
+        <span className="ctx-name">Portrait</span>
+        <span className="ctx-group" role="group" aria-label="Width">
+          <span className="ctx-label">Width</span>
+          <input type="range" min={lo} max={hi} step={0.5} value={width} aria-label="Width" aria-valuetext={`${width}% of the page`} onChange={(e) => setLook({ width: Number(e.target.value) })} />
+          <NumberField label="Width in per cent of the page" value={width} unit="%" step={0.5} min={lo} max={hi} onCommit={(w) => setLook({ width: w })} />
+        </span>
+        <span className="ctx-hint ctx-long">Photo, description and crop focus: Settings.</span>
+        <span className="ctx-gap" />
+        {where}
+        {more}
         <button type="button" className="ctx-icon" aria-label="Done, deselect (Esc)" title="Done (Esc)" onClick={() => select(null)}>✕</button>
         {live}
       </div>
@@ -662,6 +693,33 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
     )
   }
 
+  if (key === 'portrait') {
+    const [lo, standard, hi] = PORTRAIT_WIDTH[screen]
+    // Phones have their own designed size: a width set for larger screens does not carry to them.
+    const width = (screen === 'phone' ? own.width : shown.width) ?? portraitWidth(elFor(selected?.blockId, key), standard)
+    const undoLook = (...keys: (keyof ElementLook)[]) => setLook(Object.fromEntries(keys.map((k) => [k, undefined])))
+    return (
+      <div className="el-panel">
+        <Crumbs part="Portrait" />
+        <div className="el-head">
+          <p className="el-name">Portrait</p>
+          <p className="el-note">The photo and its description are the same on every screen. Width and crop focus apply to <b>{SCREEN_LABEL[screen]}</b>{screen === 'desktop' ? '; Tablet and Phone follow.' : ' only.'}</p>
+        </div>
+        <PortraitContent p={p} />
+        <Group title="Look" detail="Portrait">
+          <Row label="Width" hint={`Share of the page width. As designed: ${standard}%.`} from={screen === 'phone' && own.width === undefined ? 'design' : from('width')} onReset={() => undoLook('width')}>
+            <input type="range" min={lo} max={hi} step={0.5} value={width} aria-label="Width" aria-valuetext={`${width}% of the page`} onChange={(e) => setLook({ width: Number(e.target.value) })} />
+            <NumberField label="Width in per cent of the page" value={width} unit="%" step={0.5} min={lo} max={hi} onCommit={(w) => setLook({ width: w })} />
+          </Row>
+          <Row label="Crop focus" hint="The part of the photo kept in view in the portrait's frame." from={from('focusX', 'focusY')} onReset={() => undoLook('focusX', 'focusY')}>
+            <FocusGrid x={shown.focusX ?? 50} y={shown.focusY ?? 50} onChange={(focusX, focusY) => setLook({ focusX, focusY })} />
+          </Row>
+          <p className="el-note">The slight tilt and the paperclip are part of the approved design and stay as they are.</p>
+        </Group>
+      </div>
+    )
+  }
+
   const isImage = IMAGES.test(key)
   const el = elFor(selected?.blockId, key)
   const width = shown.width ?? (el ? widthNow(el) : 100)
@@ -700,6 +758,8 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
           )}
         </Group>
       )}
+
+      {key === 'clock' && item?.type === 'HomeClock' && <ClockSettings p={p} withLine={!selected?.field} />}
 
       {isCover(item?.type, key) ? (
         <Group title="Look" detail="Cover">

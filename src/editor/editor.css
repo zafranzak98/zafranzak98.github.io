@@ -643,9 +643,9 @@ html[data-preview] .shared-note { display: none; }
 .adm-chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: #f3e7d8; color: #3d2f22; }
 .adm-body { flex: 1; display: flex; min-height: 0; }
 .adm-side { width: 220px; flex: none; padding: 12px; border-right: 1px solid #e2e0dc; background: #fff; overflow: auto; }
-.adm-group { margin: 14px 8px 6px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #777; }
+.adm-group { margin: 14px 8px 6px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #666; }
 .adm-item { display: block; width: 100%; text-align: left; padding: 8px 10px; margin: 2px 0; border: 0; border-radius: 6px; background: none; font: inherit; color: #555; cursor: pointer; }
-.adm-item small { display: block; font-size: 11px; color: #888; }
+.adm-item small { display: block; font-size: 11px; color: #666; }
 .adm-item:hover { background: #f1efec; }
 .adm-item.is-current { background: #2b2b2b; color: #fff; }
 .adm-item.is-current small { color: #cfcfcf; }
@@ -677,3 +677,21 @@ html[data-preview] .shared-note { display: none; }
 }
 /* The canvas page shows the website's own background colour, as visitors see it. */
 .page:has(> .shared-part) { background: var(--off); }
+
+/* Visual editor demo: page settings (homepage clock, About portrait). */
+.ps-group label.ps-field { font-weight: 600; margin-bottom: -0.375rem; }
+.ps-check { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+.ps-check input { width: 1.125rem; height: 1.125rem; accent-color: var(--terra); }
+.ps-group input.el-words { min-height: 2.5rem; }
+.ps-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: 0.5rem; max-height: 17rem; overflow: auto; padding: 2px; }
+.ps-photo { display: grid; gap: 0.25rem; padding: 0.25rem; border: 1px solid #d6d9cc; border-radius: 6px; background: #fff; cursor: pointer; text-align: left; font: inherit; }
+.ps-photo img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 3px; display: block; }
+.ps-photo-name { font-size: 11px; line-height: 1.25; color: #5c5a45; overflow-wrap: anywhere; }
+.ps-photo[aria-checked='true'] { border-color: var(--terra); box-shadow: 0 0 0 2px var(--terra); }
+.ps-photo:focus-visible { outline: 2px solid var(--olive); outline-offset: 2px; }
+.editor-clock-off { opacity: 0.55; font-style: italic; }
+.editor-blocked .editor-blocked-list { display: grid; gap: 0.375rem; margin: 0.25rem 0 0; }
+.editor-blocked-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; }
+.editor-conflict { display: grid; gap: 0.5rem; }
+.editor-conflict-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+[data-preview] .editor-clock-off { display: none; }

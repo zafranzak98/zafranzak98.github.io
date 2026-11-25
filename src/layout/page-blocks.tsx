@@ -9,7 +9,7 @@ import { frameFor } from '#/lib/cover-image.js'
 import { aboutWords, categoryWords, homeWords, projectsWords, usePageWords, type ListingWords } from '#/lib/page-words'
 import { croppedSizes, cvUrl, imageProps, photoSize, projects, projectsIn, site, yearOf } from '#/lib/site'
 import { designProps, type Design } from './design'
-import { useElement, type Elements } from './elements'
+import { Editing, useElement, type Elements } from './elements'
 
 // The parts of the homepage, About, Projects and category pages, as sections. The website draws
 // them in their standard order; the design editor uses the same sections, so the canvas is the
@@ -42,7 +42,9 @@ const merge = (a: { className?: string; style?: object }, b: { className?: strin
 export function HomeClock({ design, elements }: BlockProps) {
   const w = usePageWords(homeWords)
   const el = useElement(elements)
-  if (!w.clock.show) return null
+  const editing = useContext(Editing)
+  // Hidden: the website leaves it out; the editor keeps a faded line, so it can be chosen and shown again.
+  if (!w.clock.show) return editing ? <p {...merge(designProps(design, 'home-clock editor-clock-off'), el('clock', {}))}>Clock hidden on the website. Choose it, then Settings, to show it again.</p> : null
   return <Clock city={w.clock.city} timeZone={w.clock.time_zone} line={w.clock.line} props={merge(designProps(design, 'home-clock'), el('clock', { field: 'clock:line' }))} />
 }
 
@@ -95,9 +97,9 @@ export function HomeFocus({ design, elements }: BlockProps) {
     <section aria-label="Areas of focus" {...designProps(design, 'home-focus')}>
       <h2 {...el('focus-heading', { className: 'lab', field: 'labels:focus' })}>{w.labels.focus}</h2>
       <ul>
-        {site.areas_of_focus.map((a) => (
-          <li key={a.label}>
-            <PageLink to={a.category ? `/projects/${a.category}/` : '/projects/'}>{a.label}<span className="hover-arrow"> →</span></PageLink>
+        {w.areas_of_focus.map((a, i) => (
+          <li key={i}>
+            <PageLink to={a.category ? `/projects/${a.category}/` : '/projects/'}><span {...el(`focus-${i}`, { field: `areas_of_focus:${i}:label` })}>{a.label}</span><span className="hover-arrow"> →</span></PageLink>
           </li>
         ))}
       </ul>
@@ -184,9 +186,9 @@ export function AboutHero({ design, elements }: BlockProps) {
   return (
     <>
       <section {...designProps(design, 'about-hero')}>
-        <span className="about-kicker">{w.labels.kicker}</span>
+        <span {...el('kicker', { className: 'about-kicker', field: 'labels:kicker' })}>{w.labels.kicker}</span>
         <div className="about-title-clip"><h1 className="c">About <br className="m-only" />me</h1></div>
-        <figure className="about-portrait">
+        <figure {...merge({ className: 'about-portrait' }, el('portrait'))}>
           {w.portrait?.image ? (
             <div className="about-photo">
               <PaperClip layer="back" />
@@ -214,7 +216,7 @@ export function AboutIntro({ design, elements }: BlockProps) {
         <p {...el('intro', { className: 'about-statement', field: 'intro', rich: true })}><Rich text={w.intro} highlight /></p>
         {w.intro_more && <p {...el('intro-more', { className: 'about-more', field: 'intro_more', rich: true })}><Rich text={w.intro_more} /></p>}
         {w.languages?.length ? (
-          <p className="about-languages"><b>{w.labels.languages}</b><br />{w.languages.map((l, i) => <span key={l}>{i > 0 && <><br className="d-only" /><span className="m-only"> · </span></>}{l}</span>)}</p>
+          <p className="about-languages"><b {...el('languages-heading', { field: 'labels:languages' })}>{w.labels.languages}</b><br />{w.languages.map((l, i) => <span key={i}>{i > 0 && <><br className="d-only" /><span className="m-only"> · </span></>}<span {...el(`language-${i}`, { field: `languages:${i}` })}>{l}</span></span>)}</p>
         ) : null}
       </div>
     </section>
@@ -247,15 +249,15 @@ export function AboutEducation({ design, elements }: BlockProps) {
     <Section n="03" title={w.labels.education} design={design} heading={el('education-heading', { field: 'labels:education' })}>
       {edu.map((e, k) => (
         <div key={k} className="edu">
-          {e.qualification && <EduRow label="Qualification"><b className="w600">{e.qualification}</b></EduRow>}
-          {e.course && <EduRow label="Course">{e.course}</EduRow>}
-          {e.institution && <EduRow label="Institution"><b className="w600 terra">{e.institution}</b></EduRow>}
-          {e.years && <EduRow label="Years"><span className="terra">{e.years}</span></EduRow>}
+          {e.qualification && <EduRow label="Qualification"><b {...el(`edu-qualification-${k}`, { className: 'w600', field: `education:${k}:qualification` })}>{e.qualification}</b></EduRow>}
+          {e.course && <EduRow label="Course"><span {...el(`edu-course-${k}`, { field: `education:${k}:course` })}>{e.course}</span></EduRow>}
+          {e.institution && <EduRow label="Institution"><b {...el(`edu-institution-${k}`, { className: 'w600 terra', field: `education:${k}:institution` })}>{e.institution}</b></EduRow>}
+          {e.years && <EduRow label="Years"><span {...el(`edu-years-${k}`, { className: 'terra', field: `education:${k}:years` })}>{e.years}</span></EduRow>}
           {e.result && (
             <div className="edu-row edu-last">
               <span className="edu-key">Result</span>
-              <span className="edu-val"><Rich text={`**${e.result}**`} highlight /></span>
-              {e.note && <p className="edu-note"><Rich text={e.note} /></p>}
+              <span className="edu-val"><span {...el(`edu-result-${k}`, { field: `education:${k}:result` })}><Rich text={`**${e.result}**`} highlight /></span></span>
+              {e.note && <p {...el(`edu-note-${k}`, { className: 'edu-note', field: `education:${k}:note`, rich: true })}><Rich text={e.note} /></p>}
             </div>
           )}
         </div>
@@ -272,12 +274,12 @@ export function AboutExperience({ design, elements }: BlockProps) {
     <Section n="04" title={w.labels.experience} design={design} heading={el('experience-heading', { field: 'labels:experience' })}>
       {w.experience.map((x, i) => (
         <div key={i} className="ix-row">
-          <span className="lab">{x.years}</span>
+          <span {...el(`role-years-${i}`, { className: 'lab', field: `experience:${i}:years` })}>{x.years}</span>
           <b {...el(`role-${i}`, { className: 'c ix-row-title ix-row-title-exp', field: `experience:${i}:role` })}>{x.role}</b>
           <span className="ix-row-note">
-            {x.organisation && <b className="w600 terra">{x.organisation}</b>}
+            {x.organisation && <b {...el(`role-org-${i}`, { className: 'w600 terra', field: `experience:${i}:organisation` })}>{x.organisation}</b>}
             {x.organisation && x.note && <br />}
-            <Rich text={x.note} />
+            {x.note && <span {...el(`role-note-${i}`, { field: `experience:${i}:note`, rich: true })}><Rich text={x.note} /></span>}
           </span>
         </div>
       ))}
