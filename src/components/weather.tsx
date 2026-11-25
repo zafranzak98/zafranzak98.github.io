@@ -187,7 +187,7 @@ function Icon({ condition }: { condition: Condition }) {
     wind: <path d="M3 9h11a3 3 0 1 0-3-3M3 13h15a3 3 0 1 1-3 3M3 17h7" />,
   }
   return (
-    <svg className="home-wx-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" data-condition={condition}>
+    <svg className="home-wx-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" data-condition={condition}>
       {shapes[condition]}
     </svg>
   )
