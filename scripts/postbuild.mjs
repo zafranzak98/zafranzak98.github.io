@@ -77,6 +77,12 @@ for (const m of mediaIn(about)) if (!existsSync(join('public', m))) errors.push(
 if (site.clock?.time_zone) {
   try { new Intl.DateTimeFormat('en-GB', { timeZone: site.clock.time_zone }) } catch { errors.push(`Site settings: the homepage clock's time zone "${site.clock.time_zone}" is not a real time zone. Use a name such as Europe/London or Asia/Kuala_Lumpur.`) }
 }
+// Homepage weather: the city's coordinates must be real, so the weather is fetched for a real place.
+if (site.clock && (site.clock.weather || site.clock.latitude !== undefined || site.clock.longitude !== undefined)) {
+  const { latitude: lat, longitude: lon } = site.clock
+  if (typeof lat !== 'number' || lat < -90 || lat > 90) errors.push(`Site settings: the homepage weather's latitude "${lat ?? ''}" is not valid. Use a number from -90 to 90, for example 53.9921 for Harrogate.`)
+  if (typeof lon !== 'number' || lon < -180 || lon > 180) errors.push(`Site settings: the homepage weather's longitude "${lon ?? ''}" is not valid. Use a number from -180 to 180, for example -1.5418 for Harrogate.`)
+}
 for (const m of siteText.match(/\/(media|files)\/[^\s"']+/g) ?? []) if (!existsSync(join('public', m))) errors.push(`Site settings: file not found: ${m}`)
 
 // ---- 1. real pages for direct links

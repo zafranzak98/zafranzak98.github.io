@@ -80,6 +80,15 @@ Phones (under 900px) have their own values in each section's mobile block. Each 
 
 The typeface is Instrument Sans, bundled with the site rather than loaded from Google.
 
+## Homepage weather
+
+The homepage clock can show the current weather after the time, for example "It is now 22:54:40 [icon] 7°C in Harrogate."
+
+- **What it does.** After the page has loaded, the visitor's browser asks [Open-Meteo](https://open-meteo.com/) (free, no account or key) for the temperature and conditions at the clock's city. The reading is kept in that browser for 15 minutes and refreshed every 15 minutes, only while the tab is visible. An observation older than 45 minutes is never shown. Screen readers hear the conditions in words, for example "partly cloudy, 7 degrees Celsius". Open-Meteo's data is shared under CC BY 4.0, so the footer says "Weather data by Open-Meteo.com" whenever the weather is switched on.
+- **Files.** `src/components/weather.tsx` (fetching, saving, icons and the weather codes), the clock in `src/routes/index.tsx`, the credit in `src/components/footer.tsx`, styles beside the clock's in `src/styles.css`, and the settings `clock: weather, latitude, longitude` in `content/site.yml`. The build checks that the coordinates are real (`scripts/postbuild.mjs`). Tests: `tests/site/weather.py`.
+- **How it fails.** If Open-Meteo is down, slow (over 8 seconds) or sends something unexpected, the weather is simply left out and the clock carries on; the browser tries again 5 minutes later. You would notice only that the icon and temperature are missing; the rest of the page looks exactly as it does with the weather switched off.
+- **Turning it off or moving it.** In `/admin`, Site settings, Homepage clock: switch off "Show the weather". When you change the clock's city, change its latitude and longitude too, so the weather follows it.
+
 ## Working on it
 
 Requires [Bun](https://bun.sh) (the version used in CI is set in `.github/workflows/deploy.yml`).
@@ -95,7 +104,8 @@ Both builds type-check the code, then finish with a report from `scripts/postbui
 
 - a project points to a category or file that does not exist;
 - a web address uses anything other than lowercase letters, numbers and hyphens;
-- any draft content is found in a production build.
+- any draft content is found in a production build;
+- the homepage weather's latitude or longitude is missing or not a real coordinate.
 
 It also prints the size of the published site, the repository and the largest file against GitHub's limits. It warns above 500 MB, and for files over 20 MB or images over 1 MB.
 

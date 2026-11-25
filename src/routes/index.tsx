@@ -4,6 +4,7 @@ import { Rich } from '#/components/rich'
 import { croppedSizes, cvUrl, imageProps, photoSize, projects, site, yearOf } from '#/lib/site'
 import { frameFor } from '#/lib/cover-image.js'
 import { useTitle } from '#/lib/title'
+import { Weather, useWeather } from '#/components/weather'
 
 export const Route = createFileRoute('/')({ component: Home })
 
@@ -17,7 +18,7 @@ function Home() {
     <main id="main" className="home">
       <h1 className="visually-hidden">{site.name}</h1>
       <p className="home-intro"><Rich text={site.home_intro} highlight /></p>
-      {site.clock && site.clock.show !== false && <Clock city={site.clock.city} timeZone={site.clock.time_zone} line={site.clock.line} />}
+      {site.clock && site.clock.show !== false && <Clock city={site.clock.city} timeZone={site.clock.time_zone} line={site.clock.line} weather={site.clock.weather === true} lat={site.clock.latitude} lon={site.clock.longitude} />}
       {(site.availability || cvUrl) && (
         <p className="home-line">
           {site.availability && <span className="home-line-item">{site.availability}</span>}
@@ -86,8 +87,9 @@ function Home() {
 
 // The local time in the city chosen in Site settings. The visitor's browser works it out for that
 // time zone, so daylight saving changes are followed automatically. It updates once a second and is
-// not announced by screen readers on every change.
-function Clock({ city, timeZone, line }: { city: string; timeZone: string; line?: string }) {
+// not announced by screen readers on every change. When the weather is switched on in Site
+// settings, the current temperature and a small icon follow the time (src/components/weather.tsx).
+function Clock({ city, timeZone, line, weather, lat, lon }: { city: string; timeZone: string; line?: string; weather: boolean; lat?: number; lon?: number }) {
   const format = useMemo(() => new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }), [timeZone])
   const [now, setNow] = useState(() => format.format(new Date()))
   useEffect(() => {
@@ -99,10 +101,16 @@ function Clock({ city, timeZone, line }: { city: string; timeZone: string; line?
     tick()
     return () => clearTimeout(timer)
   }, [format])
+  const reading = useWeather(weather ? lat : undefined, weather ? lon : undefined)
   return (
     <p className="home-clock">
       <span className="home-clock-now">
-        <span>It is now</span> <time>{now}</time> <span>in {city}.</span>
+        <span>It is now</span>{' '}
+        <span className="home-clock-time">
+          <time>{now}</time>
+          {reading && <> <Weather reading={reading} /></>}
+        </span>{' '}
+        <span>in {city}.</span>
       </span>
       {line && <> {line}</>}
     </p>
