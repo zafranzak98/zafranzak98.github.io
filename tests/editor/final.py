@@ -83,6 +83,8 @@ with sync_playwright() as p:
     check("F: Redo brings it back", summary(pg) == stored)
     # Remove bold from part of the bold word, and paste stays plain.
     tap(pg, "[data-el='line']")
+    # Measured again: choosing it may scroll the page (it keeps clear of the floating messages).
+    b = frame(pg).locator("[data-el='line']").first.bounding_box()
     pg.mouse.dblclick(b["x"] + 8, b["y"] + b["height"] / 2); pg.wait_for_timeout(500); box = frame(pg).locator(".el-typing")
     select_words(pg, 0, 5); pg.keyboard.press("Control+b"); pg.wait_for_timeout(150)
     pg.evaluate("() => {}")
