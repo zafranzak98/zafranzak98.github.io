@@ -25,6 +25,8 @@ with sync_playwright() as p:
                 pg.reload(wait_until='networkidle'); pg.wait_for_timeout(800); r['remembered']=pg.locator('#adm-side').is_visible()==side
             print(w,menu,'menu open' if side else 'menu hidden',json.dumps(r),'errors',len(errs))
             c.close()
-    c=b.new_context(viewport={'width':1437,'height':668}); pg=c.new_page(); pg.goto('http://localhost:4302/admin/design/',wait_until='networkidle'); pg.wait_for_timeout(1500)
-    pg.add_script_tag(content=AXE); print('axe', pg.evaluate("async()=> (await axe.run(document,{runOnly:['wcag2a','wcag2aa']})).violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id)"))
+    c=b.new_context(viewport={'width':1437,'height':668},bypass_csp=True); pg=c.new_page(); pg.goto('http://localhost:4302/admin/design/',wait_until='networkidle'); pg.wait_for_timeout(1500)
+    for state in ('menu hidden','menu open'):
+        pg.add_script_tag(content=AXE); print('axe', state, pg.evaluate("async()=> (await axe.run(document,{runOnly:['wcag2a','wcag2aa']})).violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id)"))
+        pg.locator('.adm-menu-btn').click(); pg.wait_for_timeout(500)
     b.close()
