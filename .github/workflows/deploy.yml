@@ -140,11 +140,9 @@ jobs:
         with:
           bun-version: 1.4.4
       - run: bun install --frozen-lockfile
-      - name: Production build and checks (drafts must be excluded)
+      -       - name: Production build and checks (drafts must be excluded)
+        id: build
         run: bun run build
-      - name: Preview build for the test site (drafts shown)
-        id: preview
-        run: rm -rf dist .content-collections && bun run build:preview
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: dist
