@@ -7,9 +7,10 @@ import { useState } from 'react'
 const FORMS = ['Projects', 'Categories', 'About and site settings']
 
 // The menu can be hidden so the visual editor gets the full width (as in Wix). On screens narrower than
-// 1440 px it starts hidden, so the editor's toolbar keeps its one-row layout; the choice is remembered.
+// 1500 px it starts hidden, so the editor keeps the 1280 px it needs for its one-row toolbar; the choice
+// is remembered.
 const MENU_KEY = 'uve-demo:admin-menu'
-const menuStart = () => { try { const v = localStorage.getItem(MENU_KEY); return v ? v === 'open' : window.innerWidth >= 1440 } catch { return window.innerWidth >= 1440 } }
+const menuStart = () => { try { const v = localStorage.getItem(MENU_KEY); return v ? v === 'open' : window.innerWidth >= 1500 } catch { return window.innerWidth >= 1500 } }
 
 export function AdminShell() {
   const [note, setNote] = useState('')
