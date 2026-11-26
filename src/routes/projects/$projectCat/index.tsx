@@ -1,5 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { ListingBands, ListingFrame, ListingHead } from '#/layout/page-blocks'
+import { LISTING_SECTIONS, ListingFrame } from '#/layout/page-blocks'
+import { PageSections } from '#/layout/page-render'
 import { categoryBySlug, projectsIn } from '#/lib/site'
 import { useTitle } from '#/lib/title'
 
@@ -18,8 +19,7 @@ function CategoryPage() {
   useTitle(category.name)
   return (
     <ListingFrame category={category.slug}>
-      <ListingHead category={category.slug} />
-      <ListingBands category={category.slug} />
+      <PageSections page={`category:${category.slug}`} standard={LISTING_SECTIONS} category={category.slug} />
     </ListingFrame>
   )
 }

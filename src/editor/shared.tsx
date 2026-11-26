@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import Footer from '#/components/footer'
 import Header from '#/components/header'
 import { Editing } from '#/layout/elements'
+import { sharedElements } from '#/lib/page-layouts'
 import { SharedWords, footerWords, headerWords, type FooterWords, type HeaderWords } from '#/lib/page-words'
 import { applyEdits, type Edits } from './elements'
 
@@ -9,14 +10,12 @@ import { applyEdits, type Edits } from './elements'
 // drawn as they are published, cannot be changed there, and a click opens them in the page list.
 // (Demo: "published" means published in this browser.)
 
-// The visual editor demo runs on any address other than the website itself; the published editor
-// at /admin/design stays exactly as F-22 Ver.1 (no shared parts in its canvas).
 // The one list of real addresses: everywhere else the editor is a demo (no sign-in, nothing saved to GitHub).
 export const SIGN_IN_HOSTS = ['zafranzak98.github.io', 'zafranzakaria.com']
 export const UVE_DEMO = !SIGN_IN_HOSTS.includes(location.hostname)
 
 export const SHARED_KEY = (part: 'header' | 'footer') => `uve-demo:shared:${part}`
-export const sharedEdits = (part: 'header' | 'footer'): Edits => { try { return JSON.parse(localStorage.getItem(SHARED_KEY(part)) ?? '{}') as Edits } catch { return {} } }
+export const sharedEdits = (part: 'header' | 'footer'): Edits => { if (!UVE_DEMO) return {}; try { return JSON.parse(localStorage.getItem(SHARED_KEY(part)) ?? '{}') as Edits } catch { return {} } }
 export const publishShared = (part: 'header' | 'footer', edits: Edits) => { try { localStorage.setItem(SHARED_KEY(part), JSON.stringify(edits)) } catch { /* kept until the tab closes */ } }
 export const publishedHeader = (): HeaderWords => applyEdits(headerWords() as never, sharedEdits('header')) as unknown as HeaderWords
 export const publishedFooter = (): FooterWords => applyEdits(footerWords() as never, sharedEdits('footer')) as unknown as FooterWords
@@ -40,9 +39,9 @@ export function SharedAround({ children, header, footer, editing }: { children: 
   return (
     <SharedWords.Provider value={{ header: header ?? publishedHeader(), footer: footer ?? publishedFooter() }}>
       <div className="page" id="top">
-        {editing === 'header' ? null : <Editing.Provider value={false}><SharedPart part="header"><Header /></SharedPart></Editing.Provider>}
+        {editing === 'header' ? null : <Editing.Provider value={false}><SharedPart part="header"><Header elements={sharedElements('header')} /></SharedPart></Editing.Provider>}
         {children}
-        {editing === 'footer' ? null : <Editing.Provider value={false}><SharedPart part="footer"><Footer /></SharedPart></Editing.Provider>}
+        {editing === 'footer' ? null : <Editing.Provider value={false}><SharedPart part="footer"><Footer elements={sharedElements('footer')} /></SharedPart></Editing.Provider>}
       </div>
     </SharedWords.Provider>
   )

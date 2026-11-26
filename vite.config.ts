@@ -48,6 +48,9 @@ function layouts(): Plugin {
 }
 
 const config = defineConfig({
+  // When this copy of the site was built: the editor uses it to tell whether a page it published has
+  // reached the website yet.
+  define: { __BUILT_AT__: JSON.stringify(Date.now()) },
   resolve: { tsconfigPaths: true },
   plugins: [
     tanstackRouter({ target: 'react', autoCodeSplitting: true }),

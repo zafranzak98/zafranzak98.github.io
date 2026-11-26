@@ -1,20 +1,16 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { HomeClock, HomeFocus, HomeFrame, HomeIntro, HomeLine, HomeWork } from '#/layout/page-blocks'
+import { HOME_SECTIONS, HomeFrame } from '#/layout/page-blocks'
+import { PageSections } from '#/layout/page-render'
 import { useTitle } from '#/lib/title'
 
 export const Route = createFileRoute('/')({ component: Home })
 
-// The homepage's sections (src/layout/page-blocks.tsx), in their standard order. The visual
-// editor uses the same sections.
+// The homepage's sections as published from the visual editor, or in their standard order.
 function Home() {
   useTitle()
   return (
     <HomeFrame>
-      <HomeIntro />
-      <HomeClock />
-      <HomeLine />
-      <HomeFocus />
-      <HomeWork />
+      <PageSections page="home" standard={HOME_SECTIONS} />
     </HomeFrame>
   )
 }

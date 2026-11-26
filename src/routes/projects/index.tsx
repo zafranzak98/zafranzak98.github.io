@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ListingBands, ListingFrame, ListingHead } from '#/layout/page-blocks'
+import { LISTING_SECTIONS, ListingFrame } from '#/layout/page-blocks'
+import { PageSections } from '#/layout/page-render'
 import { useTitle } from '#/lib/title'
 
 export const Route = createFileRoute('/projects/')({ component: Projects })
@@ -8,8 +9,7 @@ function Projects() {
   useTitle('Projects')
   return (
     <ListingFrame>
-      <ListingHead />
-      <ListingBands />
+      <PageSections page="projects" standard={LISTING_SECTIONS} />
     </ListingFrame>
   )
 }

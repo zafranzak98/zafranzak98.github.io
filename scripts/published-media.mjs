@@ -24,7 +24,7 @@ export function publishedLayouts(preview) {
   const out = {}
   for (const f of readdirSync(dir).filter((f) => f.endsWith('.json'))) {
     const slug = f.replace(/\.json$/, '')
-    if (live.has(slug)) out[slug] = JSON.parse(readFileSync(join(dir, f), 'utf8'))
+    if (live.has(slug) || slug.startsWith('page-')) out[slug] = JSON.parse(readFileSync(join(dir, f), 'utf8'))
   }
   return out
 }
