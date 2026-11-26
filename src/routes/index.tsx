@@ -18,7 +18,7 @@ function Home() {
     <main id="main" className="home">
       <h1 className="visually-hidden">{site.name}</h1>
       <div className="home-intro">
-        <p><Rich text={site.home_intro} highlight /></p>
+        <p><Rich text={site.home_intro} highlight breaks /></p>
         {site.home_byline && <p className="home-byline">{site.home_byline}</p>}
       </div>
       {site.clock && site.clock.show !== false && <Clock city={site.clock.city} timeZone={site.clock.time_zone} line={site.clock.line} weather={site.clock.weather === true} lat={site.clock.latitude} lon={site.clock.longitude} />}

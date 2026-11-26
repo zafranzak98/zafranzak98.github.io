@@ -345,7 +345,7 @@ collections:
         fields:
           - { name: site_title, label: Website title, widget: string, hint: Shown in the browser tab on the homepage. }
           - { name: name, label: Your name, widget: string }
-          - { name: home_intro, label: Homepage introduction, widget: text, hint: 'Wrap words in **double asterisks** to highlight them, or *single asterisks* to make them bold.' }
+          - { name: home_intro, label: Homepage introduction, widget: text, hint: 'Wrap words in **double asterisks** to highlight them, or *single asterisks* to make them bold. Press Enter to start a new line where you want it; this applies on computers and tablets, while phones wrap the words by themselves.' }
           - { name: home_byline, label: Homepage name and title, widget: string, required: false, hint: 'The line under the introduction, for example: Zafran Zakaria, Creative Communications Graduate. Leave empty to hide it.' }
           - name: areas_of_focus
             label: Areas of focus

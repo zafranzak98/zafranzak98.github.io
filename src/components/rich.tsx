@@ -53,12 +53,22 @@ export function parseRich(text: string, inside: string[] = []): RichNode[] {
   return out
 }
 
-function render(nodes: RichNode[], highlight: boolean): ReactNode {
+// Line breaks typed with Enter (breaks={true}): each becomes a space plus a <br class="lb">, so where the
+// stylesheet hides the break (phones) the words still have a space between them. Elsewhere a typed
+// line break is shown as a space, as before.
+function lines(text: string, breaks: boolean): ReactNode {
+  if (!text.includes('\n')) return text
+  const parts = text.split(/[ \t]*\n[ \t]*/)
+  if (!breaks) return parts.join(' ')
+  return parts.map((part, i) => (i === 0 ? part : <Fragment key={i}> <br className="lb" />{part}</Fragment>))
+}
+
+function render(nodes: RichNode[], highlight: boolean, breaks = false): ReactNode {
   return nodes.map((n, i) => {
-    if (typeof n === 'string') return <Fragment key={i}>{n}</Fragment>
-    const inner = render(n.children, highlight)
+    if (typeof n === 'string') return <Fragment key={i}>{lines(n, breaks)}</Fragment>
+    const inner = render(n.children, highlight, breaks)
     if (n.kind === 'highlight') {
-      const words = n.children.join('')
+      const words = n.children.join('').replace(/\s*\n\s*/g, ' ')
       return highlight ? <mark key={i} className={words.length <= MAX_UNBROKEN ? 'hl hl-keep' : 'hl'}>{words}</mark> : <strong key={i} className="b">{words}</strong>
     }
     if (n.kind === 'bold') return <strong key={i} className="b">{inner}</strong>
@@ -73,7 +83,7 @@ export function plainText(text: string): string {
   return flat(parseRich(text))
 }
 
-export function Rich({ text, highlight = false }: { text?: string; highlight?: boolean }) {
+export function Rich({ text, highlight = false, breaks = false }: { text?: string; highlight?: boolean; breaks?: boolean }) {
   if (!text) return null
-  return <>{render(parseRich(text), highlight)}</>
+  return <>{render(parseRich(text), highlight, breaks)}</>
 }
