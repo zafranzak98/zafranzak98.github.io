@@ -13,10 +13,8 @@ export const homeWords = () => ({
   clock: { city: site.clock?.city ?? '', time_zone: site.clock?.time_zone ?? 'Europe/London', line: site.clock?.line ?? '', show: site.clock?.show !== false && !!site.clock, weather: site.clock?.weather === true, latitude: site.clock?.latitude, longitude: site.clock?.longitude },
   labels: { focus: 'Areas of Focus', work: 'Selected Projects', cv_view: 'View CV (PDF)' },
 })
-export type HomeWords = ReturnType<typeof homeWords>
 
 export const aboutWords = () => ({ ...about, name: site.name, labels: { kicker: 'About', intro: 'Intro', skills: 'Skills', education: 'Education', experience: 'Experience', languages: 'Languages' } })
-export type AboutWords = ReturnType<typeof aboutWords>
 
 export const projectsWords = () => ({ title: 'Projects', intro: site.projects_intro ?? '' })
 export const categoryWords = (slug: string) => {

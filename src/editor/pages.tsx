@@ -6,7 +6,7 @@ import { CategoryNames } from '#/components/category-index'
 import * as pageBlocks from '#/layout/page-blocks'
 import { Editing } from '#/layout/elements'
 import { PageWords, aboutWords, categoryWords, footerWords, headerWords, homeWords, projectsWords } from '#/lib/page-words'
-import { caseStudies, categories, projects, type Project } from '#/lib/site'
+import { categories, projects, type Project } from '#/lib/site'
 import { block, editorConfig, elementsField } from './config'
 import { CATEGORY_FIELD, applyEdits, categoryEdits, useCanvasEditing, type Edits } from './elements'
 import { SharedAround, sharedEdits } from './shared'
@@ -39,7 +39,6 @@ export const PAGES: PageDef[] = [
   { key: 'footer', label: 'Footer', group: 'Shared', words: footerWords(), sections: ['Footer'], shared: 'footer', frame: (c) => <><SharedNote part="footer" />{c}</> },
 ]
 export const pageFor = (key: string | null) => PAGES.find((x) => x.key === key)
-export const caseList = caseStudies
 
 // The page's words stand in for a project wherever the editor reads or writes words.
 // The page's own words keep their own title (the Projects page's "Projects", the footer's "Let's talk").

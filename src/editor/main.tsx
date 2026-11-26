@@ -520,7 +520,7 @@ function Actions() {
   })
 
   const saveDraft = () => run('Saving the draft', async () => {
-    if (saved && JSON.stringify(data) === saved.json) return `Already saved: nothing has changed since the ${saved.text.toLowerCase()}.`
+    if (saved && JSON.stringify(data) === saved.json) return `Already saved: nothing has changed since the ${saved.text.charAt(0).toLowerCase() + saved.text.slice(1)}.`
     if (DEMO) { try { localStorage.setItem(localKey(p.slug, 'draft'), JSON.stringify(data)) } catch { throw new Error('This browser would not keep the draft (its storage is full or blocked).') } setSaved({ json: JSON.stringify(data), text: `Draft saved ${time()}` }); return `Draft saved in this browser (${stamp()}). In the real editor it is saved to the drafts branch; nothing is published.` }
     await github.writeLayout(needToken(), p.slug, data, github.DRAFTS, `Design editor: draft for ${p.slug}`)
     setSaved({ json: JSON.stringify(data), text: `Draft saved ${time()}` })
