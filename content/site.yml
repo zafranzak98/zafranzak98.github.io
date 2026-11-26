@@ -1,6 +1,7 @@
 site_title: Zafran Zakaria · Marketing & Communications Creative
 name: Zafran Zakaria
-home_intro: I am Zafran Zakaria, a **creative communications graduate** with **First-Class Honours** from **Sheffield Hallam University**. Interested in the intersection of fashion, culture and creativity, I explore ideas through campaigns, content and storytelling.
+home_intro: I turn **cultural conversations** into campaigns, content and stories.
+home_byline: Zafran Zakaria, Creative Communications Graduate
 areas_of_focus:
   - label: Editorial & Content
     category: editorial
@@ -13,12 +14,15 @@ areas_of_focus:
     category: brand-identity
 projects_intro: Editorial, brand communications, brand identity and trend research, from solo and team university projects to freelance work.
 cv: /files/zafran-zakaria-cv.pdf
-email: zafranzak98@gmail.com
+email: hello@zafranzakaria.com
 instagram: https://www.instagram.com/zafxhiswork/
 linkedin: https://www.linkedin.com/in/zafranzakaria
 availability: Open to junior roles across the UK
 clock:
   city: Harrogate
+  latitude: 53.9921
   line: A mind full of ideas, always.
+  longitude: -1.5418
   show: true
   time_zone: Europe/London
+  weather: true

@@ -7,9 +7,10 @@ import { about, categoryBySlug, projectsIn, site } from './site'
 
 export const homeWords = () => ({
   home_intro: site.home_intro,
+  home_byline: site.home_byline ?? '',
   areas_of_focus: site.areas_of_focus,
   availability: site.availability ?? '',
-  clock: { city: site.clock?.city ?? '', time_zone: site.clock?.time_zone ?? 'Europe/London', line: site.clock?.line ?? '', show: site.clock?.show !== false && !!site.clock },
+  clock: { city: site.clock?.city ?? '', time_zone: site.clock?.time_zone ?? 'Europe/London', line: site.clock?.line ?? '', show: site.clock?.show !== false && !!site.clock, weather: site.clock?.weather === true, latitude: site.clock?.latitude, longitude: site.clock?.longitude },
   labels: { focus: 'Areas of Focus', work: 'Selected Projects', cv_view: 'View CV (PDF)' },
 })
 export type HomeWords = ReturnType<typeof homeWords>

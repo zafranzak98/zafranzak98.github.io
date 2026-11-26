@@ -110,6 +110,7 @@ const NAMES: [RegExp, string][] = [
   [/^page-(home|about|projects)$/, 'Page link'],
   [/^credit$/, 'Copyright line'],
   [/^availability$/, 'Availability line'],
+  [/^byline$/, 'Name and title'],
   [/^cv-view$/, '"View CV" link'],
   [/^cv-download$/, '"Download" link'],
   [/^focus-heading$/, 'Areas of Focus heading'],

@@ -6,6 +6,9 @@ import { site } from '#/lib/site'
 
 // Shown on every page. Its words come from one place (src/lib/page-words.tsx), so a change in the
 // visual editor shows on every page at once.
+// The homepage weather is switched on in Site settings (clock: weather).
+const weatherOn = !!site.clock && site.clock.show !== false && site.clock.weather === true
+
 export default function Footer({ elements }: { elements?: Elements }) {
   const w = useFooterWords()
   const el = useElement(elements)
@@ -41,6 +44,14 @@ export default function Footer({ elements }: { elements?: Elements }) {
       <div className="footer-credit">
         {/* The year updates by itself; the words after it can be changed. */}
         <p>© {new Date().getFullYear()}{editing ? <>{' '}<span {...el('credit', { field: 'credit' })}>{w.credit}</span></> : ` ${w.credit}`}</p>
+        {weatherOn && (
+          // Open-Meteo's data is shared under CC BY 4.0, which asks for this credit wherever it is shown.
+          <p className="credit">
+            <a href="https://open-meteo.com/" target="_blank" rel="noreferrer" className="credit-link">
+              Weather data by <span>Open-Meteo.com</span>
+            </a>
+          </p>
+        )}
         {site.credit_name && (
           <p className="credit">
             <a href={site.credit_url} target="_blank" rel="noreferrer" className="credit-link">

@@ -5,6 +5,7 @@ import { PageLink } from '#/components/page-link'
 import { PaperClip } from '#/components/paper-clip'
 import { ProjectBands } from '#/components/project-band'
 import { Rich } from '#/components/rich'
+import { Weather, useWeather } from '#/components/weather'
 import { frameFor } from '#/lib/cover-image.js'
 import { aboutWords, categoryWords, homeWords, projectsWords, usePageWords, type ListingWords } from '#/lib/page-words'
 import { croppedSizes, cvUrl, imageProps, photoSize, projects, projectsIn, site, yearOf } from '#/lib/site'
@@ -34,7 +35,12 @@ export function HomeFrame({ children }: { children: ReactNode }) {
 export function HomeIntro({ design, elements }: BlockProps) {
   const w = usePageWords(homeWords)
   const el = useElement(elements)
-  return <p {...merge(designProps(design, 'home-intro'), el('intro', { field: 'home_intro', rich: true }))}><Rich text={w.home_intro} highlight /></p>
+  return (
+    <div {...designProps(design, 'home-intro')}>
+      <p {...el('intro', { field: 'home_intro', rich: true })}><Rich text={w.home_intro} highlight /></p>
+      {w.home_byline && <p {...merge({ className: 'home-byline' }, el('byline', { field: 'home_byline' }))}>{w.home_byline}</p>}
+    </div>
+  )
 }
 // designProps and el both give a class: merge them so neither is lost.
 const merge = (a: { className?: string; style?: object }, b: { className?: string; style?: object }) => ({ ...a, ...b, className: [a.className, b.className].filter(Boolean).join(' ') || undefined, style: a.style || b.style ? { ...a.style, ...b.style } : undefined })
@@ -45,13 +51,13 @@ export function HomeClock({ design, elements }: BlockProps) {
   const editing = useContext(Editing)
   // Hidden: the website leaves it out; the editor keeps a faded line, so it can be chosen and shown again.
   if (!w.clock.show) return editing ? <p {...merge(designProps(design, 'home-clock editor-clock-off'), el('clock', {}))}>Clock hidden on the website. Choose it, then Settings, to show it again.</p> : null
-  return <Clock city={w.clock.city} timeZone={w.clock.time_zone} line={w.clock.line} props={merge(designProps(design, 'home-clock'), el('clock', { field: 'clock:line' }))} />
+  return <Clock city={w.clock.city} timeZone={w.clock.time_zone} line={w.clock.line} weather={w.clock.weather} lat={w.clock.latitude} lon={w.clock.longitude} props={merge(designProps(design, 'home-clock'), el('clock', { field: 'clock:line' }))} />
 }
 
 // The local time in the chosen city. The visitor's browser works it out for that time zone, so
 // daylight saving changes are followed automatically. It updates once a second and is not
 // announced by screen readers on every change.
-function Clock({ city, timeZone, line, props }: { city: string; timeZone: string; line?: string; props: object }) {
+function Clock({ city, timeZone, line, weather, lat, lon, props }: { city: string; timeZone: string; line?: string; weather: boolean; lat?: number; lon?: number; props: object }) {
   const format = useMemo(() => new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }), [timeZone])
   const [now, setNow] = useState(() => format.format(new Date()))
   useEffect(() => {
@@ -63,10 +69,16 @@ function Clock({ city, timeZone, line, props }: { city: string; timeZone: string
     tick()
     return () => clearTimeout(timer)
   }, [format])
+  const reading = useWeather(weather ? lat : undefined, weather ? lon : undefined)
   return (
     <p {...props}>
       <span className="home-clock-now">
-        <span>It is now</span> <time>{now}</time> <span>in {city}.</span>
+        <span>It is now</span>{' '}
+        <span className="home-clock-time">
+          <time>{now}</time>
+          {reading && <> <Weather reading={reading} /></>}
+        </span>{' '}
+        <span>in {city}.</span>
       </span>
       {line && <> {line}</>}
     </p>

@@ -346,6 +346,7 @@ collections:
           - { name: site_title, label: Website title, widget: string, hint: Shown in the browser tab on the homepage. }
           - { name: name, label: Your name, widget: string }
           - { name: home_intro, label: Homepage introduction, widget: text, hint: 'Wrap words in **double asterisks** to highlight them, or *single asterisks* to make them bold.' }
+          - { name: home_byline, label: Homepage name and title, widget: string, required: false, hint: 'The line under the introduction, for example: Zafran Zakaria, Creative Communications Graduate. Leave empty to hide it.' }
           - name: areas_of_focus
             label: Areas of focus
             widget: list
@@ -376,6 +377,9 @@ collections:
                 pattern: ['^[A-Za-z_]+(/[A-Za-z0-9_+-]+)+$', 'Use a time zone name such as Europe/London or Asia/Kuala_Lumpur.']
                 hint: 'The time zone of that city, for example Europe/London, Europe/Paris, America/New_York or Asia/Kuala_Lumpur. The website checks it before publishing.'
               - { name: line, label: Line under the time, widget: string, required: false, hint: 'For example "A mind full of ideas, always." Leave empty for none.' }
+              - { name: weather, label: Show the weather, widget: boolean, default: false, required: false, hint: 'Shows the current temperature and a small weather icon after the time. The weather comes from Open-Meteo, a free service, and is credited in the footer. If the service does not answer, the weather is simply left out and the clock carries on.' }
+              - { name: latitude, label: Latitude of the city, widget: number, value_type: float, min: -90, max: 90, required: false, hint: 'Where the weather is taken from, so it follows the city of the clock. For Harrogate it is 53.9921. You can find a place''s latitude and longitude on open-meteo.com or on a map. Change both numbers when you change the city.' }
+              - { name: longitude, label: Longitude of the city, widget: number, value_type: float, min: -180, max: 180, required: false, hint: 'For Harrogate it is -1.5418. Places west of Greenwich, in London, have a minus sign.' }
           - name: cv
             label: CV (PDF)
             widget: file

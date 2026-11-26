@@ -146,11 +146,18 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .home { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gut); padding: 5.5rem var(--m) var(--section); min-height: 48vw; }
 .home-intro { grid-column: 1 / span 7; margin: 0; font-size: var(--t-statement); line-height: 1.36; font-weight: 500; letter-spacing: -0.01em; }
 .home-intro { grid-row: 1; }
+/* Niche-led headline (26 Nov 2026): the statement, then the name and title as a quieter supporting line. */
+.home-intro p { margin: 0; text-wrap: balance; }
+.home-intro .home-byline { margin-top: 0.875rem; font-size: var(--t-lead); line-height: 1.5; font-weight: 600; letter-spacing: 0; color: var(--olive); }
 /* Homepage clock and availability line (approved Option C, 24 Nov 2026): 44 px desktop, 36 px tablet, 32 px phone, fixed so they do not scale with the window. */
 .home-clock { grid-column: 9 / span 4; grid-row: 1 / span 2; align-self: start; margin: 0; font-size: 44px; line-height: 1.07; font-weight: 500; letter-spacing: -0.015em; color: var(--olive); }
 .home-clock-now { color: #6d6b55; }
 .home-clock-now > * { display: block; }
 .home-clock time { font-variant-numeric: tabular-nums; }
+/* Weather after the time (approved 24 Nov 2026): icon and temperature stay together on one line,
+   the icon sized to the text in the clock's grey. Tabular numbers keep the ticking time from moving it. */
+.home-wx { display: inline-block; white-space: nowrap; }
+.home-wx-icon { display: inline-block; width: 0.8em; height: 0.8em; vertical-align: -0.04em; margin-right: 0.12em; }
 /* The availability line sits level with the clock's last line ("always.") when the intro leaves room;
    when the intro is taller, it follows the intro at the usual gap. */
 .home-line { grid-column: 1 / span 8; grid-row: 2; align-self: end; margin: 1.25rem 0 0; font-size: var(--t-body); line-height: 1.6; font-weight: 600; }
