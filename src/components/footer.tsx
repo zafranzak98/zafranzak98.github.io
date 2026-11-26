@@ -46,7 +46,7 @@ export default function Footer({ elements }: { elements?: Elements }) {
       </div>
       <div className="footer-credit">
         {/* The year updates by itself; the words after it can be changed. */}
-        <p>© {new Date().getFullYear()}{editing ? <>{' '}<span {...el('credit', { field: 'credit' })}>{w.credit}</span></> : ` ${w.credit}`}</p>
+        <p>© {new Date().getFullYear()}{editing || elements?.credit ? <>{' '}<span {...el('credit', { field: 'credit' })}>{w.credit}</span></> : ` ${w.credit}`}</p>
         {weatherOn && (
           // Open-Meteo's data is shared under CC BY 4.0, which asks for this credit wherever it is shown.
           <p className="credit">

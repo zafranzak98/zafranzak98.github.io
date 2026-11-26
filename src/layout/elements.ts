@@ -111,6 +111,10 @@ export function useElement(elements: Elements | undefined) {
   }
 }
 
+// The same look for a second copy of an element's words (shown on phones only, say), without the
+// editor's markers, so the editor still has one part to choose.
+export const lookOnly = ({ className, style }: { className?: string; style?: CSSProperties }) => ({ className, style })
+
 // The value an element shows at a screen size, following the larger sizes when not set there.
 export function lookAt(style: ElementStyle | undefined, screen: Screen): ElementLook {
   const order = SCREENS.slice(0, SCREENS.indexOf(screen) + 1)

@@ -10,7 +10,7 @@ import { frameFor } from '#/lib/cover-image.js'
 import { aboutWords, categoryWords, homeWords, projectsWords, usePageWords, type ListingWords } from '#/lib/page-words'
 import { croppedSizes, cvUrl, imageProps, photoSize, projects, projectsIn, site, yearOf } from '#/lib/site'
 import { designProps, type Design } from './design'
-import { Editing, useElement, type Elements } from './elements'
+import { Editing, lookOnly, useElement, type Elements } from './elements'
 
 // The parts of the homepage, About, Projects and category pages, as sections. The website draws
 // them in their standard order; the design editor uses the same sections, so the canvas is the
@@ -218,7 +218,7 @@ export function AboutHero({ design, elements }: BlockProps) {
           <figcaption className="d-only"><b>{w.name}</b><span {...el('caption', { field: 'portrait_caption' })}>{w.portrait_caption}</span></figcaption>
         </figure>
       </section>
-      <div className="about-caption m-only"><b>{w.name}</b><span>{w.portrait_caption}</span></div>
+      <div className="about-caption m-only"><b>{w.name}</b><span {...lookOnly(el('caption'))}>{w.portrait_caption}</span></div>
     </>
   )
 }
