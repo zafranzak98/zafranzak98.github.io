@@ -140,7 +140,7 @@ jobs:
         with:
           bun-version: 1.4.4
       - run: bun install --frozen-lockfile
-      -       - name: Production build and checks (drafts must be excluded)
+      - name: Production build and checks (drafts must be excluded)
         id: build
         run: bun run build
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
@@ -148,10 +148,10 @@ jobs:
           path: dist
           include-hidden-files: true # keeps .nojekyll, so the published files stay exactly as before
       - name: Email a warning when something needs attention (only when it changes)
-        if: steps.preview.outputs.warnings != ''
+        if: steps.build.outputs.warnings != ''
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          WARNINGS: ${{ steps.preview.outputs.warnings }}
+        WARNINGS: ${{ steps.build.outputs.warnings }}
         with:
           script: |
             const title = 'Website warnings'
