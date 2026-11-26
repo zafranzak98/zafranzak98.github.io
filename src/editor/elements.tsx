@@ -132,6 +132,8 @@ const NAMES: [RegExp, string][] = [
   [/^top$/, '"Back to top" link'],
 ]
 // On the homepage the introduction's first part is the headline (26 Nov 2026), with the name line under it.
+// On the shared Header and Footer pages a part's words can be cleared: the part stays, empty.
+const CLEARABLE = (() => { try { return ['header', 'footer'].includes(new URLSearchParams(location.search).get('page') ?? '') } catch { return false } })()
 const ON_HOME = (() => { try { return new URLSearchParams(location.search).get('page') === 'home' } catch { return false } })()
 export const nameOf = (key: string) => {
   if (key === 'intro' && ON_HOME) return 'Headline'
@@ -477,8 +479,9 @@ export function useCanvasEditing(p: Project, edits: Edits) {
         help.remove()
         el.removeAttribute('data-el-editing')
         html.removeAttribute('data-el-typing')
-        if (keep && words) latest.current.words.write(field, words, blockId)
-        announceListeners.forEach((fn) => fn(keep ? 'Words changed.' : 'Typing cancelled; nothing changed.'))
+        const clear = keep && !words && CLEARABLE
+        if (keep && (words || clear)) latest.current.words.write(field, words, blockId)
+        announceListeners.forEach((fn) => fn(!keep ? 'Typing cancelled; nothing changed.' : clear ? 'Words cleared.' : 'Words changed.'))
       }
       box.addEventListener('keydown', (k) => {
         k.stopPropagation()

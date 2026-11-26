@@ -734,3 +734,10 @@ html[data-preview] .shared-note { display: none; }
 .editor-conflict { display: grid; gap: 0.5rem; }
 .editor-conflict-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 [data-preview] .editor-clock-off { display: none; }
+
+/* A part whose words were cleared stays on the page in the editor, faded, so it can be chosen and filled
+   again. Only parts the editor marks (data-edit) are affected; visitors never see this. */
+[data-edit]:empty { display: inline-block; min-width: 5.5em; min-height: 1em; outline: 1px dashed currentColor; outline-offset: 2px; opacity: 0.45; vertical-align: middle; }
+[data-edit]:empty::before { content: 'Empty'; font-size: 0.75rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
+/* In Preview the page shows exactly what visitors see, so a cleared part is not shown at all. */
+html[data-preview] [data-edit]:empty { display: none; }

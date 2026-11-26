@@ -15,30 +15,33 @@ export default function Footer({ elements }: { elements?: Elements }) {
   // On the website the line is one run of text, exactly as before; the editor marks the words only.
   const editing = useContext(Editing)
   const [first, ...rest] = w.title.split(' ')
+  // A cleared word is left out for visitors (no empty links or headings); in the editor it stays, faded.
+  const show = (words: string) => !!words || editing
   return (
     <footer>
       <div className="footer-main">
         <div>
-          <p {...el('kicker', { className: 'footer-kicker', field: 'kicker' })}>{w.kicker}</p>
-          <h2 {...el('title', { className: 'c footer-title', field: 'title' })}>
-            {first} <br className="m-only" />
-            {rest.join(' ')}
-          </h2>
+          {show(w.kicker) && <p {...el('kicker', { className: 'footer-kicker', field: 'kicker' })}>{w.kicker}</p>}
+          {show(w.title) && (
+            <h2 {...el('title', { className: 'c footer-title', field: 'title' })}>
+              {w.title && <>{first} <br className="m-only" />{rest.join(' ')}</>}
+            </h2>
+          )}
         </div>
         <div>
-          <a href={`mailto:${w.email}`} {...el('email', { className: 'footer-email', field: 'email' })}>{w.email}</a>
+          {show(w.email) && <a href={`mailto:${w.email}`} {...el('email', { className: 'footer-email', field: 'email' })}>{w.email}</a>}
           <div className="footer-social">
-            {site.instagram && <a href={site.instagram} target="_blank" rel="noreferrer"><span {...el('social-instagram', { field: 'social:instagram' })}>{w.social.instagram}</span></a>}
-            {site.linkedin && <a href={site.linkedin} target="_blank" rel="noreferrer"><span {...el('social-linkedin', { field: 'social:linkedin' })}>{w.social.linkedin}</span></a>}
+            {site.instagram && show(w.social.instagram) && <a href={site.instagram} target="_blank" rel="noreferrer"><span {...el('social-instagram', { field: 'social:instagram' })}>{w.social.instagram}</span></a>}
+            {site.linkedin && show(w.social.linkedin) && <a href={site.linkedin} target="_blank" rel="noreferrer"><span {...el('social-linkedin', { field: 'social:linkedin' })}>{w.social.linkedin}</span></a>}
           </div>
         </div>
         <div className="footer-bottom">
           <nav aria-label="Pages">
-            <PageLink to="/"><span {...el('page-home', { field: 'pages:home' })}>{w.pages.home}</span></PageLink>
-            <PageLink to="/about/"><span {...el('page-about', { field: 'pages:about' })}>{w.pages.about}</span></PageLink>
-            <PageLink to="/projects/"><span {...el('page-projects', { field: 'pages:projects' })}>{w.pages.projects}</span></PageLink>
+            {show(w.pages.home) && <PageLink to="/"><span {...el('page-home', { field: 'pages:home' })}>{w.pages.home}</span></PageLink>}
+            {show(w.pages.about) && <PageLink to="/about/"><span {...el('page-about', { field: 'pages:about' })}>{w.pages.about}</span></PageLink>}
+            {show(w.pages.projects) && <PageLink to="/projects/"><span {...el('page-projects', { field: 'pages:projects' })}>{w.pages.projects}</span></PageLink>}
           </nav>
-          <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo(0, 0) }} {...el('top', { field: 'top' })}>{w.top}</a>
+          {show(w.top) && <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo(0, 0) }} {...el('top', { field: 'top' })}>{w.top}</a>}
         </div>
       </div>
       <div className="footer-credit">

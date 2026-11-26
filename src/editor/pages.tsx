@@ -79,7 +79,10 @@ export function pageConfig(page: PageDef): Config {
 // Here they sit in the panel's own frame; the line under the time is changed on the page or with the
 // clock part, so it is not offered twice.
   const extra = (type: string) => (type === 'HomeClock' ? { clock: { type: 'custom', label: 'Clock settings', render: () => <div className="el-panel ps-section"><ClockSettings p={p} withLine={false} /></div> } } : {})
-  const sections = Object.fromEntries(page.sections.map((type) => [type, block(NAMES[type] ?? type, render(type), { fields: { elements: elementsField(p), ...extra(type) } })]))
+  // The shared header and footer stay in place: never removed (menus, the Delete key), copied or moved.
+  // Their words stay editable, and can be cleared.
+  const FIXED = { delete: false, duplicate: false, drag: false }
+  const sections = Object.fromEntries(page.sections.map((type) => [type, block(NAMES[type] ?? type, render(type), { fields: { elements: elementsField(p), ...extra(type) }, ...(type === 'Header' || type === 'Footer' ? { permissions: FIXED } : {}) })]))
   return {
     root: { fields: {}, render: ({ children, edits }: { children: ReactNode; edits?: Edits }) => <PageEditorFrame page={page} edits={edits ?? {}}>{children}</PageEditorFrame> },
     categories: {
