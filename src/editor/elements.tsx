@@ -481,7 +481,7 @@ export function useCanvasEditing(p: Project, edits: Edits) {
         html.removeAttribute('data-el-typing')
         const clear = keep && !words && CLEARABLE
         if (keep && (words || clear)) latest.current.words.write(field, words, blockId)
-        announceListeners.forEach((fn) => fn(!keep ? 'Typing cancelled; nothing changed.' : clear ? 'Words cleared.' : 'Words changed.'))
+        announceListeners.forEach((fn) => fn(!keep ? 'Typing cancelled; nothing changed.' : clear ? 'Words cleared.' : !words ? 'The words were kept: this part needs words. To leave it out, use More, then Hide.' : 'Words changed.'))
       }
       box.addEventListener('keydown', (k) => {
         k.stopPropagation()
@@ -787,7 +787,19 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     doc.addEventListener('dblclick', onDoubleClick, true)
     doc.addEventListener('keydown', onKeyDown)
     if (doc !== document) document.addEventListener('keydown', onKeyDown)
+    // Delete and Backspace never remove a whole section while one of its parts is chosen (the editing
+    // library's own shortcut would). Caught first, in both windows, unless you are typing in a box.
+    const guardDelete = (e: KeyboardEvent) => {
+      if ((e.key !== 'Delete' && e.key !== 'Backspace') || !latest.current.selected) return
+      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]')) return
+      e.preventDefault(); e.stopImmediatePropagation()
+      announceListeners.forEach((fn) => fn(CLEARABLE ? 'This part is fixed. To clear its words, double-click it and delete them.' : 'Delete does not remove a part. To hide it, use More, then Hide. To change its words, double-click it.'))
+    }
+    view.addEventListener('keydown', guardDelete, true)
+    if (doc !== document) window.addEventListener('keydown', guardDelete, true)
     return () => {
+      view.removeEventListener('keydown', guardDelete, true)
+      if (doc !== document) window.removeEventListener('keydown', guardDelete, true)
       view.cancelAnimationFrame(raf)
       doc.removeEventListener('pointerdown', onFrameDown, true)
       doc.removeEventListener('pointermove', onPointerMove)
