@@ -149,6 +149,8 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 /* Niche-led headline (26 Nov 2026): the statement, then the name and title as a quieter supporting line. */
 .home-intro p { margin: 0; text-wrap: balance; }
 .home-intro .home-byline { margin-top: 0.875rem; font-size: var(--t-lead); line-height: 1.5; font-weight: 600; letter-spacing: 0; color: var(--olive); }
+/* Line breaks typed in the headline (26 Nov 2026) apply from 600 px; on phones the headline wraps by itself. */
+@media (max-width: 599px) { .home-intro br.lb { display: none; } }
 /* Homepage clock and availability line (approved Option C, 24 Nov 2026): 44 px desktop, 36 px tablet, 32 px phone, fixed so they do not scale with the window. */
 .home-clock { grid-column: 9 / span 4; grid-row: 1 / span 2; align-self: start; margin: 0; font-size: 44px; line-height: 1.07; font-weight: 500; letter-spacing: -0.015em; color: var(--olive); }
 .home-clock-now { color: #6d6b55; }
