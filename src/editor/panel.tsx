@@ -765,7 +765,7 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
       {selected?.field && (
         <Group title="Content" detail="Words">
           {el?.hasAttribute('data-rich') ? (
-            <RichWords key={`${selected.blockId}|${selected.field}`} value={words.read(selected.field, selected.blockId)} onChange={(v) => words.write(selected.field!, v, selected.blockId)} />
+            <RichWords key={`${selected.blockId}|${selected.field}`} breaks={el.hasAttribute('data-breaks')} value={words.read(selected.field, selected.blockId)} onChange={(v) => words.write(selected.field!, v, selected.blockId)} />
           ) : (
             <>
               <textarea className="el-words" rows={wordRows(words.read(selected.field, selected.blockId))} aria-label="Words" value={words.read(selected.field, selected.blockId)} onChange={(e) => words.write(selected.field!, e.target.value, selected.blockId)} />
@@ -1140,7 +1140,7 @@ function FormatButtons({ start, off }: { start: () => void; off?: boolean }) {
 // The Words box in Settings. Formatted words show as formatting, as on the page, never as markers;
 // Bold, Italic and Underline (buttons or shortcuts) format the words selected in it. Pasted words
 // arrive plain. Each change is saved as it is made, like typing on the page.
-function RichWords({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function RichWords({ value, onChange, breaks = false }: { value: string; onChange: (v: string) => void; breaks?: boolean }) {
   const box = useRef<HTMLDivElement>(null)
   const shown = useRef<string | null>(null)
   const [on, setOn] = useState<Formats>({ bold: false, italic: false, underline: false })
@@ -1157,7 +1157,7 @@ function RichWords({ value, onChange }: { value: string; onChange: (v: string) =
   }, [])
   const commit = () => {
     if (!box.current) return
-    const next = readBox(box.current)
+    const next = readBox(box.current, breaks)
     shown.current = next
     if (next !== value) onChange(next)
   }
@@ -1173,9 +1173,9 @@ function RichWords({ value, onChange }: { value: string; onChange: (v: string) =
   }
   return (
     <>
-      <div ref={box} className="el-words el-words-rich" contentEditable suppressContentEditableWarning role="textbox" aria-multiline="false" aria-label="Words" aria-describedby="el-words-hint"
+      <div ref={box} className="el-words el-words-rich" contentEditable suppressContentEditableWarning role="textbox" aria-multiline={breaks} aria-label="Words" aria-describedby="el-words-hint"
         onInput={commit}
-        onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
+        onKeyDown={(e) => { if (e.key === 'Enter' && !(breaks && e.shiftKey)) e.preventDefault() }}
         onPaste={(e) => { e.preventDefault(); e.currentTarget.ownerDocument.execCommand('insertText', false, e.clipboardData.getData('text/plain').replace(/\s+/g, ' ')) }} />
       <div className="el-row el-format-row">
         <div className="el-row-head"><span>Bold, italic, underline</span></div>
@@ -1185,7 +1185,7 @@ function RichWords({ value, onChange }: { value: string; onChange: (v: string) =
           ))}
         </span>
       </div>
-      <p className="el-note" id="el-words-hint">Select words here or on the page, then use Bold, Italic or Underline ({MOD}B, {MOD}I, {MOD}U).</p>
+      <p className="el-note" id="el-words-hint">Select words here or on the page, then use Bold, Italic or Underline ({MOD}B, {MOD}I, {MOD}U).{breaks && ' Shift+Enter starts a new line on computers and tablets; phones fit the words to the screen.'}</p>
     </>
   )
 }

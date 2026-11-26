@@ -458,7 +458,7 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       const help = doc.createElement('span')
       help.className = 'el-tag el-tag-help'
       help.setAttribute('aria-hidden', 'true')
-      help.textContent = rich ? `Enter to finish · Esc to cancel · ${MOD}B, ${MOD}I, ${MOD}U to format` : 'Enter to finish · Esc to cancel'
+      help.textContent = rich ? `Enter to finish${el.hasAttribute('data-breaks') ? ' · Shift+Enter for a new line' : ''} · Esc to cancel · ${MOD}B, ${MOD}I, ${MOD}U to format` : 'Enter to finish · Esc to cancel'
       Object.assign(help.style, { left: `${r.left + view.scrollX}px`, top: `${r.bottom + view.scrollY}px` })
       el.setAttribute('data-el-editing', '')
       html.setAttribute('data-el-typing', '')
@@ -473,7 +473,7 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       const finish = (keep: boolean) => {
         if (done) return
         done = true
-        const words = rich ? readBox(box) : (box.textContent ?? '').replace(/\s+/g, ' ').trim()
+        const words = rich ? readBox(box, el.hasAttribute('data-breaks')) : (box.textContent ?? '').replace(/\s+/g, ' ').trim()
         if (rich) { doc.removeEventListener('selectionchange', onSelection); setTypingBox(null) }
         box.remove()
         help.remove()

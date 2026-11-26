@@ -51,7 +51,11 @@ export function fillBox(target: HTMLElement, text: string) {
   const doc = target.ownerDocument
   const add = (parent: Node, nodes: RichNode[]) => {
     for (const n of nodes) {
-      if (typeof n === 'string') { parent.appendChild(doc.createTextNode(n)); continue }
+      if (typeof n === 'string') {
+        // A line break in the stored words is shown as one in the editable copy, so it is kept.
+        n.split(/[ \t]*\n[ \t]*/).forEach((part, i) => { if (i) parent.appendChild(doc.createElement('br')); if (part) parent.appendChild(doc.createTextNode(part)) })
+        continue
+      }
       const el = doc.createElement(TAGS[n.kind])
       add(el, n.children)
       parent.appendChild(el)
@@ -65,7 +69,8 @@ type Run = { text: string; bold: boolean; italic: boolean; underline: boolean; h
 
 // The editable copy back to stored words. Formatting is read from what the browser shows (weight and
 // style) and from the tags around each piece of text, so it works whichever way the browser marked it.
-export function readBox(target: HTMLElement): string {
+// With `breaks`, a line break typed with Shift+Enter is kept as one; otherwise it becomes a space.
+export function readBox(target: HTMLElement, breaks = false): string {
   const view = target.ownerDocument.defaultView!
   const base = view.getComputedStyle(target)
   const baseWeight = Number(base.fontWeight) || 400
@@ -76,7 +81,7 @@ export function readBox(target: HTMLElement): string {
       const look = view.getComputedStyle(parent)
       const within = (test: (el: Element) => boolean) => { for (let el: Element | null = parent; el && el !== target; el = el.parentElement) if (test(el)) return true; return false }
       runs.push({
-        text: (node.textContent ?? '').replace(/\s+/g, ' '),
+        text: (node.textContent ?? '').replace(breaks ? /[^\S\n]+/g : /\s+/g, ' '),
         bold: (Number(look.fontWeight) || 400) > baseWeight,
         italic: look.fontStyle === 'italic' && base.fontStyle !== 'italic',
         underline: within((el) => el.tagName === 'U' || /underline/.test((el as HTMLElement).style?.textDecoration ?? '') || /underline/.test((el as HTMLElement).style?.textDecorationLine ?? '')),
@@ -84,11 +89,13 @@ export function readBox(target: HTMLElement): string {
       })
       return
     }
-    if (node.nodeName === 'BR' || node.nodeName === 'DIV' || node.nodeName === 'P') runs.push({ text: ' ', bold: false, italic: false, underline: false, highlight: false })
+    if (node.nodeName === 'BR' || node.nodeName === 'DIV' || node.nodeName === 'P') runs.push({ text: breaks && node.nodeName === 'BR' ? '\n' : ' ', bold: false, italic: false, underline: false, highlight: false })
     node.childNodes.forEach(walk)
   }
   target.childNodes.forEach(walk)
-  return write(runs).replace(/\s+/g, ' ').trim()
+  const words = write(runs)
+  if (!breaks) return words.replace(/\s+/g, ' ').trim()
+  return words.replace(/[ \t]+/g, ' ').replace(/ *\n[\s]*/g, '\n').trim()
 }
 
 // Runs of text with their formatting, as words with markers. Markers nest in one fixed order (bold

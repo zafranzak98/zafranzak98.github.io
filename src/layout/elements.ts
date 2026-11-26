@@ -80,11 +80,11 @@ function cssFor(look: ElementLook): [string, string][] {
 // so an element without settings keeps exactly the markup it always had.
 export const Editing = createContext(false)
 
-export type ElementOptions = { className?: string; style?: CSSProperties; field?: string; rich?: boolean }
+export type ElementOptions = { className?: string; style?: CSSProperties; field?: string; rich?: boolean; breaks?: boolean }
 
 export function useElement(elements: Elements | undefined) {
   const editing = useContext(Editing)
-  return (key: string, { className, style, field, rich }: ElementOptions = {}) => {
+  return (key: string, { className, style, field, rich, breaks }: ElementOptions = {}) => {
     const classes = className ? [className] : []
     const vars: Record<string, string> = {}
     // Hidden at a size: the website leaves it out there; the editor shows it faded, so it can be shown again.
@@ -106,7 +106,7 @@ export function useElement(elements: Elements | undefined) {
     return {
       className: classes.length ? classes.join(' ') : undefined,
       style: Object.keys(merged).length ? merged : undefined,
-      ...(editing && { 'data-el': key, ...(field && { 'data-edit': field }), ...(field && rich && { 'data-rich': '' }), ...(hiddenAt.length && { 'data-el-hidden': hiddenAt.map((s) => SHORT[s]).join(' ') }) }),
+      ...(editing && { 'data-el': key, ...(field && { 'data-edit': field }), ...(field && rich && { 'data-rich': '' }), ...(field && rich && breaks && { 'data-breaks': '' }), ...(hiddenAt.length && { 'data-el-hidden': hiddenAt.map((s) => SHORT[s]).join(' ') }) }),
     }
   }
 }

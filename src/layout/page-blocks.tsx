@@ -37,7 +37,7 @@ export function HomeIntro({ design, elements }: BlockProps) {
   const el = useElement(elements)
   return (
     <div {...designProps(design, 'home-intro')}>
-      <p {...el('intro', { field: 'home_intro', rich: true })}><Rich text={w.home_intro} highlight /></p>
+      <p {...el('intro', { field: 'home_intro', rich: true, breaks: true })}><Rich text={w.home_intro} highlight breaks /></p>
       {w.home_byline && <p {...merge({ className: 'home-byline' }, el('byline', { field: 'home_byline' }))}>{w.home_byline}</p>}
     </div>
   )
