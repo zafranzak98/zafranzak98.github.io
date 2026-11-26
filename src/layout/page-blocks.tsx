@@ -51,9 +51,11 @@ export function HomeClock({ design, elements }: BlockProps) {
   const editing = useContext(Editing)
   // Hidden: the website leaves it out; the editor keeps a faded line, so it can be chosen and shown again.
   if (!w.clock.show) return editing ? <p {...merge(designProps(design, 'home-clock editor-clock-off'), el('clock', {}))}>Clock hidden on the website. Choose it, then Settings, to show it again.</p> : null
-  return <Clock city={w.clock.city} timeZone={w.clock.time_zone} line={w.clock.line} weather={w.clock.weather} lat={w.clock.latitude} lon={w.clock.longitude} props={merge(designProps(design, 'home-clock'), el('clock', { field: 'clock:line' }))} />
+  return <Clock city={w.clock.city} timeZone={w.clock.time_zone} line={w.clock.line} weather={w.clock.weather && !editing} lat={w.clock.latitude} lon={w.clock.longitude} props={merge(designProps(design, 'home-clock'), el('clock', { field: 'clock:line' }))} />
 }
 
+// The weather is not fetched inside the design editor: its security policy only lets it talk to this
+// site and GitHub, and keeping it that way matters more than showing the temperature while editing.
 // The local time in the chosen city. The visitor's browser works it out for that time zone, so
 // daylight saving changes are followed automatically. It updates once a second and is not
 // announced by screen readers on every change.

@@ -610,8 +610,7 @@ function Actions() {
     <header className="editor-bar">
       <div className="editor-bar-start">
         <span className="editor-brand">Design editor</span>
-        {DEMO && <span className="editor-chip" title="Everything works, but Preview, Save draft and Publish are simulated: they stay in this browser and never change the website.">Demo</span>}
-        {DEMO && <span className="editor-chip editor-sim" title="Preview, Save draft and Publish stay in this browser and never change the website.">Saving simulated</span>}
+        {DEMO && <span className="editor-chip" title="Everything works, but Preview, Save draft and Publish are simulated: they stay in this browser and never change the website.">Demo<span className="editor-chip-more"> · saving simulated</span></span>}
         {DEMO ? (
           <label className="editor-field"><span className="sr-only">Page</span>
             <select className="editor-project" value={page ? `page:${page.key}` : `case:${p.slug}`} onChange={(e) => { const v = e.target.value; location.search = v.startsWith('case:') ? `?project=${v.slice(5)}` : `?page=${v.slice(5)}` }}>
@@ -627,6 +626,10 @@ function Actions() {
             </select>
           </label>
         )}
+        <div className="editor-history">
+          <button type="button" onClick={history.back} disabled={!history.hasPast} title={history.hasPast ? `Undo: ${undoWhat} (Cmd+Z)` : 'Nothing to undo'} aria-label={history.hasPast ? `Undo: ${undoWhat}` : 'Undo'}><UndoIcon /><span className="editor-word">Undo</span></button>
+          <button type="button" onClick={history.forward} disabled={!history.hasFuture} title={history.hasFuture ? `Redo: ${redoWhat} (Cmd+Shift+Z)` : 'Nothing to redo'} aria-label={history.hasFuture ? `Redo: ${redoWhat}` : 'Redo'}><RedoIcon /><span className="editor-word">Redo</span></button>
+        </div>
       </div>
 
       <div className="editor-bar-middle" role="group" aria-label="Screen size you are editing">
@@ -648,10 +651,6 @@ function Actions() {
       </div>
 
       <div className="editor-bar-end">
-        <div className="editor-history">
-          <button type="button" onClick={history.back} disabled={!history.hasPast} title={history.hasPast ? `Undo: ${undoWhat} (Cmd+Z)` : 'Nothing to undo'} aria-label={history.hasPast ? `Undo: ${undoWhat}` : 'Undo'}><UndoIcon /><span className="editor-word">Undo</span></button>
-          <button type="button" onClick={history.forward} disabled={!history.hasFuture} title={history.hasFuture ? `Redo: ${redoWhat} (Cmd+Shift+Z)` : 'Nothing to redo'} aria-label={history.hasFuture ? `Redo: ${redoWhat}` : 'Redo'}><RedoIcon /><span className="editor-word">Redo</span></button>
-        </div>
         <span className={`editor-status is-${state}`} role="status" title={`${status}. ${statusHint}`}><span className="editor-status-mark" aria-hidden="true" /><span className="editor-status-text">{status}</span></span>
         <LayoutNotes p={p} screen={SCREEN_NAME[screenFor(Number(ui.viewports.current.width) || 1440)]} preview={preview} checkSizes={checkSizes} />
         <button type="button" className="editor-quiet editor-preview" aria-pressed={preview} onClick={togglePreview}><EyeIcon /><span>{preview ? 'Back to editing' : 'Preview'}</span></button>

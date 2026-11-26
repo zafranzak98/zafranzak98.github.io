@@ -105,6 +105,18 @@ html[data-el-active] [class*='DraggableComponent--isSelected'] [class*='Draggabl
 .editor-bar { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; padding: 0.625rem 1rem; border-bottom: 1px solid #dfe3d6; background: #fff; color: var(--olive); font: 500 14px/1.3 'Instrument Sans Variable', system-ui, sans-serif; }
 .editor-bar-start, .editor-bar-middle, .editor-bar-end { display: flex; align-items: center; gap: 0.5rem; }
 .editor-bar-middle { margin-inline: auto; }
+/* Wide screens: one row in three groups (approved 26 Nov 2026). Left: the page, Undo and Redo.
+   Centre: the screen size. Right: save status, Preview, More, Save draft and Publish, Publish last.
+   Anything under the bar (the contextual bar, notices) takes the full width. */
+@media (min-width: 1280px) {
+  .editor-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 1.5rem; row-gap: 0.625rem; }
+  .editor-bar > :not(.editor-bar-start, .editor-bar-middle, .editor-bar-end) { grid-column: 1 / -1; }
+  .editor-bar-middle { justify-self: center; margin: 0; }
+}
+/* Undo and Redo are icons; hovering names the step, and screen readers hear the same name. */
+.editor-history .editor-word { display: none; }
+.editor-bar .editor-history button { display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; padding: 0; }
+.editor-bar-start .editor-history { margin-left: 0.25rem; }
 .editor-brand { font-weight: 700; white-space: nowrap; }
 .editor-bar button, .editor-panel button, .editor-bar select { height: 2.25rem; padding: 0 0.875rem; border: 1px solid #b9bea9; border-radius: 6px; background: #fff; color: var(--olive); font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .editor-bar select { padding-inline: 0.625rem; max-width: 12rem; }
@@ -146,7 +158,11 @@ html[data-el-active] [class*='DraggableComponent--isSelected'] [class*='Draggabl
 html[data-preview] .el-hover, html[data-preview] .el-frame, html[data-preview] .el-gframe, html[data-preview] [class*='DraggableComponent'] { display: none !important; }
 html[data-preview] [data-puck-component] { cursor: default !important; }
 
-.editor-chip { padding: 0.125rem 0.5rem; border-radius: 999px; background: var(--lsage); font-size: 12px; font-weight: 600; cursor: help; }
+.editor-chip { padding: 0.125rem 0.5rem; border-radius: 999px; background: var(--lsage); font-size: 12px; font-weight: 600; white-space: nowrap; cursor: help; }
+/* The tips line can be closed; a small Tips button brings it back. The row keeps its height, so the page never jumps. */
+.ctx .ctx-hint-close, .ctx .ctx-tips { flex: none; height: 2rem; padding: 0 0.625rem; border: 1px solid transparent; border-radius: 6px; background: none; color: #5c5a45; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ctx .ctx-hint-close { width: 2rem; padding: 0; font-size: 18px; line-height: 1; }
+.ctx .ctx-hint-close:hover, .ctx .ctx-tips:hover { background: #eceee8; color: var(--olive); }
 
 @media (max-width: 1599px) {
   .editor-brand { display: none; }
@@ -159,8 +175,7 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
   .editor-width { display: none; }
   .editor-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 0.5rem 0.5rem; padding: 0.5rem 0.75rem; }
   .editor-bar-end { display: contents; }
-  .editor-bar-start { grid-area: 1 / 1; }
-  .editor-history { grid-area: 1 / 2; }
+  .editor-bar-start { grid-area: 1 / 1 / 2 / 3; min-width: 0; }
   .editor-save, .editor-signin { grid-area: 1 / 3; }
   .editor-bar .editor-primary { grid-area: 1 / 4; }
   .editor-bar-middle { grid-area: 2 / 1; margin: 0; }
@@ -179,10 +194,12 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
   .editor-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem 0.25rem; padding: 0.375rem 0.5rem; }
   .editor-bar::before { content: ''; flex-basis: 100%; order: 2; }
   .editor-bar > *, .editor-bar-end > * { order: 4; flex-basis: 100%; }
-  .editor-bar-start, .editor-status, .editor-save, .editor-signin, .editor-bar .editor-primary { order: 1; flex-basis: auto; }
+  .editor-bar-start { display: contents; }
+  .editor-bar-start .editor-field, .editor-status, .editor-save, .editor-signin, .editor-bar .editor-primary { order: 1; flex-basis: auto; }
   .editor-bar-middle, .editor-history, .editor-preview, .editor-more-wrap { order: 3; flex-basis: auto; }
-  .editor-bar-start { flex: 1 1 0; min-width: 0; }
+  .editor-bar-start .editor-field { flex: 1 1 0; min-width: 0; }
   .editor-bar-start .editor-field, .editor-project { min-width: 0; width: 100%; max-width: none; }
+  .editor-bar-start .editor-history { margin-left: auto; }
   .editor-bar .editor-bar-ctx { flex: 0 0 auto; width: calc(100% + 1rem); max-width: none; }
   .editor-status { margin-inline: 0.125rem; }
   .editor-bar-middle { margin: 0; }
@@ -215,7 +232,8 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
 /* A short screen (a phone turned sideways): one row for the whole bar, with the same compact buttons. */
 @media (max-height: 500px) and (min-width: 640px) and (max-width: 1279px) {
   .editor-bar { padding: 0.375rem 0.75rem; }
-  .editor-bar-start { grid-area: 1 / 1; min-width: 0; }
+  .editor-bar-start { display: contents; }
+  .editor-bar-start .editor-field { grid-area: 1 / 1; min-width: 0; }
   .editor-bar-start .editor-field, .editor-project { min-width: 0; width: 100%; }
   .editor-bar-middle { grid-area: 1 / 2; }
   .editor-history { grid-area: 1 / 3; gap: 0.25rem; }

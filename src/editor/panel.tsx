@@ -233,6 +233,10 @@ function MoreMenu({ name, children }: { name: string; children: (close: () => vo
   )
 }
 
+// The tips line under the bar: hidden once you close it, remembered in this browser.
+const TIPS_KEY = 'design-editor-tips'
+const tipsWanted = () => { try { return localStorage.getItem(TIPS_KEY) !== 'hidden' } catch { return true } }
+
 export function ContextBar() {
   const { key, item, selected, screen, own, shown, setLook, from, resetAll } = useLook()
   const { select } = useContext(Selection)
@@ -247,6 +251,8 @@ export function ContextBar() {
   latestGroup.current = grouping
   const [message, setMessage] = useState('')
   const [sheet, setSheet] = useState(false)
+  const [tips, setTips] = useState(tipsWanted)
+  const showTips = (on: boolean) => { setTips(on); try { if (on) localStorage.removeItem(TIPS_KEY); else localStorage.setItem(TIPS_KEY, 'hidden') } catch { /* storage unavailable: the choice lasts until the page reloads */ } }
   const [stack, setStack] = useState<{ for: string; parts: Picked[] }>({ for: '', parts: [] })
   useEffect(() => {
     const onStack = (parts: Picked[], picked: Picked | null) => setStack({ for: picked ? `${picked.blockId}|${picked.key}` : '', parts })
@@ -311,7 +317,14 @@ export function ContextBar() {
   if (!item) {
     return (
       <div className="ctx ctx-empty">
-        <p className="ctx-hint"><b>Click</b> anything on the page to change it. <b>Double-click</b> words to type.<span className="ctx-long"> To add or reorder sections, open <b>Sections</b> on the left.</span></p>
+        {tips ? (
+          <>
+            <p className="ctx-hint"><b>Click</b> anything on the page to change it. <b>Double-click</b> words to type.<span className="ctx-long"> To add or reorder sections, open <b>Sections</b> on the left.</span></p>
+            <button type="button" className="ctx-hint-close" aria-label="Hide these tips" title="Hide these tips" onClick={() => showTips(false)}>×</button>
+          </>
+        ) : (
+          <button type="button" className="ctx-tips" onClick={() => showTips(true)}>Show tips</button>
+        )}
         {live}
       </div>
     )
