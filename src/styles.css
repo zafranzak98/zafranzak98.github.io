@@ -259,8 +259,9 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
 .paper-clip { position: absolute; top: 0; right: 7%; width: 16%; margin-top: -13%; overflow: visible; transform: rotate(-15deg); transform-origin: 50% 20%; pointer-events: none; }
 .paper-clip-back { z-index: 0; filter: drop-shadow(0.5px 1px 1px rgb(0 0 0 / 0.25)); }
 .paper-clip-front { z-index: 2; filter: drop-shadow(0.6px 1.4px 0.8px rgb(0 0 0 / 0.38)); }
-/* The portrait hangs 4vw below the hero; the first section clears it and its caption. */
-.about-hero + .about-caption + .ix-sec { margin-top: calc(4vw + 5.5rem); }
+/* The portrait hangs 4vw below the hero; the hero keeps that room below itself, so whatever follows
+   clears the portrait and its caption (also in the design editor, where each section has its own wrapper). */
+.about-hero { margin-bottom: calc(4vw + 5.5rem); }
 .about-statement { margin: 0; font-size: var(--t-statement); line-height: 1.36; font-weight: 500; letter-spacing: -0.015em; }
 .about-statement .hl, .edu-val .hl { font-weight: 700; }
 .about-more { margin: 1.75rem 0 0; font-size: var(--t-body); line-height: 1.6; max-width: var(--measure); }
@@ -298,7 +299,7 @@ main a:hover, .site-header a:hover, .menu-panel a:hover { color: var(--terra); }
   .about-portrait { right: 1.5rem; top: 6rem; width: 8.75rem; }
   .about-portrait .ph { font-size: 0.6875rem; padding: 0.5rem; }
   .about-caption { display: flex; justify-content: space-between; margin: 0 1.5rem; padding: 0.75rem 0 3.5rem; font-size: var(--t-meta); line-height: 1.4; }
-  .about-hero + .about-caption + .ix-sec { margin-top: 0; }
+  .about-hero { margin-bottom: 0; }
   .about-statement { letter-spacing: -0.01em; }
   .about-more { margin-top: 1.25rem; }
   .about-languages { margin-top: 1.25rem; }
@@ -670,6 +671,11 @@ h3.free-heading { font-size: var(--h3); }
   .el-focus-p img { object-position: var(--el-focus-p) !important; }
   .el-rotate-p > .tilt:only-child { --tilt: var(--el-rotate-p) !important; }
   .el-rotate-p:not(:has(> .tilt:only-child)) { rotate: var(--el-rotate-p); }
+}
+/* The About portrait has its own designed size on phones, so a width chosen for larger screens does
+   not carry to phones; a width set for Phone itself still applies. */
+@media (max-width: 899px) {
+  .about-portrait:is(.el-width-d, .el-width-t):not(.el-width-p) { width: 8.75rem !important; }
 }
 /* A photo on a project page, presented in the editor without changing the file. Span is the space it
    can fill (Tablet follows Desktop; phones use their full width unless Phone has its own). Shape and

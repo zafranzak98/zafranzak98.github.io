@@ -1,5 +1,6 @@
 /* The design editor's own controls, in the site's palette. The canvas shows the real site styles. */
-body.design-editor { background: #fff; }
+/* The editor screen is white; inside the canvas the page keeps its own Off-white below short pages. */
+body.design-editor:has(#preview-frame) { background: #fff; }
 /* Puck's header title gives way to the buttons on tablets (Puck is pinned, so its class names are stable). */
 [aria-controls^='puck-drawer-category'] > div { color: #555; }
 [class*='PuckHeader-title'] { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -105,6 +106,21 @@ html[data-el-active] [class*='DraggableComponent--isSelected'] [class*='Draggabl
 .editor-bar { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; padding: 0.625rem 1rem; border-bottom: 1px solid #dfe3d6; background: #fff; color: var(--olive); font: 500 14px/1.3 'Instrument Sans Variable', system-ui, sans-serif; }
 .editor-bar-start, .editor-bar-middle, .editor-bar-end { display: flex; align-items: center; gap: 0.5rem; }
 .editor-bar-middle { margin-inline: auto; }
+/* One row in three groups when the editor has 1280 px or more (approved 26 Nov 2026). The width is the
+   editor's own space, so beside the /admin menu it counts what is left. From 1280 to 1439 px the bar
+   is a little more compact ("Demo" only, a narrower page menu, tighter gaps); below 1280 px it uses two
+   tidy rows. Left: the page, Undo and Redo.
+   Centre: the screen size. Right: save status, Preview, More, Save draft and Publish, Publish last.
+   Anything under the bar (the contextual bar, notices) takes the full width. */
+@media (min-width: 1280px) {
+  .editor-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 1.5rem; row-gap: 0.625rem; }
+  .editor-bar > :not(.editor-bar-start, .editor-bar-middle, .editor-bar-end) { grid-column: 1 / -1; }
+  .editor-bar-middle { justify-self: center; margin: 0; }
+}
+/* Undo and Redo are icons; hovering names the step, and screen readers hear the same name. */
+.editor-history .editor-word { display: none; }
+.editor-bar .editor-history button { display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; padding: 0; }
+.editor-bar-start .editor-history { margin-left: 0.25rem; }
 .editor-brand { font-weight: 700; white-space: nowrap; }
 .editor-bar button, .editor-panel button, .editor-bar select { height: 2.25rem; padding: 0 0.875rem; border: 1px solid #b9bea9; border-radius: 6px; background: #fff; color: var(--olive); font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .editor-bar select { padding-inline: 0.625rem; max-width: 12rem; }
@@ -132,7 +148,8 @@ html[data-el-active] [class*='DraggableComponent--isSelected'] [class*='Draggabl
 @keyframes editor-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .editor-status.is-busy .editor-status-mark { animation: none; } }
 .editor-more-wrap { position: relative; }
-.editor-more { display: none; position: absolute; z-index: 1000; top: calc(100% + 0.375rem); right: 0; width: 17rem; padding: 0.375rem; border: 1px solid #dfe3d6; border-radius: 8px; background: #fff; box-shadow: 0 8px 24px rgba(40, 38, 20, 0.14); }
+/* Above an open Publish or Versions window, so the menu is never hidden behind it. */
+.editor-more { display: none; position: absolute; z-index: 1001; top: calc(100% + 0.375rem); right: 0; width: 17rem; padding: 0.375rem; border: 1px solid #dfe3d6; border-radius: 8px; background: #fff; box-shadow: 0 8px 24px rgba(40, 38, 20, 0.14); }
 .editor-more.open { display: grid; gap: 0.125rem; }
 .editor-bar .editor-more button { display: grid; height: auto; padding: 0.5rem 0.625rem; border: 0; text-align: left; white-space: normal; }
 .editor-more small { font-weight: 400; color: #5c5a45; }
@@ -146,21 +163,34 @@ html[data-el-active] [class*='DraggableComponent--isSelected'] [class*='Draggabl
 html[data-preview] .el-hover, html[data-preview] .el-frame, html[data-preview] .el-gframe, html[data-preview] [class*='DraggableComponent'] { display: none !important; }
 html[data-preview] [data-puck-component] { cursor: default !important; }
 
-.editor-chip { padding: 0.125rem 0.5rem; border-radius: 999px; background: var(--lsage); font-size: 12px; font-weight: 600; cursor: help; }
+@media (max-width: 899px) { .editor-chip-more { display: none; } }
+.editor-chip { padding: 0.125rem 0.5rem; border-radius: 999px; background: var(--lsage); font-size: 12px; font-weight: 600; white-space: nowrap; cursor: help; }
+/* The tips line can be closed; a small Tips button brings it back. The row keeps its height, so the page never jumps. */
+.ctx .ctx-hint-close, .ctx .ctx-tips { flex: none; height: 2rem; padding: 0 0.625rem; border: 1px solid transparent; border-radius: 6px; background: none; color: #5c5a45; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ctx .ctx-hint-close { width: 2rem; padding: 0; font-size: 18px; line-height: 1; }
+.ctx .ctx-hint-close:hover, .ctx .ctx-tips:hover { background: #eceee8; color: var(--olive); }
 
 @media (max-width: 1599px) {
   .editor-brand { display: none; }
   .editor-bar { gap: 0.75rem 1rem; }
   .editor-bar button { padding: 0 0.75rem; }
 }
-/* Below a wide desktop: two tidy rows. Row 1: project, undo and redo, Save draft, Publish.
-   Row 2: screen size, status, Preview, More. */
+/* Below 1280 px: two tidy rows. Row 1: page, Undo and Redo, Save draft, Publish.
+   Row 2: screen size (and the desktop width from 1280 px), status, Preview, More. */
+@media (max-width: 1279px) { .editor-width { display: none; } }
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .editor-bar { column-gap: 1rem; padding-inline: 0.75rem; }
+  .editor-chip-more { display: none; }
+  .editor-bar .editor-project { max-width: 9.5rem; }
+  .editor-bar-start, .editor-bar-middle, .editor-bar-end { gap: 0.375rem; }
+}
 @media (max-width: 1279px) {
-  .editor-width { display: none; }
   .editor-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 0.5rem 0.5rem; padding: 0.5rem 0.75rem; }
   .editor-bar-end { display: contents; }
-  .editor-bar-start { grid-area: 1 / 1; }
-  .editor-history { grid-area: 1 / 2; }
+  .editor-bar-start { grid-area: 1 / 1 / 2 / 3; min-width: 0; }
+  .editor-bar > :not(.editor-bar-start, .editor-bar-middle, .editor-bar-end) { grid-column: 1 / -1; }
+  .editor-bar-start .editor-field { flex: 0 1 12rem; min-width: 7rem; }
+  .editor-bar-start .editor-project { width: 100%; }
   .editor-save, .editor-signin { grid-area: 1 / 3; }
   .editor-bar .editor-primary { grid-area: 1 / 4; }
   .editor-bar-middle { grid-area: 2 / 1; margin: 0; }
@@ -179,10 +209,13 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
   .editor-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem 0.25rem; padding: 0.375rem 0.5rem; }
   .editor-bar::before { content: ''; flex-basis: 100%; order: 2; }
   .editor-bar > *, .editor-bar-end > * { order: 4; flex-basis: 100%; }
-  .editor-bar-start, .editor-status, .editor-save, .editor-signin, .editor-bar .editor-primary { order: 1; flex-basis: auto; }
+  .editor-bar-start { display: contents; }
+  .editor-bar-start .editor-field, .editor-status, .editor-save, .editor-signin, .editor-bar .editor-primary { order: 1; flex-basis: auto; }
   .editor-bar-middle, .editor-history, .editor-preview, .editor-more-wrap { order: 3; flex-basis: auto; }
-  .editor-bar-start { flex: 1 1 0; min-width: 0; }
+  .editor-bar-middle { order: 2; }
+  .editor-bar-start .editor-field { flex: 1 1 0; min-width: 0; }
   .editor-bar-start .editor-field, .editor-project { min-width: 0; width: 100%; max-width: none; }
+  .editor-bar-start .editor-history { margin-left: auto; }
   .editor-bar .editor-bar-ctx { flex: 0 0 auto; width: calc(100% + 1rem); max-width: none; }
   .editor-status { margin-inline: 0.125rem; }
   .editor-bar-middle { margin: 0; }
@@ -195,7 +228,6 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
   .editor-status { max-width: 7rem; }
   .editor-status-mark { width: 0.625rem; height: 0.625rem; margin: 0; }
   .editor-status:is(.is-unkept, .is-failed) .editor-status-mark { margin-right: 0.25rem; }
-  .editor-chip { display: none; }
   .editor-strip-main { display: none; }
 }
 @media (min-width: 640px) { .editor-strip-short { display: none; } }
@@ -207,15 +239,18 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
   .editor-more-dots { display: inline; }
 }
 @media (max-width: 379px) {
+  /* The narrowest phones keep their page room: the Demo label gives way (the Publish window still says Simulated). */
+  .editor-chip { display: none; }
   .editor-bar .editor-preview.editor-quiet { display: none; }
   .editor-more-preview { display: grid !important; }
   .editor-bar .editor-bar-middle .editor-screens button { padding: 0 0.4375rem; }
-  .editor-bar .editor-bar-end .editor-history button, .editor-bar .editor-bar-end .editor-more-btn { width: 2.125rem; }
+  .editor-bar .editor-history button, .editor-bar .editor-bar-end .editor-more-btn { width: 2.125rem; }
 }
 /* A short screen (a phone turned sideways): one row for the whole bar, with the same compact buttons. */
 @media (max-height: 500px) and (min-width: 640px) and (max-width: 1279px) {
   .editor-bar { padding: 0.375rem 0.75rem; }
-  .editor-bar-start { grid-area: 1 / 1; min-width: 0; }
+  .editor-bar-start { display: contents; }
+  .editor-bar-start .editor-field { grid-area: 1 / 1; min-width: 0; }
   .editor-bar-start .editor-field, .editor-project { min-width: 0; width: 100%; }
   .editor-bar-middle { grid-area: 1 / 2; }
   .editor-history { grid-area: 1 / 3; gap: 0.25rem; }
@@ -621,3 +656,88 @@ html[data-preview] [data-el-note] { outline: none; }
   .editor-bar-ctx .ctx > :is(.ctx-size, .ctx-weight) { display: none; }
   .editor-bar-ctx .ctx > .ctx-aa { display: inline-flex; }
 }
+
+/* ---- Visual editor demo: shared parts, page list and the /admin copy */
+.shared-part { position: relative; }
+.shared-part::after { content: ''; position: absolute; inset: 0; pointer-events: none; outline: 1px dashed rgba(60, 60, 60, 0.35); outline-offset: -1px; }
+.shared-part > .site-header, .shared-part > footer { opacity: 0.92; }
+.shared-tag { position: absolute; right: 8px; top: 8px; z-index: 5; font: 500 12px/1.2 'Instrument Sans Variable', system-ui, sans-serif; padding: 5px 9px; border-radius: 999px; border: 1px solid #2b2b2b; background: #2b2b2b; color: #fff; cursor: pointer; opacity: 0; transition: opacity 0.15s; }
+.shared-footer .shared-tag { top: 8px; }
+.shared-part:hover .shared-tag, .shared-tag:focus-visible { opacity: 1; }
+html[data-preview] .shared-tag, html[data-preview] .shared-part::after { display: none; }
+html[data-preview] .shared-part > .site-header, html[data-preview] .shared-part > footer { opacity: 1; }
+.shared-note { margin: 2rem var(--gutter, 1.5rem); padding: 1rem 1.25rem; border: 1px dashed rgba(60, 60, 60, 0.4); border-radius: 8px; font: 400 15px/1.5 'Instrument Sans Variable', system-ui, sans-serif; color: #444; background: rgba(255, 255, 255, 0.6); }
+html[data-preview] .shared-note { display: none; }
+.editor-sim { background: #f3e7d8; color: #5a4632; }
+.editor-sim-note { padding: 0.5rem 0.75rem; border-radius: 6px; background: #f3e7d8; color: #3d2f22; }
+@media (max-width: 899px) { .editor-sim { display: none; } }
+
+.adm { display: flex; flex-direction: column; height: 100vh; font: 400 14px/1.4 'Instrument Sans Variable', system-ui, sans-serif; color: #222; background: #f6f5f3; }
+.adm-top { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #e2e0dc; background: #fff; flex-wrap: wrap; }
+.adm-site { font-weight: 600; }
+.adm-menu-btn { height: 2rem; padding: 0 0.75rem; border: 1px solid #cfccc6; border-radius: 6px; background: #fff; font: inherit; font-weight: 600; color: #333; cursor: pointer; }
+.adm-menu-btn:hover { background: #f1efec; }
+.adm-menu-btn:focus-visible { outline: 2px solid var(--terra, #9a3f24); outline-offset: 2px; }
+.adm-side[hidden] { display: none; }
+.adm-chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: #f3e7d8; color: #3d2f22; }
+.adm-body { flex: 1; display: flex; min-height: 0; }
+.adm-side { width: 220px; flex: none; padding: 12px; border-right: 1px solid #e2e0dc; background: #fff; overflow: auto; }
+.adm-group { margin: 14px 8px 6px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #666; }
+.adm-item { display: block; width: 100%; text-align: left; padding: 8px 10px; margin: 2px 0; border: 0; border-radius: 6px; background: none; font: inherit; color: #555; cursor: pointer; }
+.adm-item small { display: block; font-size: 11px; color: #666; }
+.adm-item:hover { background: #f1efec; }
+.adm-item.is-current { background: #2b2b2b; color: #fff; }
+.adm-item.is-current small { color: #cfcfcf; }
+.adm-note { margin: 12px 8px; font-size: 12px; color: #555; }
+.adm-main { flex: 1; min-width: 0; }
+.adm-frame { width: 100%; height: 100%; border: 0; display: block; }
+@media (max-width: 899px) {
+  .adm-body { flex-direction: column; }
+  .adm-side { width: auto; display: flex; gap: 4px; overflow-x: auto; padding: 6px; border-right: 0; border-bottom: 1px solid #e2e0dc; }
+  .adm-group, .adm-note, .adm-item small { display: none; }
+  .adm-item { width: auto; white-space: nowrap; }
+}
+
+/* The homepage in the canvas: the editor wraps each section in its own box, so the page grid is
+   passed down (subgrid) and each box takes the place its section has on the website. */
+@media (min-width: 900px) {
+  .home > [data-puck-dropzone] { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: start; }
+  .home > [data-puck-dropzone] > [data-puck-component] { grid-column: 1 / -1; }
+  .home > [data-puck-dropzone] > [data-puck-component^='HomeIntro'] { grid-column: 1 / span 7; grid-row: 1; }
+  .home > [data-puck-dropzone] > [data-puck-component^='HomeClock'] { grid-column: 9 / span 4; grid-row: 1 / span 2; }
+  .home > [data-puck-dropzone] > [data-puck-component^='HomeLine'] { grid-column: 1 / span 8; grid-row: 2; align-self: end; }
+  .home > [data-puck-dropzone] > [data-puck-component^='HomeFocus'] { grid-column: 1 / span 3; }
+  .home > [data-puck-dropzone] > [data-puck-component^='HomeWork'] { grid-column: 4 / -1; display: grid; grid-template-columns: subgrid; align-items: start; }
+  .home [data-puck-component^='HomeWork'] > .home-work { grid-column: 1 / span 7; }
+  .home [data-puck-component^='HomeWork'] > .home-preview { grid-column: 8 / span 2; }
+}
+@media (min-width: 900px) and (max-width: 1279px) {
+  .home [data-puck-component^='HomeWork'] > .home-work { grid-column: 1 / -1; }
+}
+/* The canvas page shows the website's own background colour, as visitors see it. */
+.page:has(> .shared-part) { background: var(--off); }
+
+/* Visual editor demo: page settings (homepage clock, About portrait). */
+.ps-group label.ps-field { font-weight: 600; margin-bottom: -0.375rem; }
+.ps-check { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+.ps-check input { width: 1.125rem; height: 1.125rem; accent-color: var(--terra); }
+.ps-group input.el-words { min-height: 2.5rem; }
+.ps-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: 0.5rem; max-height: 17rem; overflow: auto; padding: 2px; }
+.ps-photo { display: grid; gap: 0.25rem; padding: 0.25rem; border: 1px solid #d6d9cc; border-radius: 6px; background: #fff; cursor: pointer; text-align: left; font: inherit; }
+.ps-photo img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 3px; display: block; }
+.ps-photo-name { font-size: 11px; line-height: 1.25; color: #5c5a45; overflow-wrap: anywhere; }
+.ps-photo[aria-checked='true'] { border-color: var(--terra); box-shadow: 0 0 0 2px var(--terra); }
+.ps-photo:focus-visible { outline: 2px solid var(--olive); outline-offset: 2px; }
+.editor-clock-off { opacity: 0.55; font-style: italic; }
+.editor-blocked .editor-blocked-list { display: grid; gap: 0.375rem; margin: 0.25rem 0 0; }
+.editor-blocked-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; }
+.editor-conflict { display: grid; gap: 0.5rem; }
+.editor-conflict-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+[data-preview] .editor-clock-off { display: none; }
+
+/* A part whose words were cleared stays on the page in the editor, faded, so it can be chosen and filled
+   again. Only parts the editor marks (data-edit) are affected; visitors never see this. */
+[data-edit]:empty { display: inline-block; min-width: 5.5em; min-height: 1em; outline: 1px dashed currentColor; outline-offset: 2px; opacity: 0.45; vertical-align: middle; }
+[data-edit]:empty::before { content: 'Empty'; font-size: 0.75rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
+/* In Preview the page shows exactly what visitors see, so a cleared part is not shown at all. */
+html[data-preview] [data-edit]:empty { display: none; }

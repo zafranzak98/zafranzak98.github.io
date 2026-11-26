@@ -1,9 +1,7 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import CategoryIndex from '#/components/category-index'
-import { ProjectBands } from '#/components/project-band'
+import { ListingBands, ListingFrame, ListingHead } from '#/layout/page-blocks'
 import { categoryBySlug, projectsIn } from '#/lib/site'
 import { useTitle } from '#/lib/title'
-import { Rich } from '#/components/rich'
 
 export const Route = createFileRoute('/projects/$projectCat/')({
   loader: ({ params }) => {
@@ -16,17 +14,12 @@ export const Route = createFileRoute('/projects/$projectCat/')({
 })
 
 function CategoryPage() {
-  const { category, list } = Route.useLoaderData()
+  const { category } = Route.useLoaderData()
   useTitle(category.name)
   return (
-    <main id="main" className="listing listing-cat">
-      <section className="listing-head">
-        <span className="lab cat-count">Category · {list.length} {list.length === 1 ? 'project' : 'projects'}</span>
-        <h1 className="c listing-title cat-title">{category.name}</h1>
-        {category.intro && <p className="listing-intro"><Rich text={category.intro} /></p>}
-        <CategoryIndex />
-      </section>
-      <ProjectBands items={list} />
-    </main>
+    <ListingFrame category={category.slug}>
+      <ListingHead category={category.slug} />
+      <ListingBands category={category.slug} />
+    </ListingFrame>
   )
 }

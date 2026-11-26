@@ -31,10 +31,28 @@ const KINDS: Record<string, Kind> = {
   Image: { name: 'Image', hint: 'Your image' },
   Grid: { name: 'Side by side', hint: 'Your columns' },
   Spacer: { name: 'Space', hint: 'Extra room' },
+  // Homepage, About, Projects and category pages, and the shared parts (visual editor demo)
+  HomeIntro: { name: 'Introduction', hint: 'The opening statement' },
+  HomeClock: { name: 'Clock', hint: 'The local time and its line' },
+  HomeLine: { name: 'Availability and CV', hint: 'Availability and the CV links' },
+  HomeFocus: { name: 'Areas of Focus', hint: 'Links to each category' },
+  HomeWork: { name: 'Selected Projects', hint: 'The featured case studies' },
+  AboutHero: { name: 'Title and portrait', hint: 'The page title and your photo' },
+  AboutIntro: { name: 'Intro', hint: 'About you and your languages' },
+  AboutSkills: { name: 'Skills', hint: 'Your skills, one row each' },
+  AboutEducation: { name: 'Education', hint: 'Your qualifications' },
+  AboutExperience: { name: 'Experience', hint: 'Your roles' },
+  ListingHead: { name: 'Title and categories', hint: 'The page title, introduction and category links' },
+  ListingBands: { name: 'Project list', hint: 'Every project in this list' },
+  Header: { name: 'Header', hint: 'Name and menu, on every page' },
+  Footer: { name: 'Footer', hint: 'Contact and page links, on every page' },
 }
 // The kind's short name, used wherever a section is named (the contextual bar, Undo, this panel).
 export const kindName = (type: string) => KINDS[type]?.name ?? (type === 'Cell' ? 'Column' : type)
-const STANDARD = ['CategoryNav', 'Opening', 'Facts', 'SectionNav', 'Gap', 'Overview', 'Research', 'Work', 'Outcomes', 'AlsoIn', 'PrevNext']
+let STANDARD: readonly string[] = ['CategoryNav', 'Opening', 'Facts', 'SectionNav', 'Gap', 'Overview', 'Research', 'Work', 'Outcomes', 'AlsoIn', 'PrevNext']
+let IS_CASE = true
+// The standard sections of the page being edited (a case study unless set otherwise).
+export const setStandardSections = (list: readonly string[], isCase: boolean) => { STANDARD = list; IS_CASE = isCase }
 
 // A section's name in the list: your own text sections use their heading, so two are easy to tell apart.
 export function sectionLabel(item: Item) {
@@ -86,6 +104,10 @@ const GROUPS: { title: string; options: Option[] }[] = [
   },
 ]
 
+// The shared header and footer are fixed parts: their words change, but nothing is added, moved or
+// recoloured on their pages.
+export const FIXED_PAGE = (() => { try { return ['header', 'footer'].includes(new URLSearchParams(location.search).get('page') ?? '') } catch { return false } })()
+
 export function SectionsPanel() {
   const [tab, setTab] = useState<Tab>('page')
   const [said, setSaid] = useState('')
@@ -93,12 +115,14 @@ export function SectionsPanel() {
   useEffect(() => { if (!said) return; const t = setTimeout(() => setSaid(''), 6000); return () => clearTimeout(t) }, [said])
   return (
     <div className="sec-panel">
-      <div className="sec-tabs" role="tablist" aria-label="Sections">
-        <button type="button" role="tab" id="sec-tab-page" aria-controls="sec-pane" aria-selected={tab === 'page'} onClick={() => setTab('page')}>On this page</button>
-        <button type="button" role="tab" id="sec-tab-add" aria-controls="sec-pane" aria-selected={tab === 'add'} onClick={() => setTab('add')}>Add a section</button>
-      </div>
+      {!FIXED_PAGE && (
+        <div className="sec-tabs" role="tablist" aria-label="Sections">
+          <button type="button" role="tab" id="sec-tab-page" aria-controls="sec-pane" aria-selected={tab === 'page'} onClick={() => setTab('page')}>On this page</button>
+          <button type="button" role="tab" id="sec-tab-add" aria-controls="sec-pane" aria-selected={tab === 'add'} onClick={() => setTab('add')}>Add a section</button>
+        </div>
+      )}
       <div id="sec-pane" role="tabpanel" aria-labelledby={tab === 'page' ? 'sec-tab-page' : 'sec-tab-add'}>
-        {tab === 'page' ? <OnThisPage onAdd={() => setTab('add')} announce={setSaid} /> : <AddSection onAdded={() => setTab('page')} announce={setSaid} />}
+        {tab === 'page' || FIXED_PAGE ? <OnThisPage onAdd={() => setTab('add')} announce={setSaid} /> : <AddSection onAdded={() => setTab('page')} announce={setSaid} />}
       </div>
       {said && <p className="sec-said">{said}</p>}
       <span className="sr-only" role="status" aria-live="polite">{said}</span>
@@ -196,7 +220,7 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
 
   return (
     <div className="sec-page">
-      <p className="sec-intro">Your page from top to bottom, as visitors see it. Choose a section to go to it. Drag <span aria-hidden="true">⠿</span> to reorder, or use ⋯.</p>
+      {FIXED_PAGE ? <p className="sec-intro">The parts of this shared section. Choose one to go to it.</p> : <p className="sec-intro">Your page from top to bottom, as visitors see it. Choose a section to go to it. Drag <span aria-hidden="true">⠿</span> to reorder, or use ⋯.</p>}
       <ol className="sec-list" ref={list} onDragOver={(e) => e.preventDefault()}>
         {content.map((item, i) => {
           const kind = KINDS[item.type]
@@ -211,14 +235,14 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
               onDrop={(e) => { e.preventDefault(); if (dragging !== null) move(dragging, i); setDragging(null); setOver(null) }}
               onKeyDown={(e) => { if (e.key === 'Escape' && menu === item.props.id) { e.preventDefault(); e.stopPropagation(); setMenu(null); e.currentTarget.querySelector<HTMLButtonElement>('.sec-more')?.focus() } }}
             >
-              <span
+              {FIXED_PAGE ? <span className="sec-grip" aria-hidden="true" /> : <span
                 className="sec-grip"
                 draggable
                 title="Drag to move this section"
                 aria-hidden="true"
                 onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', item.props.id); setDragging(i) }}
                 onDragEnd={() => { setDragging(null); setOver(null) }}
-              >⠿</span>
+              >⠿</span>}
               {(parts[item.props.id]?.length ?? 0) > 0 ? (
                 <button
                   type="button"
@@ -242,6 +266,7 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
                 aria-description="Alt and an arrow key move it up or down."
                 onClick={() => goTo(item.props.id)}
                 onKeyDown={(e) => {
+                  if (FIXED_PAGE) return
                   if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); move(i, i - 1, true) }
                   if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); move(i, i + 1, true) }
                 }}
@@ -252,8 +277,8 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
                   <span className="sec-hint">{kind?.hint ?? ''}{show ? <span className="sec-badge"> · {SHOW[show]}</span> : null}</span>
                 </span>
               </button>
-              <button type="button" className="sec-more" aria-label={`More for ${label}`} aria-haspopup="true" aria-expanded={menu === item.props.id} onClick={() => setMenu(menu === item.props.id ? null : item.props.id)}>⋯</button>
-              {menu === item.props.id && (
+              {!FIXED_PAGE && <button type="button" className="sec-more" aria-label={`More for ${label}`} aria-haspopup="true" aria-expanded={menu === item.props.id} onClick={() => setMenu(menu === item.props.id ? null : item.props.id)}>⋯</button>}
+              {menu === item.props.id && !FIXED_PAGE && (
                 <div className="sec-menu" role="group" aria-label={`${label}: actions`} ref={(m) => {
                   if (!m) return
                   // Opens upwards near the bottom of the window, so every action stays reachable.
@@ -300,7 +325,7 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
           )
         })}
       </ol>
-      <button type="button" className="sec-add-link" onClick={onAdd}>+ Add a section</button>
+      {FIXED_PAGE ? <p className="sec-intro sec-after">This part is shared by every page and stays in place. Choose its words on the page to change them.</p> : <button type="button" className="sec-add-link" onClick={onAdd}>+ Add a section</button>}
     </div>
   )
 }
@@ -341,7 +366,7 @@ function AddSection({ onAdded, announce }: { onAdded: () => void; announce: (s: 
           {content.map((item, i) => <option key={item.props.id} value={i}>{i + 1}. {sectionLabel(item)}</option>)}
         </select>
       </label>
-      {GROUPS.map((g) => (
+      {STANDARD.some((t) => t === 'Header' || t === 'Footer') ? null : GROUPS.map((g) => (
         <section key={g.title} className="sec-group" aria-labelledby={`sec-g-${g.title}`}>
           <h3 id={`sec-g-${g.title}`}>{g.title}</h3>
           {g.options.map((o) => (
@@ -354,7 +379,7 @@ function AddSection({ onAdded, announce }: { onAdded: () => void; announce: (s: 
       ))}
       {missing.length > 0 && (
         <section className="sec-group" aria-labelledby="sec-g-back">
-          <h3 id="sec-g-back">Put back a project section</h3>
+          <h3 id="sec-g-back">{IS_CASE ? 'Put back a project section' : 'Put back a standard section'}</h3>
           <p className="sec-intro">These were removed from this page.</p>
           {missing.map((t) => (
             <button key={t} type="button" className="sec-option sec-option-plain" onClick={() => add({ type: t, props: { id: newId(t) } }, KINDS[t].name)}>

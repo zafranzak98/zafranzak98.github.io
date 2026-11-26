@@ -1,22 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
-import CategoryIndex from '#/components/category-index'
-import { ProjectBands } from '#/components/project-band'
-import { projects, site } from '#/lib/site'
+import { ListingBands, ListingFrame, ListingHead } from '#/layout/page-blocks'
 import { useTitle } from '#/lib/title'
-import { Rich } from '#/components/rich'
 
 export const Route = createFileRoute('/projects/')({ component: Projects })
 
 function Projects() {
   useTitle('Projects')
   return (
-    <main id="main" className="listing">
-      <section className="listing-head">
-        <h1 className="c listing-title">Projects</h1>
-        {site.projects_intro && <p className="listing-intro"><Rich text={site.projects_intro} /></p>}
-        <CategoryIndex />
-      </section>
-      <ProjectBands items={projects} all />
-    </main>
+    <ListingFrame>
+      <ListingHead />
+      <ListingBands />
+    </ListingFrame>
   )
 }

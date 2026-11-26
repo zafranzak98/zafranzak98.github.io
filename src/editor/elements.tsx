@@ -87,8 +87,56 @@ const NAMES: [RegExp, string][] = [
   [/^kicker$/, 'Small label'],
   [/^heading$/, 'Heading'],
   [/^caption$/, 'Caption'],
+  // Homepage, About, Projects, category pages, header and footer
+  [/^intro$/, 'Introduction'],
+  [/^intro-more$/, 'More about you'],
+  [/^clock$/, 'Clock'],
+  [/^portrait$/, 'Portrait'],
+  [/^focus-(\d+)$/, 'Area of focus'],
+  [/^languages-heading$/, 'Languages heading'],
+  [/^language-(\d+)$/, 'Language'],
+  [/^edu-qualification-(\d+)$/, 'Qualification'],
+  [/^edu-course-(\d+)$/, 'Course'],
+  [/^edu-institution-(\d+)$/, 'Institution'],
+  [/^edu-years-(\d+)$/, 'Years'],
+  [/^edu-result-(\d+)$/, 'Result'],
+  [/^edu-note-(\d+)$/, 'Education note'],
+  [/^role-years-(\d+)$/, 'Role years'],
+  [/^role-org-(\d+)$/, 'Organisation'],
+  [/^role-note-(\d+)$/, 'Role description'],
+  [/^email$/, 'Email address'],
+  [/^social-instagram$/, 'Instagram link'],
+  [/^social-linkedin$/, 'LinkedIn link'],
+  [/^page-(home|about|projects)$/, 'Page link'],
+  [/^credit$/, 'Copyright line'],
+  [/^availability$/, 'Availability line'],
+  [/^byline$/, 'Name and title'],
+  [/^cv-view$/, '"View CV" link'],
+  [/^cv-download$/, '"Download" link'],
+  [/^focus-heading$/, 'Areas of Focus heading'],
+  [/^work-heading$/, 'Selected Projects heading'],
+  [/^intro-heading$/, 'Intro heading'],
+  [/^skills-heading$/, 'Skills heading'],
+  [/^education-heading$/, 'Education heading'],
+  [/^experience-heading$/, 'Experience heading'],
+  [/^skill-note-(\d+)$/, 'Skill description'],
+  [/^skill-(\d+)$/, 'Skill'],
+  [/^role-(\d+)$/, 'Role'],
+  [/^name$/, 'Site name'],
+  [/^nav-about$/, 'Menu: About'],
+  [/^nav-projects$/, 'Menu: Projects'],
+  [/^nav-cv$/, 'Menu: CV'],
+  [/^nav-email$/, 'Menu: Email'],
+  [/^nav-instagram$/, 'Menu: Instagram'],
+  [/^nav-linkedin$/, 'Menu: LinkedIn'],
+  [/^top$/, '"Back to top" link'],
 ]
+// On the homepage the introduction's first part is the headline (26 Nov 2026), with the name line under it.
+// On the shared Header and Footer pages a part's words can be cleared: the part stays, empty.
+const CLEARABLE = (() => { try { return ['header', 'footer'].includes(new URLSearchParams(location.search).get('page') ?? '') } catch { return false } })()
+const ON_HOME = (() => { try { return new URLSearchParams(location.search).get('page') === 'home' } catch { return false } })()
 export const nameOf = (key: string) => {
+  if (key === 'intro' && ON_HOME) return 'Headline'
   const category = key.match(/^cat-(.+)$/)
   if (category) return `"${categoryName(category[1])}" category name`
   const fact = key.match(/^(label|value)-(role|type|when|deliverables|tools)$/)
@@ -410,7 +458,7 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       const help = doc.createElement('span')
       help.className = 'el-tag el-tag-help'
       help.setAttribute('aria-hidden', 'true')
-      help.textContent = rich ? `Enter to finish · Esc to cancel · ${MOD}B, ${MOD}I, ${MOD}U to format` : 'Enter to finish · Esc to cancel'
+      help.textContent = rich ? `Enter to finish${el.hasAttribute('data-breaks') ? ' · Shift+Enter for a new line' : ''} · Esc to cancel · ${MOD}B, ${MOD}I, ${MOD}U to format` : 'Enter to finish · Esc to cancel'
       Object.assign(help.style, { left: `${r.left + view.scrollX}px`, top: `${r.bottom + view.scrollY}px` })
       el.setAttribute('data-el-editing', '')
       html.setAttribute('data-el-typing', '')
@@ -425,14 +473,15 @@ export function useCanvasEditing(p: Project, edits: Edits) {
       const finish = (keep: boolean) => {
         if (done) return
         done = true
-        const words = rich ? readBox(box) : (box.textContent ?? '').replace(/\s+/g, ' ').trim()
+        const words = rich ? readBox(box, el.hasAttribute('data-breaks')) : (box.textContent ?? '').replace(/\s+/g, ' ').trim()
         if (rich) { doc.removeEventListener('selectionchange', onSelection); setTypingBox(null) }
         box.remove()
         help.remove()
         el.removeAttribute('data-el-editing')
         html.removeAttribute('data-el-typing')
-        if (keep && words) latest.current.words.write(field, words, blockId)
-        announceListeners.forEach((fn) => fn(keep ? 'Words changed.' : 'Typing cancelled; nothing changed.'))
+        const clear = keep && !words && CLEARABLE
+        if (keep && (words || clear)) latest.current.words.write(field, words, blockId)
+        announceListeners.forEach((fn) => fn(!keep ? 'Typing cancelled; nothing changed.' : clear ? 'Words cleared.' : !words ? 'The words were kept: this part needs words. To leave it out, use More, then Hide.' : 'Words changed.'))
       }
       box.addEventListener('keydown', (k) => {
         k.stopPropagation()
@@ -738,7 +787,19 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     doc.addEventListener('dblclick', onDoubleClick, true)
     doc.addEventListener('keydown', onKeyDown)
     if (doc !== document) document.addEventListener('keydown', onKeyDown)
+    // Delete and Backspace never remove a whole section while one of its parts is chosen (the editing
+    // library's own shortcut would). Caught first, in both windows, unless you are typing in a box.
+    const guardDelete = (e: KeyboardEvent) => {
+      if ((e.key !== 'Delete' && e.key !== 'Backspace') || !latest.current.selected) return
+      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]')) return
+      e.preventDefault(); e.stopImmediatePropagation()
+      announceListeners.forEach((fn) => fn(CLEARABLE ? 'This part is fixed. To clear its words, double-click it and delete them.' : 'Delete does not remove a part. To hide it, use More, then Hide. To change its words, double-click it.'))
+    }
+    view.addEventListener('keydown', guardDelete, true)
+    if (doc !== document) window.addEventListener('keydown', guardDelete, true)
     return () => {
+      view.removeEventListener('keydown', guardDelete, true)
+      if (doc !== document) window.removeEventListener('keydown', guardDelete, true)
       view.cancelAnimationFrame(raf)
       doc.removeEventListener('pointerdown', onFrameDown, true)
       doc.removeEventListener('pointermove', onPointerMove)

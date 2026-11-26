@@ -39,9 +39,9 @@ with sync_playwright() as p:
     st = pg.evaluate("(() => { const c = getComputedStyle(document.querySelector('.home-clock')); return [c.fontSize, c.fontWeight] })()")
     check("Desktop size 44 px, weight as approved (500)", st == ["44px", "500"], st)
     line = pg.locator(".home-line").inner_text().replace("\n", " ")
-    check("Availability line and CV links", "Open to junior roles across the UK" in line and "View CV (PDF)" in line and "Download" in line, line)
+    check("Availability line and CV link", "Open to junior roles across the UK" in line and "View CV (PDF)" in line and "Download" not in line, line)
     hrefs = pg.evaluate("[...document.querySelectorAll('.home-line a')].map(a => [a.getAttribute('href'), a.hasAttribute('download')])")
-    check("View opens the PDF; Download downloads it", hrefs == [["/files/zafran-zakaria-cv.pdf", False], ["/files/zafran-zakaria-cv.pdf", True]], hrefs)
+    check("View CV opens the PDF (the separate Download link was removed)", hrefs == [["/files/zafran-zakaria-cv.pdf", False]], hrefs)
     r = pg.request.get(BASE + "/files/zafran-zakaria-cv.pdf")
     check("The CV PDF is served", r.ok and r.headers.get("content-type", "").startswith("application/pdf") and r.body()[:5] == b"%PDF-", r.status)
     check("The CV has no mobile number", b"7311" not in r.body())
@@ -56,7 +56,7 @@ with sync_playwright() as p:
     focus = []
     for _ in range(30):
         focus.append(pg.evaluate("document.activeElement.innerText")); pg.keyboard.press("Tab")
-    check("Keyboard reaches View CV and Download", "View CV (PDF)" in focus and "Download" in focus, focus)
+    check("Keyboard reaches View CV", "View CV (PDF)" in focus, focus)
     check("No script errors", not errors, errors); pg.close()
     for w, h, size in [(1024, 768, "36px"), (900, 1000, "36px"), (899, 1000, "32px"), (390, 844, "32px"), (360, 740, "32px")]:
         pg = br.new_page(viewport={"width": w, "height": h}); pg.goto(BASE + "/", wait_until="networkidle")

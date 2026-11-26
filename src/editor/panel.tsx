@@ -1,4 +1,5 @@
-import { kindName, showPartsOf } from './sections'
+import { FIXED_PAGE, kindName, showPartsOf } from './sections'
+import { ClockSettings, PORTRAIT_WIDTH, PortraitContent } from './page-settings'
 import { useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { createUsePuck } from '@puckeditor/core'
@@ -47,6 +48,12 @@ const selectedEl = () => canvas()?.querySelector<HTMLElement>('[data-el-selected
 const elFor = (blockId?: string, key?: string | null) => {
   const found = blockId && key ? canvas()?.querySelector<HTMLElement>(`[data-puck-component="${blockId}"] [data-el="${key}"]`) : null
   return found ?? selectedEl()
+}
+
+// The About portrait's width now, as a share of the page width (it hangs at the side of the page).
+const portraitWidth = (el: HTMLElement | null, fallback: number) => {
+  const page = el?.parentElement?.getBoundingClientRect().width
+  return el && page ? Math.round((el.getBoundingClientRect().width / page) * 200) / 2 : fallback
 }
 
 // The selected element's settings at the screen size being edited, and a way to change them.
@@ -226,8 +233,12 @@ function MoreMenu({ name, children }: { name: string; children: (close: () => vo
   )
 }
 
+// The tips line under the bar: hidden once you close it, remembered in this browser.
+const TIPS_KEY = 'design-editor-tips'
+const tipsWanted = () => { try { return localStorage.getItem(TIPS_KEY) !== 'hidden' } catch { return true } }
+
 export function ContextBar() {
-  const { key, item, selected, screen, shown, setLook, from, resetAll } = useLook()
+  const { key, item, selected, screen, own, shown, setLook, from, resetAll } = useLook()
   const { select } = useContext(Selection)
   const ui = usePuck((s) => s.appState.ui)
   const dispatch = usePuck((s) => s.dispatch)
@@ -240,6 +251,8 @@ export function ContextBar() {
   latestGroup.current = grouping
   const [message, setMessage] = useState('')
   const [sheet, setSheet] = useState(false)
+  const [tips, setTips] = useState(tipsWanted)
+  const showTips = (on: boolean) => { setTips(on); try { if (on) localStorage.removeItem(TIPS_KEY); else localStorage.setItem(TIPS_KEY, 'hidden') } catch { /* storage unavailable: the choice lasts until the page reloads */ } }
   const [stack, setStack] = useState<{ for: string; parts: Picked[] }>({ for: '', parts: [] })
   useEffect(() => {
     const onStack = (parts: Picked[], picked: Picked | null) => setStack({ for: picked ? `${picked.blockId}|${picked.key}` : '', parts })
@@ -304,7 +317,14 @@ export function ContextBar() {
   if (!item) {
     return (
       <div className="ctx ctx-empty">
-        <p className="ctx-hint"><b>Click</b> anything on the page to change it. <b>Double-click</b> words to type.<span className="ctx-long"> To add or reorder sections, open <b>Sections</b> on the left.</span></p>
+        {tips ? (
+          <>
+            <p className="ctx-hint"><b>Click</b> anything on the page to change it. <b>Double-click</b> words to type.{!FIXED_PAGE && <span className="ctx-long"> To add or reorder sections, open <b>Sections</b> on the left.</span>}</p>
+            <button type="button" className="ctx-hint-close" aria-label="Hide these tips" title="Hide these tips" onClick={() => showTips(false)}>×</button>
+          </>
+        ) : (
+          <button type="button" className="ctx-tips" onClick={() => showTips(true)}>Show tips</button>
+        )}
         {live}
       </div>
     )
@@ -321,6 +341,15 @@ export function ContextBar() {
       dispatch({ type: 'replace', destinationIndex: at.index, destinationZone: at.zone, data: { ...item, props: { ...item.props, design: next } } as never })
     }
     const last = at ? at.index >= (at.zone.startsWith('root') ? content.length - 1 : Infinity) : true
+    if (FIXED_PAGE) return (
+      <div className="ctx" role="toolbar" aria-label="Section tools">
+        <span className="ctx-name">{sectionName(item.type)}</span>
+        <p className="ctx-hint">Shared by every page and fixed in place. <b>Double-click</b> its words to change them everywhere.</p>
+        <span className="ctx-gap" />
+        {more}
+        {live}
+      </div>
+    )
     return (
       <div className="ctx" role="toolbar" aria-label="Section tools">
         <span className="ctx-name">{sectionName(item.type)}</span>
@@ -362,6 +391,30 @@ export function ContextBar() {
         <span className="ctx-shared">Shared: renaming it changes every page, the Projects page and the filters when you publish</span>
         <span className="ctx-gap" />
         {message ? <span className="ctx-live">{message}</span> : null}
+        <button type="button" className="ctx-icon" aria-label="Done, deselect (Esc)" title="Done (Esc)" onClick={() => select(null)}>✕</button>
+        {live}
+      </div>
+    )
+  }
+
+  // The About portrait: its width here; the photo, its description and the crop focus in Settings.
+  // Its slight tilt and paperclip are the approved design, so it has no angle control.
+  if (key === 'portrait') {
+    const [lo, standard, hi] = PORTRAIT_WIDTH[screen]
+    // Phones have their own designed size: a width set for larger screens does not carry to them.
+    const width = (screen === 'phone' ? own.width : shown.width) ?? portraitWidth(elFor(selected?.blockId, key), standard)
+    return (
+      <div className="ctx" role="toolbar" aria-label="Portrait tools">
+        <span className="ctx-name">Portrait</span>
+        <span className="ctx-group" role="group" aria-label="Width">
+          <span className="ctx-label">Width</span>
+          <input type="range" min={lo} max={hi} step={0.5} value={width} aria-label="Width" aria-valuetext={`${width}% of the page`} onChange={(e) => setLook({ width: Number(e.target.value) })} />
+          <NumberField label="Width in per cent of the page" value={width} unit="%" step={0.5} min={lo} max={hi} onCommit={(w) => setLook({ width: w })} />
+        </span>
+        <span className="ctx-hint ctx-long">Photo, description and crop focus: Settings.</span>
+        <span className="ctx-gap" />
+        {where}
+        {more}
         <button type="button" className="ctx-icon" aria-label="Done, deselect (Esc)" title="Done (Esc)" onClick={() => select(null)}>✕</button>
         {live}
       </div>
@@ -662,6 +715,33 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
     )
   }
 
+  if (key === 'portrait') {
+    const [lo, standard, hi] = PORTRAIT_WIDTH[screen]
+    // Phones have their own designed size: a width set for larger screens does not carry to them.
+    const width = (screen === 'phone' ? own.width : shown.width) ?? portraitWidth(elFor(selected?.blockId, key), standard)
+    const undoLook = (...keys: (keyof ElementLook)[]) => setLook(Object.fromEntries(keys.map((k) => [k, undefined])))
+    return (
+      <div className="el-panel">
+        <Crumbs part="Portrait" />
+        <div className="el-head">
+          <p className="el-name">Portrait</p>
+          <p className="el-note">The photo and its description are the same on every screen. Width and crop focus apply to <b>{SCREEN_LABEL[screen]}</b>{screen === 'desktop' ? '; Tablet and Phone follow.' : ' only.'}</p>
+        </div>
+        <PortraitContent p={p} />
+        <Group title="Look" detail="Portrait">
+          <Row label="Width" hint={`Share of the page width. As designed: ${standard}%.`} from={screen === 'phone' && own.width === undefined ? 'design' : from('width')} onReset={() => undoLook('width')}>
+            <input type="range" min={lo} max={hi} step={0.5} value={width} aria-label="Width" aria-valuetext={`${width}% of the page`} onChange={(e) => setLook({ width: Number(e.target.value) })} />
+            <NumberField label="Width in per cent of the page" value={width} unit="%" step={0.5} min={lo} max={hi} onCommit={(w) => setLook({ width: w })} />
+          </Row>
+          <Row label="Crop focus" hint="The part of the photo kept in view in the portrait's frame." from={from('focusX', 'focusY')} onReset={() => undoLook('focusX', 'focusY')}>
+            <FocusGrid x={shown.focusX ?? 50} y={shown.focusY ?? 50} onChange={(focusX, focusY) => setLook({ focusX, focusY })} />
+          </Row>
+          <p className="el-note">The slight tilt and the paperclip are part of the approved design and stay as they are.</p>
+        </Group>
+      </div>
+    )
+  }
+
   const isImage = IMAGES.test(key)
   const el = elFor(selected?.blockId, key)
   const width = shown.width ?? (el ? widthNow(el) : 100)
@@ -685,7 +765,7 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
       {selected?.field && (
         <Group title="Content" detail="Words">
           {el?.hasAttribute('data-rich') ? (
-            <RichWords key={`${selected.blockId}|${selected.field}`} value={words.read(selected.field, selected.blockId)} onChange={(v) => words.write(selected.field!, v, selected.blockId)} />
+            <RichWords key={`${selected.blockId}|${selected.field}`} breaks={el.hasAttribute('data-breaks')} value={words.read(selected.field, selected.blockId)} onChange={(v) => words.write(selected.field!, v, selected.blockId)} />
           ) : (
             <>
               <textarea className="el-words" rows={wordRows(words.read(selected.field, selected.blockId))} aria-label="Words" value={words.read(selected.field, selected.blockId)} onChange={(e) => words.write(selected.field!, e.target.value, selected.blockId)} />
@@ -700,6 +780,8 @@ export function ElementPanel({ p }: { value?: Elements; onChange?: (v: Elements)
           )}
         </Group>
       )}
+
+      {key === 'clock' && item?.type === 'HomeClock' && <ClockSettings p={p} withLine={!selected?.field} />}
 
       {isCover(item?.type, key) ? (
         <Group title="Look" detail="Cover">
@@ -1058,7 +1140,7 @@ function FormatButtons({ start, off }: { start: () => void; off?: boolean }) {
 // The Words box in Settings. Formatted words show as formatting, as on the page, never as markers;
 // Bold, Italic and Underline (buttons or shortcuts) format the words selected in it. Pasted words
 // arrive plain. Each change is saved as it is made, like typing on the page.
-function RichWords({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function RichWords({ value, onChange, breaks = false }: { value: string; onChange: (v: string) => void; breaks?: boolean }) {
   const box = useRef<HTMLDivElement>(null)
   const shown = useRef<string | null>(null)
   const [on, setOn] = useState<Formats>({ bold: false, italic: false, underline: false })
@@ -1075,7 +1157,7 @@ function RichWords({ value, onChange }: { value: string; onChange: (v: string) =
   }, [])
   const commit = () => {
     if (!box.current) return
-    const next = readBox(box.current)
+    const next = readBox(box.current, breaks)
     shown.current = next
     if (next !== value) onChange(next)
   }
@@ -1091,9 +1173,9 @@ function RichWords({ value, onChange }: { value: string; onChange: (v: string) =
   }
   return (
     <>
-      <div ref={box} className="el-words el-words-rich" contentEditable suppressContentEditableWarning role="textbox" aria-multiline="false" aria-label="Words" aria-describedby="el-words-hint"
+      <div ref={box} className="el-words el-words-rich" contentEditable suppressContentEditableWarning role="textbox" aria-multiline={breaks} aria-label="Words" aria-describedby="el-words-hint"
         onInput={commit}
-        onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
+        onKeyDown={(e) => { if (e.key === 'Enter' && !(breaks && e.shiftKey)) e.preventDefault() }}
         onPaste={(e) => { e.preventDefault(); e.currentTarget.ownerDocument.execCommand('insertText', false, e.clipboardData.getData('text/plain').replace(/\s+/g, ' ')) }} />
       <div className="el-row el-format-row">
         <div className="el-row-head"><span>Bold, italic, underline</span></div>
@@ -1103,7 +1185,7 @@ function RichWords({ value, onChange }: { value: string; onChange: (v: string) =
           ))}
         </span>
       </div>
-      <p className="el-note" id="el-words-hint">Select words here or on the page, then use Bold, Italic or Underline ({MOD}B, {MOD}I, {MOD}U).</p>
+      <p className="el-note" id="el-words-hint">Select words here or on the page, then use Bold, Italic or Underline ({MOD}B, {MOD}I, {MOD}U).{breaks && ' Shift+Enter starts a new line on computers and tablets; phones fit the words to the screen.'}</p>
     </>
   )
 }
