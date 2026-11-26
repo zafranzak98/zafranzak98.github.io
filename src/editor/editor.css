@@ -231,6 +231,8 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
   .editor-more-dots { display: inline; }
 }
 @media (max-width: 379px) {
+  /* The narrowest phones keep their page room: the Demo label gives way (the Publish window still says Simulated). */
+  .editor-chip { display: none; }
   .editor-bar .editor-preview.editor-quiet { display: none; }
   .editor-more-preview { display: grid !important; }
   .editor-bar .editor-bar-middle .editor-screens button { padding: 0 0.4375rem; }

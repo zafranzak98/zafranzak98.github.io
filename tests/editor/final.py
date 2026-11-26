@@ -76,7 +76,7 @@ with sync_playwright() as p:
     page = frame(pg).locator("[data-el='line']").first
     check("F: the page shows bold, italic and underline in those places only", page.locator("strong").inner_text() == "Three" and page.locator("em").first.inner_text() == "Instagram" and page.locator("u").inner_text() == "AR")
     hist = pg.locator(".editor-history button").first
-    check("F: Undo names the step", "words" in (hist.get_attribute("aria-label") or "").lower(), hist.get_attribute("aria-label"))
+    check("F: Undo names the step, with the part", "edit summary line" in (hist.get_attribute("aria-label") or "").lower(), hist.get_attribute("aria-label"))
     hist.click(); pg.wait_for_timeout(700)
     check("F: Undo removes the formatting", frame(pg).locator("[data-el='line'] strong, [data-el='line'] em, [data-el='line'] u").count() == 0)
     pg.locator(".editor-history button").nth(1).click(); pg.wait_for_timeout(700)
