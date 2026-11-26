@@ -25,7 +25,7 @@ import { publishShared, UVE_DEMO } from './shared'
 import { setStandardSections } from './sections'
 import { AdminShell } from './admin-demo'
 import { keepCanvasClear } from './float-room'
-import { pageProblems, type Problem } from './page-settings'
+import { pageProblems, wordProblems, type Problem } from './page-settings'
 import { clashes, clearRemote, editsOf, fieldName, readRemote, short, writeRemote, type Clash } from './safeguards'
 
 // The design editor at /admin/design/. Arrange and restyle a page with its real blocks, then
@@ -51,11 +51,16 @@ const removeLocal = (key: string) => { try { localStorage.removeItem(key) } catc
 const demoPublished = (p: Project) => (DEMO ? readLocal<Version[]>(localKey(p.slug, 'versions'), [])[0]?.layout : undefined)
 const publishedOf = (p: Project, page: PageDef | null) => (page ? ((DEMO ? !page.shared && demoPublished(p) : (savedPage(page.key) as unknown as Data | undefined)) || standardLayout(page)) : ((demoPublished(p) ?? savedLayoutFor(p) ?? standardCaseLayout()) as Data))
 const standardOf = (page: PageDef | null) => (page ? standardLayout(page) : (standardCaseLayout() as Data))
+// The published layout this editor was opened from, to notice a newer publish from another tab or device.
+let openedFrom: Data | undefined
+const sameLayout = (a?: { content?: unknown; root?: { props?: { words?: unknown } } }, b?: { content?: unknown; root?: { props?: { words?: unknown } } }) =>
+  JSON.stringify([a?.content ?? null, a?.root?.props?.words ?? {}]) === JSON.stringify([b?.content ?? null, b?.root?.props?.words ?? {}])
 function startingLayout(p: Project, page: PageDef | null): { data: Data; restored: boolean } {
+  const recent = readLocal<{ at: number; data: Data } | null>(localKey(p.slug, 'published'), null)
+  openedFrom = !DEMO && recent && recent.at > __BUILT_AT__ ? recent.data : publishedOf(p, page)
   const unsaved = readLocal<Data | null>(localKey(p.slug, 'unsaved'), null)
   if (unsaved) return { data: unsaved, restored: true }
   // Published a moment ago and the website not yet rebuilt with it: open it as published.
-  const recent = readLocal<{ at: number; data: Data } | null>(localKey(p.slug, 'published'), null)
   if (!DEMO && recent && recent.at > __BUILT_AT__) return { data: recent.data, restored: false }
   return { data: publishedOf(p, page), restored: false }
 }
@@ -386,7 +391,7 @@ function Actions() {
   // Demo safeguards (simulated in this browser): what stops publishing, and the same words changed
   // in another tab or by someone else.
   const edits = editsOf(data)
-  const problems: Problem[] = page && !page.shared ? pageProblems(page.words as never, edits) : []
+  const problems: Problem[] = [...(page && !page.shared ? pageProblems(page.words as never, edits) : []), ...wordProblems(edits, !page)]
   const latest = useRef(data)
   latest.current = data
   const [tabClash, setTabClash] = useState<{ found: Clash[]; theirs: Data } | null>(null)
@@ -602,13 +607,19 @@ function Actions() {
     const { edits: _words, words: _record, ...rootProps } = (data.root.props ?? {}) as { edits?: Edits; words?: Edits }
     // Every word published from the editor is kept with the layout, so Versions brings words back too.
     // A page's own words (header, footer, labels) are read by the website from there.
-    const before = (await github.readLayout(token, p.slug, github.MAIN))?.layout as { root?: { props?: { words?: Edits } } } | undefined
+    const before = (await github.readLayout(token, p.slug, github.MAIN))?.layout as { content?: unknown; root?: { props?: { words?: Edits } } } | undefined
+    // Published since this editor was opened (another tab, device or browser): never overwrite it unseen.
+    const opened = openedFrom as unknown as { content?: unknown; root?: { props?: { words?: Edits; edits?: Edits } } } | undefined
+    const openedSaved = opened && { content: opened.content, root: { props: { words: { ...(opened.root?.props?.words ?? {}), ...(opened.root?.props?.edits ?? {}) } } } }
+    const wasStandard = !before && !(page ? savedPage(page.key) : savedLayoutFor(p))
+    if (!wasStandard && before && !sameLayout(before, openedSaved) && !sameLayout(before, opened)) throw new Error('This page was published from another tab or device after you opened it. Nothing was saved. Reload the editor to see that version, then make your change again.')
     const record = { ...(before?.root?.props?.words ?? {}), ...Object.fromEntries(Object.entries(edits).filter(([field]) => !CATEGORY_FIELD.test(field))) }
     const layout = { ...data, root: { ...data.root, props: { ...rootProps, ...(Object.keys(record).length ? { words: record } : {}) } } }
     const standard = !page && JSON.stringify(data.content) === JSON.stringify(standardCaseLayout().content) && !Object.keys(record).length
     const changes = [...fileChanges(edits), { path: github.layoutPath(p.slug), text: standard ? null : `${JSON.stringify(layout, null, 2)}\n` }]
     await github.publishTogether(token, changes, `Design editor: publish ${p.slug}`)
     writeLocal(localKey(p.slug, 'published'), { at: Date.now(), data })
+    openedFrom = data
     seen.current = {}
     setRemote(null)
     removeLocal(localKey(p.slug, 'unsaved'))
