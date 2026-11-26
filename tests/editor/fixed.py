@@ -52,7 +52,7 @@ with sync_playwright() as p:
             st=f.evaluate(f"(()=>{{const e=document.querySelector(\"[data-el='{k}']\");return e?{{text:e.textContent,w:e.getBoundingClientRect().width}}:null}})()")
             if not st or st['text']!='' or st['w']<10 or count(pg)!=n0: bad.append((k,st))
         check(f'{key}: all {len(parts)} word parts cleared one by one, each stays visible and choosable, section kept', not bad, str(bad[:3]))
-                undo=pg.locator('.editor-history button').first.get_attribute('aria-label') or ''
+        undo=pg.locator('.editor-history button').first.get_attribute('aria-label') or ''
         check(f'{key}: Undo names the clearing step', 'edit' in undo.lower(), undo)
         # refill one
         k=parts[0]; f.locator(f"[data-el='{k}']").first.dblclick(force=True,position={'x':6,'y':6}); pg.wait_for_timeout(250); pg.keyboard.type('New words'); pg.keyboard.press('Enter'); pg.wait_for_timeout(350)
