@@ -674,6 +674,10 @@ html[data-preview] .shared-note { display: none; }
 .adm { display: flex; flex-direction: column; height: 100vh; font: 400 14px/1.4 'Instrument Sans Variable', system-ui, sans-serif; color: #222; background: #f6f5f3; }
 .adm-top { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #e2e0dc; background: #fff; flex-wrap: wrap; }
 .adm-site { font-weight: 600; }
+.adm-menu-btn { height: 2rem; padding: 0 0.75rem; border: 1px solid #cfccc6; border-radius: 6px; background: #fff; font: inherit; font-weight: 600; color: #333; cursor: pointer; }
+.adm-menu-btn:hover { background: #f1efec; }
+.adm-menu-btn:focus-visible { outline: 2px solid var(--terra, #9a3f24); outline-offset: 2px; }
+.adm-side[hidden] { display: none; }
 .adm-chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: #f3e7d8; color: #3d2f22; }
 .adm-body { flex: 1; display: flex; min-height: 0; }
 .adm-side { width: 220px; flex: none; padding: 12px; border-right: 1px solid #e2e0dc; background: #fff; overflow: auto; }

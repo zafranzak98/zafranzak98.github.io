@@ -6,17 +6,25 @@ import { useState } from 'react'
 
 const FORMS = ['Projects', 'Categories', 'About and site settings']
 
+// The menu can be hidden so the visual editor gets the full width (as in Wix). On screens narrower than
+// 1440 px it starts hidden, so the editor's toolbar keeps its one-row layout; the choice is remembered.
+const MENU_KEY = 'uve-demo:admin-menu'
+const menuStart = () => { try { const v = localStorage.getItem(MENU_KEY); return v ? v === 'open' : window.innerWidth >= 1440 } catch { return window.innerWidth >= 1440 } }
+
 export function AdminShell() {
   const [note, setNote] = useState('')
+  const [menu, setMenu] = useState(menuStart)
+  const toggleMenu = () => { const next = !menu; setMenu(next); try { localStorage.setItem(MENU_KEY, next ? 'open' : 'closed') } catch { /* kept until the page reloads */ } }
   const formNote = (name: string) => () => setNote(`${name} opens the same form as today. The forms are not part of this demo; nothing in them changes.`)
   return (
     <div className="adm">
       <header className="adm-top">
+        <button type="button" className="adm-menu-btn" aria-expanded={menu} aria-controls="adm-side" onClick={toggleMenu}>{menu ? 'Hide menu' : 'Menu'}</button>
         <span className="adm-site">Zafran Zakaria · Website editor</span>
         <span className="adm-chip">Demo copy of /admin. Nothing here changes GitHub, /admin or either website.</span>
       </header>
       <div className="adm-body">
-        <nav className="adm-side" aria-label="Website editor">
+        <nav id="adm-side" className="adm-side" aria-label="Website editor" hidden={!menu}>
           <p className="adm-group">Content</p>
           {FORMS.map((f) => <button key={f} type="button" className="adm-item" onClick={formNote(f)}>{f}<small>form, as today</small></button>)}
           <p className="adm-group">Media</p>
