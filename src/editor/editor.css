@@ -236,7 +236,7 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
   .editor-bar .editor-preview.editor-quiet { display: none; }
   .editor-more-preview { display: grid !important; }
   .editor-bar .editor-bar-middle .editor-screens button { padding: 0 0.4375rem; }
-  .editor-bar .editor-bar-end .editor-history button, .editor-bar .editor-bar-end .editor-more-btn { width: 2.125rem; }
+  .editor-bar .editor-history button, .editor-bar .editor-bar-end .editor-more-btn { width: 2.125rem; }
 }
 /* A short screen (a phone turned sideways): one row for the whole bar, with the same compact buttons. */
 @media (max-height: 500px) and (min-width: 640px) and (max-width: 1279px) {
