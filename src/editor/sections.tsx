@@ -220,7 +220,7 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
 
   return (
     <div className="sec-page">
-      <p className="sec-intro">Your page from top to bottom, as visitors see it. Choose a section to go to it. Drag <span aria-hidden="true">⠿</span> to reorder, or use ⋯.</p>
+      {FIXED_PAGE ? <p className="sec-intro">The parts of this shared section. Choose one to go to it.</p> : <p className="sec-intro">Your page from top to bottom, as visitors see it. Choose a section to go to it. Drag <span aria-hidden="true">⠿</span> to reorder, or use ⋯.</p>}
       <ol className="sec-list" ref={list} onDragOver={(e) => e.preventDefault()}>
         {content.map((item, i) => {
           const kind = KINDS[item.type]
