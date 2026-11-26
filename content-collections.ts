@@ -148,6 +148,7 @@ const site = defineSingleton({
     site_title: z.string(),
     name: z.string(),
     home_intro: z.string(),
+    home_byline: z.string().optional(),
     areas_of_focus: z.array(z.object({ label: z.string(), category: z.string().optional() })),
     projects_intro: z.string().optional(),
     cv: z.string().optional(),
