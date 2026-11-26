@@ -348,6 +348,12 @@ function Actions() {
     return found.filter((f) => !intended.has(noteId(f)))
   }
   const openPublish = async () => {
+    // The same words changed in another tab: choose which to keep first, as with someone else's change.
+    if (tabClash) {
+      setNotice('Before publishing, choose which words to keep: this tab’s or the other tab’s.')
+      document.querySelector<HTMLButtonElement>('.editor-conflict button')?.focus()
+      return
+    }
     setPanel('publish')
     setFindings(null)
     setFindings(await checkSizes([['Desktop', 1440], ['Tablet', 1024], ['Phone', 390]]))

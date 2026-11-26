@@ -1,5 +1,6 @@
 /* The design editor's own controls, in the site's palette. The canvas shows the real site styles. */
-body.design-editor { background: #fff; }
+/* The editor screen is white; inside the canvas the page keeps its own Off-white below short pages. */
+body.design-editor:has(#preview-frame) { background: #fff; }
 /* Puck's header title gives way to the buttons on tablets (Puck is pinned, so its class names are stable). */
 [aria-controls^='puck-drawer-category'] > div { color: #555; }
 [class*='PuckHeader-title'] { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -218,7 +219,6 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
   .editor-status { max-width: 7rem; }
   .editor-status-mark { width: 0.625rem; height: 0.625rem; margin: 0; }
   .editor-status:is(.is-unkept, .is-failed) .editor-status-mark { margin-right: 0.25rem; }
-  .editor-chip { display: none; }
   .editor-strip-main { display: none; }
 }
 @media (min-width: 640px) { .editor-strip-short { display: none; } }

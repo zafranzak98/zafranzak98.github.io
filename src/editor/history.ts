@@ -3,6 +3,7 @@
 // and the short message after undoing. When the difference is unclear it says "the last change".
 import { nameOf } from './elements'
 import { kindName } from './sections'
+import { fieldName } from './safeguards'
 
 type Look = Record<string, unknown>
 type Item = { type: string; props: Record<string, unknown> & { id?: string; elements?: Record<string, Record<string, Look>> } }
@@ -77,7 +78,9 @@ export function describeStep(before: Page | undefined, after: Page | undefined):
     // Changed words on a project page are kept with the page; category names are shared ones.
     const ea = (ra.edits ?? {}) as Record<string, unknown>, eb = (rb.edits ?? {}) as Record<string, unknown>
     const changed = Object.keys({ ...ea, ...eb }).filter((k) => !same(ea[k], eb[k]))
-    return changed.every((k) => k.startsWith('category:')) ? 'rename a category' : 'edit the words'
+    if (changed.every((k) => k.startsWith('category:'))) return 'rename a category'
+    // One changed part is named ("edit Name and title"); several are counted.
+    return changed.length === 1 ? `edit ${fieldName(changed[0])}` : `edit the words of ${changed.length} parts`
   }
   return 'the last change'
 }
