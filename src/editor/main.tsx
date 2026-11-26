@@ -649,7 +649,7 @@ function Actions() {
         {Number(ui.viewports.current.width) >= 1280 && (
           <label className="editor-field editor-width"><span className="sr-only">Desktop width</span>
             <select value={Number(ui.viewports.current.width)} onChange={(e) => showWidth(Number(e.target.value))}>
-              {DESKTOP_WIDTHS.map((w) => <option key={w} value={w}>{w} px wide</option>)}
+              {DESKTOP_WIDTHS.map((w) => <option key={w} value={w}>{w} px</option>)}
             </select>
           </label>
         )}
