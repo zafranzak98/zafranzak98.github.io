@@ -77,7 +77,9 @@ export function pageConfig(page: PageDef): Config {
     return (props) => <Section {...props} category={category} />
   }
   // The homepage clock's settings show in Settings when its section is chosen (and when its line is).
-  const extra = (type: string) => (type === 'HomeClock' ? { clock: { type: 'custom', label: 'Clock settings', render: () => <ClockSettings p={p} /> } } : {})
+// Here they sit in the panel's own frame; the line under the time is changed on the page or with the
+// clock part, so it is not offered twice.
+  const extra = (type: string) => (type === 'HomeClock' ? { clock: { type: 'custom', label: 'Clock settings', render: () => <div className="el-panel ps-section"><ClockSettings p={p} withLine={false} /></div> } } : {})
   const sections = Object.fromEntries(page.sections.map((type) => [type, block(NAMES[type] ?? type, render(type), { fields: { elements: elementsField(p), ...extra(type) } })]))
   return {
     root: { fields: {}, render: ({ children, edits }: { children: ReactNode; edits?: Edits }) => <PageEditorFrame page={page} edits={edits ?? {}}>{children}</PageEditorFrame> },

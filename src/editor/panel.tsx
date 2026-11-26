@@ -1,4 +1,4 @@
-import { kindName, showPartsOf } from './sections'
+import { FIXED_PAGE, kindName, showPartsOf } from './sections'
 import { ClockSettings, PORTRAIT_WIDTH, PortraitContent } from './page-settings'
 import { useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -319,7 +319,7 @@ export function ContextBar() {
       <div className="ctx ctx-empty">
         {tips ? (
           <>
-            <p className="ctx-hint"><b>Click</b> anything on the page to change it. <b>Double-click</b> words to type.<span className="ctx-long"> To add or reorder sections, open <b>Sections</b> on the left.</span></p>
+            <p className="ctx-hint"><b>Click</b> anything on the page to change it. <b>Double-click</b> words to type.{!FIXED_PAGE && <span className="ctx-long"> To add or reorder sections, open <b>Sections</b> on the left.</span>}</p>
             <button type="button" className="ctx-hint-close" aria-label="Hide these tips" title="Hide these tips" onClick={() => showTips(false)}>×</button>
           </>
         ) : (
@@ -341,6 +341,15 @@ export function ContextBar() {
       dispatch({ type: 'replace', destinationIndex: at.index, destinationZone: at.zone, data: { ...item, props: { ...item.props, design: next } } as never })
     }
     const last = at ? at.index >= (at.zone.startsWith('root') ? content.length - 1 : Infinity) : true
+    if (FIXED_PAGE) return (
+      <div className="ctx" role="toolbar" aria-label="Section tools">
+        <span className="ctx-name">{sectionName(item.type)}</span>
+        <p className="ctx-hint">Shared by every page and fixed in place. <b>Double-click</b> its words to change them everywhere.</p>
+        <span className="ctx-gap" />
+        {more}
+        {live}
+      </div>
+    )
     return (
       <div className="ctx" role="toolbar" aria-label="Section tools">
         <span className="ctx-name">{sectionName(item.type)}</span>

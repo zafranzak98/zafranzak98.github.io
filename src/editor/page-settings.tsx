@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { createUsePuck } from '@puckeditor/core'
 import imageWidths from 'virtual:image-widths'
-import { asset, type Project } from '#/lib/site'
+import { asset, projects, type Project } from '#/lib/site'
 import { applyEdits, useWords, wordsOf, type Edits } from './elements'
 
 const usePuck = createUsePuck()
@@ -20,7 +20,7 @@ export function validTimeZone(zone: string) {
   try { new Intl.DateTimeFormat('en-GB', { timeZone: zone }); return true } catch { return false }
 }
 
-type Words = Record<string, unknown> & { clock?: { show?: unknown; city: string; time_zone: string; line?: string }; portrait?: { image?: string; alt?: string } }
+type Words = Record<string, unknown> & { clock?: { show?: unknown; weather?: unknown; city: string; time_zone: string; line?: string }; portrait?: { image?: string; alt?: string } }
 
 // The words a page shows with your changes. The clock's "show" is kept as words ("true"/"false") and
 // shown as a switch; a time zone that is not valid yet keeps showing the last valid one, so the
@@ -29,7 +29,7 @@ export function wordsWithEdits(words: Words, edits: Edits): Words {
   const out = applyEdits(words as never, edits) as unknown as Words
   if (!out.clock) return out
   const zone = validTimeZone(out.clock.time_zone) ? out.clock.time_zone : words.clock!.time_zone
-  return { ...out, clock: { ...out.clock, show: String(out.clock.show) !== 'false', time_zone: zone } }
+  return { ...out, clock: { ...out.clock, show: String(out.clock.show) !== 'false', weather: String(out.clock.weather) === 'true', time_zone: zone } }
 }
 
 export type Problem = { text: string; section: string; key: string }
@@ -38,8 +38,9 @@ export type Problem = { text: string; section: string; key: string }
 export function pageProblems(words: Words, edits: Edits): Problem[] {
   const now = applyEdits(words as never, edits) as unknown as Words
   const out: Problem[] = []
-  if (now.clock && String(now.clock.show) !== 'false') {
-    if (!now.clock.city.trim()) out.push({ text: 'The homepage clock has no city. Add one in the clock settings, or hide the clock.', section: 'HomeClock', key: 'clock' })
+  if (now.clock && String(now.clock.show) !== 'false' && !now.clock.city.trim()) out.push({ text: 'The homepage clock has no city. Add one in the clock settings, or hide the clock.', section: 'HomeClock', key: 'clock' })
+  // The build checks the time zone even when the clock is hidden, so publishing does too.
+  if (now.clock) {
     if (!validTimeZone(now.clock.time_zone)) out.push({ text: `The homepage clock's time zone "${now.clock.time_zone}" is not a real time zone. Use a name such as Europe/London or Asia/Kuala_Lumpur.`, section: 'HomeClock', key: 'clock' })
   }
   if (now.portrait?.image && !now.portrait.alt?.trim()) out.push({ text: 'The About portrait has no description. Add one in the portrait’s settings: screen readers read it to visitors who cannot see the photo.', section: 'AboutHero', key: 'portrait' })
@@ -56,6 +57,7 @@ export function ClockSettings({ p, withLine = true }: { p: Project; withLine?: b
   const city = words.read('clock:city')
   const zone = words.read('clock:time_zone')
   const line = words.read('clock:line')
+  const weather = words.read('clock:weather') === 'true'
   const zoneOk = validTimeZone(zone)
   const zones = useMemo(() => { try { return (Intl as unknown as { supportedValuesOf: (k: string) => string[] }).supportedValuesOf('timeZone') } catch { return [] } }, [])
   const [now, setNow] = useState('')
@@ -80,6 +82,8 @@ export function ClockSettings({ p, withLine = true }: { p: Project; withLine?: b
       <p id={`${id}-zone-note`} className={zoneOk ? 'el-note' : 'el-warning'} role={zoneOk ? undefined : 'alert'}>
         {zoneOk ? `Valid. It is ${now} there now.` : 'Not a real time zone. Use a name such as Europe/London or Asia/Kuala_Lumpur. The page keeps the last valid one, and publishing waits until this is fixed.'}
       </p>
+      <label className="ps-check"><input type="checkbox" checked={weather} disabled={!show} onChange={(e) => words.write('clock:weather', String(e.target.checked))} /> Show the weather beside the time</label>
+      <p className="el-note">The temperature and a small icon, updated for visitors every 15 minutes. Here the editor shows a sample. The weather is for the place set as the clock's location in the website editor (Site settings, Homepage clock); if you change the city, change the location there too.</p>
       {withLine && (
         <>
           <label className="ps-field" htmlFor={`${id}-line`}>Line under the time</label>
@@ -95,8 +99,16 @@ export function ClockSettings({ p, withLine = true }: { p: Project; withLine?: b
 
 // Every photo already on the site (uploading new ones stays in the website editor).
 export const sitePhotos = () => Object.keys(imageWidths).filter((path) => path.startsWith('/media/') && !/-w\d+\.webp$/.test(path)).sort()
-const fileName = (path: string) => path.split('/').pop() ?? path
-const folderName = (path: string) => (path.startsWith('/media/about/') ? 'About' : path.split('/')[3]?.replace(/-/g, ' ') ?? '')
+// Each photo is named by where it is used, never by its file name: "About" or the project's own title,
+// numbered within it ("AF-Binary, photo 3").
+const photoNames = (paths: string[]) => {
+  const count: Record<string, number> = {}
+  return Object.fromEntries(paths.map((path) => {
+    const folder = path.startsWith('/media/about/') ? 'About' : (projects.find((x) => x.slug === path.split('/')[3])?.title ?? 'Site photo')
+    count[folder] = (count[folder] ?? 0) + 1
+    return [path, `${folder}, photo ${count[folder]}`]
+  }))
+}
 
 export function PortraitContent({ p }: { p: Project }) {
   const words = useWords(p)
@@ -115,6 +127,7 @@ export function PortraitContent({ p }: { p: Project }) {
   }
   const alt = words.read('portrait:alt')
   const photos = useMemo(sitePhotos, [])
+  const names = useMemo(() => photoNames(photos), [photos])
   return (
     <section className="el-group ps-group" aria-label="Content: Portrait">
       <h3>Content<span className="el-group-detail"> · Portrait</span></h3>
@@ -123,9 +136,9 @@ export function PortraitContent({ p }: { p: Project }) {
         <p className="el-note">Choose from the photos already on your site; a new choice needs its own description. To add a new photo, upload it in the website editor (/admin, Media) first.</p>
         <div className="ps-photos" role="radiogroup" aria-label="Portrait photo">
           {photos.map((path) => (
-            <button key={path} type="button" role="radio" aria-checked={path === image} className="ps-photo" title={fileName(path)} onClick={() => choose(path)}>
+            <button key={path} type="button" role="radio" aria-checked={path === image} className="ps-photo" title={names[path]} onClick={() => choose(path)}>
               <img src={asset(path)} alt="" loading="lazy" />
-              <span className="ps-photo-name">{folderName(path)}: {fileName(path)}</span>
+              <span className="ps-photo-name">{names[path]}</span>
             </button>
           ))}
         </div>

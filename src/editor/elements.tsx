@@ -131,7 +131,10 @@ const NAMES: [RegExp, string][] = [
   [/^nav-linkedin$/, 'Menu: LinkedIn'],
   [/^top$/, '"Back to top" link'],
 ]
+// On the homepage the introduction's first part is the headline (26 Nov 2026), with the name line under it.
+const ON_HOME = (() => { try { return new URLSearchParams(location.search).get('page') === 'home' } catch { return false } })()
 export const nameOf = (key: string) => {
+  if (key === 'intro' && ON_HOME) return 'Headline'
   const category = key.match(/^cat-(.+)$/)
   if (category) return `"${categoryName(category[1])}" category name`
   const fact = key.match(/^(label|value)-(role|type|when|deliverables|tools)$/)

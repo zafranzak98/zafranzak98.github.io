@@ -51,15 +51,17 @@ export function HomeClock({ design, elements }: BlockProps) {
   const editing = useContext(Editing)
   // Hidden: the website leaves it out; the editor keeps a faded line, so it can be chosen and shown again.
   if (!w.clock.show) return editing ? <p {...merge(designProps(design, 'home-clock editor-clock-off'), el('clock', {}))}>Clock hidden on the website. Choose it, then Settings, to show it again.</p> : null
-  return <Clock city={w.clock.city} timeZone={w.clock.time_zone} line={w.clock.line} weather={w.clock.weather && !editing} lat={w.clock.latitude} lon={w.clock.longitude} props={merge(designProps(design, 'home-clock'), el('clock', { field: 'clock:line' }))} />
+  return <Clock city={w.clock.city} timeZone={w.clock.time_zone} line={w.clock.line} weather={w.clock.weather} sample={editing} lat={w.clock.latitude} lon={w.clock.longitude} props={merge(designProps(design, 'home-clock'), el('clock', { field: 'clock:line' }))} />
 }
 
-// The weather is not fetched inside the design editor: its security policy only lets it talk to this
-// site and GitHub, and keeping it that way matters more than showing the temperature while editing.
+// Inside the design editor the weather is a fixed sample, so the line looks as it will on the website
+// without asking the weather service: the editor's security policy only lets it talk to this site and
+// GitHub, and keeping it that way matters more than a live temperature while editing.
+const SAMPLE_WEATHER = { temp: 12, condition: 'partly' as const, at: 0, got: 0 }
 // The local time in the chosen city. The visitor's browser works it out for that time zone, so
 // daylight saving changes are followed automatically. It updates once a second and is not
 // announced by screen readers on every change.
-function Clock({ city, timeZone, line, weather, lat, lon, props }: { city: string; timeZone: string; line?: string; weather: boolean; lat?: number; lon?: number; props: object }) {
+function Clock({ city, timeZone, line, weather, sample, lat, lon, props }: { city: string; timeZone: string; line?: string; weather: boolean; sample?: boolean; lat?: number; lon?: number; props: object }) {
   const format = useMemo(() => new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }), [timeZone])
   const [now, setNow] = useState(() => format.format(new Date()))
   useEffect(() => {
@@ -71,7 +73,8 @@ function Clock({ city, timeZone, line, weather, lat, lon, props }: { city: strin
     tick()
     return () => clearTimeout(timer)
   }, [format])
-  const reading = useWeather(weather ? lat : undefined, weather ? lon : undefined)
+  const live = useWeather(weather && !sample ? lat : undefined, weather && !sample ? lon : undefined)
+  const reading = weather && sample ? SAMPLE_WEATHER : live
   return (
     <p {...props}>
       <span className="home-clock-now">

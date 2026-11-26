@@ -22,7 +22,7 @@ export function clashes(mine: Edits, theirs: Edits): Clash[] {
 }
 
 const NAMED: Record<string, string> = {
-  'clock:show': 'Show the clock', 'clock:city': 'Clock city', 'clock:time_zone': 'Clock time zone', 'clock:line': 'Line under the time',
+  'clock:show': 'Show the clock', 'clock:weather': 'Show the weather', 'clock:city': 'Clock city', 'clock:time_zone': 'Clock time zone', 'clock:line': 'Line under the time',
   'portrait:image': 'Portrait photo', 'portrait:alt': 'Portrait description',
 }
 // A field's name as the editor shows it (the part on the page that shows it).

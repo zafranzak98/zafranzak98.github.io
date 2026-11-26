@@ -104,6 +104,10 @@ const GROUPS: { title: string; options: Option[] }[] = [
   },
 ]
 
+// The shared header and footer are fixed parts: their words change, but nothing is added, moved or
+// recoloured on their pages.
+export const FIXED_PAGE = (() => { try { return ['header', 'footer'].includes(new URLSearchParams(location.search).get('page') ?? '') } catch { return false } })()
+
 export function SectionsPanel() {
   const [tab, setTab] = useState<Tab>('page')
   const [said, setSaid] = useState('')
@@ -111,12 +115,14 @@ export function SectionsPanel() {
   useEffect(() => { if (!said) return; const t = setTimeout(() => setSaid(''), 6000); return () => clearTimeout(t) }, [said])
   return (
     <div className="sec-panel">
-      <div className="sec-tabs" role="tablist" aria-label="Sections">
-        <button type="button" role="tab" id="sec-tab-page" aria-controls="sec-pane" aria-selected={tab === 'page'} onClick={() => setTab('page')}>On this page</button>
-        <button type="button" role="tab" id="sec-tab-add" aria-controls="sec-pane" aria-selected={tab === 'add'} onClick={() => setTab('add')}>Add a section</button>
-      </div>
+      {!FIXED_PAGE && (
+        <div className="sec-tabs" role="tablist" aria-label="Sections">
+          <button type="button" role="tab" id="sec-tab-page" aria-controls="sec-pane" aria-selected={tab === 'page'} onClick={() => setTab('page')}>On this page</button>
+          <button type="button" role="tab" id="sec-tab-add" aria-controls="sec-pane" aria-selected={tab === 'add'} onClick={() => setTab('add')}>Add a section</button>
+        </div>
+      )}
       <div id="sec-pane" role="tabpanel" aria-labelledby={tab === 'page' ? 'sec-tab-page' : 'sec-tab-add'}>
-        {tab === 'page' ? <OnThisPage onAdd={() => setTab('add')} announce={setSaid} /> : <AddSection onAdded={() => setTab('page')} announce={setSaid} />}
+        {tab === 'page' || FIXED_PAGE ? <OnThisPage onAdd={() => setTab('add')} announce={setSaid} /> : <AddSection onAdded={() => setTab('page')} announce={setSaid} />}
       </div>
       {said && <p className="sec-said">{said}</p>}
       <span className="sr-only" role="status" aria-live="polite">{said}</span>
@@ -229,14 +235,14 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
               onDrop={(e) => { e.preventDefault(); if (dragging !== null) move(dragging, i); setDragging(null); setOver(null) }}
               onKeyDown={(e) => { if (e.key === 'Escape' && menu === item.props.id) { e.preventDefault(); e.stopPropagation(); setMenu(null); e.currentTarget.querySelector<HTMLButtonElement>('.sec-more')?.focus() } }}
             >
-              <span
+              {FIXED_PAGE ? <span className="sec-grip" aria-hidden="true" /> : <span
                 className="sec-grip"
                 draggable
                 title="Drag to move this section"
                 aria-hidden="true"
                 onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', item.props.id); setDragging(i) }}
                 onDragEnd={() => { setDragging(null); setOver(null) }}
-              >⠿</span>
+              >⠿</span>}
               {(parts[item.props.id]?.length ?? 0) > 0 ? (
                 <button
                   type="button"
@@ -260,6 +266,7 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
                 aria-description="Alt and an arrow key move it up or down."
                 onClick={() => goTo(item.props.id)}
                 onKeyDown={(e) => {
+                  if (FIXED_PAGE) return
                   if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); move(i, i - 1, true) }
                   if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); move(i, i + 1, true) }
                 }}
@@ -270,8 +277,8 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
                   <span className="sec-hint">{kind?.hint ?? ''}{show ? <span className="sec-badge"> · {SHOW[show]}</span> : null}</span>
                 </span>
               </button>
-              <button type="button" className="sec-more" aria-label={`More for ${label}`} aria-haspopup="true" aria-expanded={menu === item.props.id} onClick={() => setMenu(menu === item.props.id ? null : item.props.id)}>⋯</button>
-              {menu === item.props.id && (
+              {!FIXED_PAGE && <button type="button" className="sec-more" aria-label={`More for ${label}`} aria-haspopup="true" aria-expanded={menu === item.props.id} onClick={() => setMenu(menu === item.props.id ? null : item.props.id)}>⋯</button>}
+              {menu === item.props.id && !FIXED_PAGE && (
                 <div className="sec-menu" role="group" aria-label={`${label}: actions`} ref={(m) => {
                   if (!m) return
                   // Opens upwards near the bottom of the window, so every action stays reachable.
@@ -318,7 +325,7 @@ function OnThisPage({ onAdd, announce: setSaid }: { onAdd: () => void; announce:
           )
         })}
       </ol>
-      <button type="button" className="sec-add-link" onClick={onAdd}>+ Add a section</button>
+      {FIXED_PAGE ? <p className="sec-intro sec-after">This part is shared by every page and stays in place. Choose its words on the page to change them.</p> : <button type="button" className="sec-add-link" onClick={onAdd}>+ Add a section</button>}
     </div>
   )
 }

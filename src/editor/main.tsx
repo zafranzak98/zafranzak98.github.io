@@ -538,12 +538,12 @@ function Actions() {
       const merged = remote ? Object.keys(remote.edits) : []
       clearRemote(p.slug)
       setRemote(null)
-      if (merged.length) return `Published in this demo only (simulated). Someone else’s change to ${merged.map((f) => `“${fieldName(f)}”`).join(', ')} did not touch your words, so both are kept. In the real editor this saves the page and the test site updates in about a minute.`
+      if (merged.length) return `Published in this demo only (simulated). Someone else’s change to ${merged.map((f) => `“${fieldName(f)}”`).join(', ')} did not touch your words, so both are kept. In the real editor this saves the page and your website updates in about a minute.`
       if (page?.shared) {
         publishShared(page.shared, ((data.root.props as { edits?: Edits } | undefined)?.edits) ?? {})
-        return `Published in this demo only (simulated). The ${page.shared} now shows your change on every page of this demo: open any page in the list to see it. In the real editor this saves one shared file and the test site updates in about a minute.`
+        return `Published in this demo only (simulated). The ${page.shared} now shows your change on every page of this demo: open any page in the list to see it. In the real editor this saves one shared file and your website updates in about a minute.`
       }
-      return 'Published in this demo only (simulated). In the real editor this saves the page and the test site updates in about a minute, after the usual checks.'
+      return 'Published in this demo only (simulated). In the real editor this saves the page and your website updates in about a minute, after the usual checks.'
     }
     // Words, shared category names and the layout are saved together, all or nothing.
     const edits = (data.root.props as { edits?: Edits } | undefined)?.edits ?? {}
@@ -563,7 +563,7 @@ function Actions() {
     removeLocal(localKey(p.slug, 'unsaved'))
     clean.current = JSON.stringify(data)
     setSaved({ json: clean.current, text: `Published ${time()}` })
-    return 'Published. The test site updates in about a minute, after the usual checks. If a check fails, the site stays as it was and you get the usual email.'
+    return 'Published. Your website updates in about a minute, after the usual checks. If a check fails, the site stays as it was and you get the usual email.'
   })
 
   const openHistory = () => run('Loading history', async () => {
@@ -690,7 +690,7 @@ function Actions() {
         <Panel title="Publish this page?" onClose={() => setPanel('')}>
           {DEMO && <p className="editor-sim-note"><b>Simulated.</b> In this demo, publishing stays in this browser. Nothing is sent to GitHub, /admin or either website.</p>}
           {page?.shared && <div className="editor-impact" role="note"><p><b>This changes every page.</b> The {page.shared} is shared: Homepage, About, Projects, every category and every case study show it.</p></div>}
-          <p>{DEMO ? <>In the real editor, the test site would show this layout for {page?.label ?? p.title} in about a minute, after the usual checks.</> : <>The test site will show this layout for {page?.label ?? p.title} in about a minute, after the usual checks.</>} The current version stays in Versions, so you can bring it back at any time.</p>
+          <p>{DEMO ? <>In the real editor, your website would show this layout for {page?.label ?? p.title} in about a minute, after the usual checks.</> : <>Your website will show this layout for {page?.label ?? p.title} in about a minute, after the usual checks.</>} The current version stays in Versions, so you can bring it back at any time.</p>
           {renames.length > 0 && (
             <div className="editor-impact" role="note">
               <p><b>This also changes other pages.</b> These shared names will change on every project page, the Projects page and the filters:</p>
