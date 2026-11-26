@@ -38,11 +38,11 @@ def spec(key):
         s.update(file=("intro", "intro", "content/site.yml", ["projects_intro"]), own=("title", "title"), design="intro", url="/projects/")
     elif key.startswith("category:"):
         c = key.split(":")[1]
-        s.update(file=("intro", "intro", f"content/categories/{c}.md", ["intro"]), own=("title", f"category:{c}", f"content/categories/{c}.md", ["name"]), design="intro", url=f"/projects/{c}/")
+        s.update(file=("intro", "intro", f"content/categories/{c}.md", ["intro"]), own=("title", f"category:{c}", f"content/categories/{c}.md", ["name"]), design="title", url=f"/projects/{c}/")
     elif key == "header":
         s.update(file=None, own=("nav-about", "nav:about"), design="nav-projects", clear=("nav-cv", "nav:cv"), url=None)
     elif key == "footer":
-        s.update(file=None, own=("kicker", "kicker"), design="title", clear=("top", "top"), url=None)
+        s.update(file=None, own=("kicker", "kicker"), design="email", clear=("top", "top"), url=None)
     elif key.startswith("project="):
         slug = key.split("=")[1]
         md = f"content/projects/{slug}.md"
@@ -101,6 +101,22 @@ def publish(pg):
     btn = pg.locator(".editor-panel .editor-primary")
     if not btn.count() or btn.is_disabled(): return "blocked: " + " ".join(pg.locator(".editor-panel").all_inner_texts())
     btn.click(); return wait_status(pg, "Published")
+def keep_all_mine(pg):
+    for _ in range(10):
+        b = pg.locator(".editor-panel .editor-conflict button", has_text="Keep mine")
+        if not b.count(): break
+        b.first.click(); pg.wait_for_timeout(400)
+def publish_checked(pg, n, label):
+    """Publish; a false 'someone else changed' block is a FAIL, then Keep mine is chosen to go on testing."""
+    st = publish(pg)
+    check(f"[{n}] {label} says published (no false 'someone else changed' block)", st.startswith("Published"), st[:600] + " | " + notice(pg)[:300])
+    if "Someone else changed" in st:
+        keep_all_mine(pg)
+        btn = pg.locator(".editor-panel .editor-primary")
+        if btn.count() and not btn.is_disabled(): btn.click(); st = wait_status(pg, "Published")
+        else: st = "still blocked: " + " ".join(pg.locator(".editor-panel").all_inner_texts())[:400]
+        check(f"[{n}] {label} (workaround: Keep mine) then goes through", st.startswith("Published"), st[:600] + " | " + notice(pg)[:300])
+    return st
 def save_draft(pg):
     pg.locator(".editor-save").click(); return wait_status(pg, "Draft saved")
 def chain(repo, ref="main"):
@@ -216,15 +232,7 @@ def page_flow(br, key):
     two = {"own": f"E2E {n} own two"}
     if s["file"]: two["file"] = f"E2E {n} file two"; type_part(pg, s["file"][0], two["file"])
     type_part(pg, s["own"][0], two["own"]); larger(pg, s["design"]); size2 = size_of(pg, s["design"])
-    st = publish(pg)
-    check(f"[{n}] 6 second publish says published (no false 'someone else changed' block)", st.startswith("Published"), st[:600] + " | " + notice(pg)[:300])
-    if "Someone else changed" in st:
-        # Recorded as a failure above; to keep testing Versions, choose Keep mine and publish.
-        for b in pg.locator(".editor-panel .editor-conflict button", has_text="Keep mine").all():
-            try: b.click(); pg.wait_for_timeout(300)
-            except Exception: pass
-        pg.locator(".editor-panel .editor-primary").click(); st = wait_status(pg, "Published")
-        check(f"[{n}] 6 (workaround: Keep mine) second publish then goes through", st.startswith("Published"), st[:600] + " | " + notice(pg)[:300])
+    st = publish_checked(pg, n, "6 second publish")
     check(f"[{n}] 6 second publish is one more commit", len(chain(repo)) == 3, len(chain(repo)))
     if s["file"]:
         check(f"[{n}] 6 second publish wrote the file words", at(front(repo.files("main")[s["file"][2]], s["file"][2])[0], s["file"][3]) == two["file"])
@@ -237,8 +245,7 @@ def page_flow(br, key):
         check(f"[{n}] 6 version 1 brings back the own words", text_of(pg, s["own"][0]) == one["own"], text_of(pg, s["own"][0]))
         if s["file"]: check(f"[{n}] 6 version 1 brings back the file words", text_of(pg, s["file"][0]) == one["file"], text_of(pg, s["file"][0]))
         check(f"[{n}] 6 version 1 brings back the layout (design size)", abs(size_of(pg, s["design"]) - size1) < 0.5, f"{size_of(pg, s['design'])} want {size1} (v2 {size2})")
-        before = len(chain(repo)); st = publish(pg)
-        check(f"[{n}] 6 publishing version 1 says published", st.startswith("Published"), st[:600] + " | " + notice(pg)[:300])
+        st = publish_checked(pg, n, "6 publishing version 1")
         lay = layout_of(repo, "main", slug)
         check(f"[{n}] 6 main layout content equals version 1", lay and lay["content"] == pub1["content"], "content differs")
         if s["file"]: check(f"[{n}] 6 main file words back to version 1", at(front(repo.files("main")[s["file"][2]], s["file"][2])[0], s["file"][3]) == one["file"], at(front(repo.files("main")[s["file"][2]], s["file"][2])[0], s["file"][3]))
@@ -314,6 +321,10 @@ def publish_all(br, repo, plan):
         larger(pg, s["design"]); p["size"] = size_of(pg, s["design"]); p["dtext"] = text_of(pg, s["design"])
         if s.get("clear"): p["cleared"] = text_of(pg, s["clear"][0]); type_part(pg, s["clear"][0], "")
         if key == "home":
+            click_part(pg, "clock")
+            if pg.locator(".ctx .ctx-settings").first.get_attribute("aria-pressed") != "true": pg.locator(".ctx .ctx-settings").first.click(); pg.wait_for_timeout(600)
+            pg.locator("label.ps-check:visible", has_text="Show the weather").locator("input").first.uncheck(); pg.wait_for_timeout(700)
+            pg.keyboard.press("Escape")
             # Move the Areas of Focus section below Selected Projects with the Sections panel.
             pg.locator("[class*='_Nav-list'] [class*='_NavItem-link']").first.click(); pg.wait_for_timeout(700)
             names = [t.split("\n")[0] for t in pg.locator(".sec-row .sec-name").all_inner_texts()]

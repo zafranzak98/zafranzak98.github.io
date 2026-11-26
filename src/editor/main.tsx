@@ -51,18 +51,22 @@ const removeLocal = (key: string) => { try { localStorage.removeItem(key) } catc
 const demoPublished = (p: Project) => (DEMO ? readLocal<Version[]>(localKey(p.slug, 'versions'), [])[0]?.layout : undefined)
 const publishedOf = (p: Project, page: PageDef | null) => (page ? ((DEMO ? !page.shared && demoPublished(p) : (savedPage(page.key) as unknown as Data | undefined)) || standardLayout(page)) : ((demoPublished(p) ?? savedLayoutFor(p) ?? standardCaseLayout()) as Data))
 const standardOf = (page: PageDef | null) => (page ? standardLayout(page) : (standardCaseLayout() as Data))
-// The published layout this editor was opened from, to notice a newer publish from another tab or device.
-let openedFrom: Data | undefined
-const sameLayout = (a?: { content?: unknown; root?: { props?: { words?: unknown } } }, b?: { content?: unknown; root?: { props?: { words?: unknown } } }) =>
-  JSON.stringify([a?.content ?? null, a?.root?.props?.words ?? {}]) === JSON.stringify([b?.content ?? null, b?.root?.props?.words ?? {}])
+// What this editor knows to be published: the saved layout it opened from (to notice a newer publish
+// from another tab or device) and the words published from it since this copy of the site was built.
+type Layout = { content?: unknown; root?: { props?: { words?: Edits } } }
+type Recent = { at: number; data: Data; layout: Layout; words: Edits }
+let openedFrom: Layout | undefined
+let publishedWords: Edits = {}
+const sameLayout = (a?: Layout, b?: Layout) => JSON.stringify([a?.content ?? null, a?.root?.props?.words ?? {}]) === JSON.stringify([b?.content ?? null, b?.root?.props?.words ?? {}])
 function startingLayout(p: Project, page: PageDef | null): { data: Data; restored: boolean } {
-  const recent = readLocal<{ at: number; data: Data } | null>(localKey(p.slug, 'published'), null)
-  openedFrom = !DEMO && recent && recent.at > __BUILT_AT__ ? recent.data : publishedOf(p, page)
+  const stored = readLocal<Recent | null>(localKey(p.slug, 'published'), null)
+  // Published a moment ago and the website not yet rebuilt with it: that is the published page.
+  const recent = !DEMO && stored?.layout && stored.at > __BUILT_AT__ ? stored : null
+  openedFrom = recent?.layout ?? (page ? savedPage(page.key) : savedLayoutFor(p))
+  publishedWords = recent?.words ?? {}
   const unsaved = readLocal<Data | null>(localKey(p.slug, 'unsaved'), null)
   if (unsaved) return { data: unsaved, restored: true }
-  // Published a moment ago and the website not yet rebuilt with it: open it as published.
-  if (!DEMO && recent && recent.at > __BUILT_AT__) return { data: recent.data, restored: false }
-  return { data: publishedOf(p, page), restored: false }
+  return { data: recent?.data ?? publishedOf(p, page), restored: false }
 }
 
 // Puck leaves a few of its own controls unnamed; name them for screen readers as they appear.
@@ -549,20 +553,15 @@ function Actions() {
   const fileChanges = (edits: Edits): github.Change[] => {
     const files: Record<string, { edits: Edits; from: Record<string, string> }> = {}
     for (const [field, words] of Object.entries(edits)) {
-      if (CATEGORY_FIELD.test(field)) continue
-      const target = page ? (page.shared ? null : fileTarget(page.key, field)) : { path: `content/projects/${p.slug}.md`, field }
+      const category = field.match(CATEGORY_FIELD)?.[1]
+      const target = category ? { path: `content/categories/${category}.md`, field: 'name' } : page ? (page.shared ? null : fileTarget(page.key, field)) : { path: `content/projects/${p.slug}.md`, field }
       if (!target) continue
       const f = (files[target.path] ??= { edits: {}, from: {} })
       f.edits[target.field] = words
       f.from[target.field] = field
     }
-    return [
-      ...Object.entries(files).map(([path, f]) => ({ path, edits: f.edits, from: f.from, startedWith: (field: string) => seen.current[f.from[field]] ?? wordsOf(p, f.from[field]) })),
-      ...categoryEdits(edits).map(([field, words]) => {
-        const slug = field.match(CATEGORY_FIELD)![1]
-        return { path: `content/categories/${slug}.md`, edits: { name: words }, from: { name: field }, startedWith: () => seen.current[field] ?? categoryName(slug), label: `the "${categoryName(slug)}" category name` }
-      }),
-    ]
+    const startedWith = (field: string) => seen.current[field] ?? publishedWords[field] ?? (CATEGORY_FIELD.test(field) ? categoryName(field.match(CATEGORY_FIELD)![1]) : wordsOf(p, field))
+    return Object.entries(files).map(([path, f]) => ({ path, edits: f.edits, from: f.from, startedWith: (field: string) => startedWith(f.from[field]) }))
   }
   // Words changed in the website editor (/admin) since this page was opened, where you changed them too.
   const changedElsewhere = async (token: string): Promise<Edits> => {
@@ -609,17 +608,15 @@ function Actions() {
     // A page's own words (header, footer, labels) are read by the website from there.
     const before = (await github.readLayout(token, p.slug, github.MAIN))?.layout as { content?: unknown; root?: { props?: { words?: Edits } } } | undefined
     // Published since this editor was opened (another tab, device or browser): never overwrite it unseen.
-    const opened = openedFrom as unknown as { content?: unknown; root?: { props?: { words?: Edits; edits?: Edits } } } | undefined
-    const openedSaved = opened && { content: opened.content, root: { props: { words: { ...(opened.root?.props?.words ?? {}), ...(opened.root?.props?.edits ?? {}) } } } }
-    const wasStandard = !before && !(page ? savedPage(page.key) : savedLayoutFor(p))
-    if (!wasStandard && before && !sameLayout(before, openedSaved) && !sameLayout(before, opened)) throw new Error('This page was published from another tab or device after you opened it. Nothing was saved. Reload the editor to see that version, then make your change again.')
+    if (before && !sameLayout(before, openedFrom)) throw new Error('This page was published from another tab or device after you opened it. Nothing was saved. Reload the editor to see that version, then make your change again.')
     const record = { ...(before?.root?.props?.words ?? {}), ...Object.fromEntries(Object.entries(edits).filter(([field]) => !CATEGORY_FIELD.test(field))) }
     const layout = { ...data, root: { ...data.root, props: { ...rootProps, ...(Object.keys(record).length ? { words: record } : {}) } } }
     const standard = !page && JSON.stringify(data.content) === JSON.stringify(standardCaseLayout().content) && !Object.keys(record).length
     const changes = [...fileChanges(edits), { path: github.layoutPath(p.slug), text: standard ? null : `${JSON.stringify(layout, null, 2)}\n` }]
     await github.publishTogether(token, changes, `Design editor: publish ${p.slug}`)
-    writeLocal(localKey(p.slug, 'published'), { at: Date.now(), data })
-    openedFrom = data
+    publishedWords = { ...publishedWords, ...edits }
+    openedFrom = standard ? undefined : layout
+    writeLocal(localKey(p.slug, 'published'), { at: Date.now(), data, layout: openedFrom, words: publishedWords })
     seen.current = {}
     setRemote(null)
     removeLocal(localKey(p.slug, 'unsaved'))
