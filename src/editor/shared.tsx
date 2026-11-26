@@ -11,7 +11,9 @@ import { applyEdits, type Edits } from './elements'
 
 // The visual editor demo runs on any address other than the website itself; the published editor
 // at /admin/design stays exactly as F-22 Ver.1 (no shared parts in its canvas).
-export const UVE_DEMO = !['zafranzak98.github.io', 'zafranzakaria.com'].includes(location.hostname)
+// The one list of real addresses: everywhere else the editor is a demo (no sign-in, nothing saved to GitHub).
+export const SIGN_IN_HOSTS = ['zafranzak98.github.io', 'zafranzakaria.com']
+export const UVE_DEMO = !SIGN_IN_HOSTS.includes(location.hostname)
 
 export const SHARED_KEY = (part: 'header' | 'footer') => `uve-demo:shared:${part}`
 export const sharedEdits = (part: 'header' | 'footer'): Edits => { try { return JSON.parse(localStorage.getItem(SHARED_KEY(part)) ?? '{}') as Edits } catch { return {} } }

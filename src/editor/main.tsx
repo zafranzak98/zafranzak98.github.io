@@ -20,7 +20,7 @@ import { SectionsPanel, openSections } from './sections'
 import { emptyImages } from './photos'
 import { EyeIcon, LayersIcon, RedoIcon, SlidersIcon, UndoIcon } from './icons'
 import { PAGES, asProject, pageConfig, pageFor, standardLayout, type PageDef } from './pages'
-import { publishShared } from './shared'
+import { publishShared, UVE_DEMO } from './shared'
 import { setStandardSections } from './sections'
 import { AdminShell } from './admin-demo'
 import { keepCanvasClear } from './float-room'
@@ -34,8 +34,7 @@ import { clashes, clearRemote, editsOf, fieldName, readRemote, short, writeRemot
 // On any other address (a preview copy) the editor runs as a demo: everything works except
 // signing in, and drafts and versions are kept in this browser only.
 
-const SIGN_IN_HOSTS = ['zafranzak98.github.io', 'zafranzakaria.com']
-const DEMO = !SIGN_IN_HOSTS.includes(location.hostname)
+const DEMO = UVE_DEMO // one list of real addresses, in ./shared
 const usePuck = createUsePuck()
 
 const localKey = (slug: string, kind: string) => `design-editor:${slug}:${kind}`

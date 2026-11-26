@@ -146,7 +146,8 @@ html[data-el-active] [class*='DraggableComponent--isSelected'] [class*='Draggabl
 @keyframes editor-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .editor-status.is-busy .editor-status-mark { animation: none; } }
 .editor-more-wrap { position: relative; }
-.editor-more { display: none; position: absolute; z-index: 1000; top: calc(100% + 0.375rem); right: 0; width: 17rem; padding: 0.375rem; border: 1px solid #dfe3d6; border-radius: 8px; background: #fff; box-shadow: 0 8px 24px rgba(40, 38, 20, 0.14); }
+/* Above an open Publish or Versions window, so the menu is never hidden behind it. */
+.editor-more { display: none; position: absolute; z-index: 1001; top: calc(100% + 0.375rem); right: 0; width: 17rem; padding: 0.375rem; border: 1px solid #dfe3d6; border-radius: 8px; background: #fff; box-shadow: 0 8px 24px rgba(40, 38, 20, 0.14); }
 .editor-more.open { display: grid; gap: 0.125rem; }
 .editor-bar .editor-more button { display: grid; height: auto; padding: 0.5rem 0.625rem; border: 0; text-align: left; white-space: normal; }
 .editor-more small { font-weight: 400; color: #5c5a45; }

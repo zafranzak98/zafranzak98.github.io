@@ -126,7 +126,7 @@ with sync_playwright() as p:
     # ---- 2. Homepage clock settings.
     ctx = br.new_context(bypass_csp=True); pg = fresh(ctx, "home", 1440, 1000)
     tap(pg, "[data-el='clock']"); settings(pg)
-    check("Clock: Settings holds the clock settings with the clock's line", vis(pg, "[aria-label='Clock settings']").count() == 1 and vis(pg, "[aria-label='Clock settings'] input[type=checkbox]").count() == 1)
+    check("Clock: Settings holds the clock settings with the clock's line", vis(pg, "[aria-label='Clock settings']").count() == 1 and vis(pg, "[aria-label='Clock settings'] input[type=checkbox]").count() == 2)  # Show the clock, Show the weather
     check("Clock: the line is not offered twice (Content: Words holds it here)", vis(pg, "[aria-label='Clock settings'] label", ).filter(has_text="Line under the time").count() == 0)
     city = vis(pg, "[aria-label='Clock settings'] input.el-words").nth(0); zone = vis(pg, "[aria-label='Clock settings'] input[list]").first
     city.fill("Kuala Lumpur"); pg.wait_for_timeout(400)

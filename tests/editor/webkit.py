@@ -63,9 +63,13 @@ for w, h in [(1440, 900), (390, 844)]:
 
         click_part(d, "[data-el='line']")
         check(f"{w}px: clicking a part on the page selects it", name(d) == "Summary line", name(d))
-        before = js(d, "return document.querySelector('.ctx-stepper output').innerText")
-        btn(d, ".ctx button[aria-label='Larger text']").click(); time.sleep(0.5)
-        after = js(d, "return document.querySelector('.ctx-stepper output').innerText")
+        # On phones Size is in the Text sheet (the Aa button), from Demo 5.2.
+        at = ".ctx-sheet" if w < 638 else ".ctx"
+        if w < 638: btn(d, ".ctx .ctx-aa").click(); time.sleep(0.5)
+        before = js(d, f"return document.querySelector('{at} .ctx-stepper output').innerText")
+        btn(d, f"{at} button[aria-label='Larger text']").click(); time.sleep(0.5)
+        after = js(d, f"return document.querySelector('{at} .ctx-stepper output').innerText")
+        if w < 638: btn(d, ".ctx-sheet-head button").click(); time.sleep(0.4)
         size = js(d, "return getComputedStyle(document.getElementById('preview-frame').contentDocument.querySelector(\"[data-el='line']\")).fontSize")
         check(f"{w}px: Larger text changes the size and the page", before != after, f"{before} -> {after}, {size}")
         btn(d, ".ctx .ctx-more").click(); time.sleep(0.4)
