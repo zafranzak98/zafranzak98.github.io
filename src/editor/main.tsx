@@ -398,7 +398,7 @@ function Actions() {
   const warnings = layoutWarnings(data.content as never)
   // What stops publishing, and the same words changed in another tab or by someone else.
   const edits = editsOf(data)
-  const problems: Problem[] = [...(page && !page.shared ? pageProblems(page.words as never, edits) : []), ...wordProblems(edits, !page)]
+  const problems: Problem[] = useMemo(() => [...(page && !page.shared ? pageProblems(page.words as never, edits) : []), ...wordProblems(edits, !page)], [page, edits])
   const latest = useRef(data)
   latest.current = data
   const [tabClash, setTabClash] = useState<{ found: Clash[]; theirs: Data } | null>(null)

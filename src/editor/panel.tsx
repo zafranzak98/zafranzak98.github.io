@@ -188,14 +188,15 @@ const isCover = (type: string | undefined, key: string) => type === 'Opening' &&
 const COVER_OPTIONS = COVER_SIZES.map((c) => [c, COVER_NAMES[c]] as [string, string])
 const sizeName = (look: ElementLook) => SIZE_NAMES[SIZES[currentSize(look)]]
 // Smaller and Larger stay in place at the ends of the scale, greyed with the reason.
-function SizeStep({ label, at, by, onStep, children }: { label: 'Smaller' | 'Larger'; at: () => number; by: -1 | 1; onStep: (size: number) => void; children: ReactNode }) {
+function SizeStep({ label, at, by, watch, onStep, children }: { label: 'Smaller' | 'Larger'; at: () => number; by: -1 | 1; watch: string; onStep: (size: number) => void; children: ReactNode }) {
   const atEnd = (next: number) => next < 0 || next >= SIZES.length
-  // Measured once the page shows the chosen part, which happens just after this bar is drawn.
+  // Measured once the page shows the chosen part, which happens just after this bar is drawn, and
+  // again only when the part, its size or the screen size changes (measuring makes the page re-lay).
   const [end, setEnd] = useState(false)
   useEffect(() => {
     const frame = requestAnimationFrame(() => setEnd(atEnd(at() + by)))
     return () => cancelAnimationFrame(frame)
-  })
+  }, [watch])
   const why = by > 0 ? 'This text is already the largest size on the scale.' : 'This text is already the smallest size on the scale.'
   return <button type="button" aria-label={`${label} text`} aria-disabled={end || undefined} aria-description={end ? why : undefined} title={end ? why : label} onClick={() => { const next = at() + by; if (!atEnd(next)) onStep(next) }}>{children}</button>
 }
@@ -445,14 +446,15 @@ export function ContextBar() {
     target.ownerDocument.defaultView?.focus()
     target.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, clientX: r.left + 2, clientY: r.top + 2 }))
   }
+  const sizeWatch = `${selected?.blockId}|${key}|${shown.size ?? ''}|${screen}`
   // Size, weight, colour and alignment: in the bar, and on phones in the Text sheet (the Aa button).
   const textSize = (
     <span className="ctx-group ctx-size" role="group" aria-label="Text size">
       <span className="ctx-label ctx-label-plain">Size</span>
       <span className="ctx-stepper">
-        <SizeStep label="Smaller" at={() => currentSize(shown)} by={-1} onStep={(i) => setLook({ size: SIZES[i] })}>−</SizeStep>
+        <SizeStep label="Smaller" at={() => currentSize(shown)} by={-1} watch={sizeWatch} onStep={(i) => setLook({ size: SIZES[i] })}>−</SizeStep>
         <output>{sizeName(shown)}</output>
-        <SizeStep label="Larger" at={() => currentSize(shown)} by={1} onStep={(i) => setLook({ size: SIZES[i] })}>+</SizeStep>
+        <SizeStep label="Larger" at={() => currentSize(shown)} by={1} watch={sizeWatch} onStep={(i) => setLook({ size: SIZES[i] })}>+</SizeStep>
       </span>
     </span>
   )
