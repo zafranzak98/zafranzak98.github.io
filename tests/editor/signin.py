@@ -76,4 +76,15 @@ with sync_playwright() as p:
     ctx=b.new_context(); pg=ctx.new_page(); pg.goto("http://localhost:4302/admin/design/?project=about-face-beauty",wait_until="networkidle"); pg.wait_for_timeout(1500)
     check("Demo (localhost) still never shows sign-in", not signin(pg))
     ctx.close()
+    # Your own fresh sign-in survives a refresh while the shared one from /admin has expired
+    state["expired"]=True; OWN="ghu_"+"C"*36
+    ctx,pg,errs=fresh(ENTRY, OWN)
+    check("Expired shared sign-in, your own sign-in: no Sign in button", not signin(pg))
+    pg.reload(wait_until="networkidle"); pg.wait_for_timeout(2000)
+    check("Still signed in after a refresh", not signin(pg))
+    check("Your own sign-in is kept", pg.evaluate("sessionStorage.getItem('design-editor:token')")==OWN)
+    pg.goto(URL.split("?")[0]+"?page=about", wait_until="networkidle"); pg.wait_for_timeout(2000)
+    check("Still signed in after changing page", not signin(pg))
+    check("No script errors after refresh", not errs, str(errs[:1]))
+    ctx.close(); state["expired"]=False
     print(f"{sum(res)} of {len(res)} passed"); b.close()

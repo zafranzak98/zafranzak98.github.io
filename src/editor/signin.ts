@@ -43,6 +43,12 @@ export function currentAccount(refused?: string | null): Account | null {
   return own && own !== refused ? { token: own, shared: false } : null
 }
 
+// A sign-in GitHub has refused (expired, usually). Remembered for this tab, so changing page in the
+// editor does not offer it again; a renewed shared sign-in is a different token and is used at once.
+const REFUSED_KEY = 'design-editor:refused'
+export const refusedToken = () => read(REFUSED_KEY, sessionStorage)
+export const keepRefused = (token: string | null) => (token ? write(REFUSED_KEY, token, sessionStorage) : remove(REFUSED_KEY, sessionStorage))
+
 export const keepOwn = (token: string) => write(OWN_KEY, token, sessionStorage)
 export const forgetOwn = () => remove(OWN_KEY, sessionStorage)
 

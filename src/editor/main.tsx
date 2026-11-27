@@ -10,7 +10,7 @@ import { savedLayoutFor, standardCaseLayout } from '#/layout/render'
 import { fileTarget, savedPage } from '#/lib/page-layouts'
 import { editorConfig, layoutWarnings } from './config'
 import * as github from './github'
-import { SHARED_KEY, currentAccount, forgetOwn, keepOwn, sharedToken, signOutHere, type Account } from './signin'
+import { SHARED_KEY, currentAccount, forgetOwn, keepOwn, keepRefused, refusedToken, sharedToken, signOutHere, type Account } from './signin'
 import { CATEGORY_FIELD, Selection, SelectionProvider, categoryEdits, nameOf, wordsOf, type Edits } from './elements'
 import { categoryName } from '#/lib/site'
 import { checkPage, noteId, type Finding } from './checks'
@@ -95,8 +95,8 @@ function EditorApp() {
   const [start] = useState(() => startingLayout(p, page))
   // One sign-in shared with the website editor (see signin.ts); GitHub's refusal of a token is
   // remembered so it is not offered again until Sveltia renews it or you sign in.
-  const refused = useRef<string | null>(null)
-  const [account, setAccount] = useState<Account | null>(() => currentAccount())
+  const refused = useRef<string | null>(refusedToken())
+  const [account, setAccount] = useState<Account | null>(() => currentAccount(refused.current))
   const [login, setLogin] = useState('')
   const token = account?.token ?? null
   const setToken = (t: string | null) => setAccount(t ? { token: t, shared: false } : currentAccount(refused.current))
@@ -168,11 +168,13 @@ function EditorApp() {
   useEffect(keepCanvasClear, [])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // GitHub refused this sign-in. Your own is forgotten; the shared one is left for Sveltia to renew.
+  // GitHub refused this sign-in. If it was your own, it is forgotten; the shared one is left for
+  // Sveltia to renew, and your own sign-in, if you have one, is used instead.
   function expire(t: string) {
     refused.current = t
-    forgetOwn()
+    keepRefused(t)
     const shared = sharedToken() === t
+    if (!shared) forgetOwn()
     setAccount(currentAccount(t))
     setLogin('')
     return shared
@@ -180,6 +182,7 @@ function EditorApp() {
   const signOut = () => {
     signOutHere()
     refused.current = null
+    keepRefused(null)
     setAccount(null)
     setLogin('')
     setNotice('Signed out of both editors in this browser. If the website editor (/admin) is open in another tab, close or reload it too. To cancel the sign-in at GitHub as well, open GitHub, Settings, Applications, and revoke "Zafran website editor (Sveltia CMS)".')
