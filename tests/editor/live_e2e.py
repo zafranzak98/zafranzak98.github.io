@@ -79,7 +79,11 @@ def type_part(pg, el, words):
     pg.keyboard.press("Enter"); pg.wait_for_timeout(900)
 def size_of(pg, el): return part(pg, el).evaluate("e => parseFloat(getComputedStyle(e).fontSize)")
 def larger(pg, el):
-    click_part(pg, el); pg.locator(".ctx button[aria-label='Larger text']").first.click(); pg.wait_for_timeout(900)
+    # A design change: one step larger, or one step smaller once the text is at the top of the scale
+    # (Larger is greyed there, with the reason).
+    click_part(pg, el); pg.wait_for_timeout(300)
+    up = pg.locator(".ctx button[aria-label='Larger text']").first
+    (pg.locator(".ctx button[aria-label='Smaller text']").first if up.get_attribute("aria-disabled") == "true" else up).click(); pg.wait_for_timeout(900)
     pg.keyboard.press("Escape"); pg.wait_for_timeout(200)
 def unsaved(pg, slug): return json.loads(pg.evaluate(f"localStorage.getItem('design-editor:{slug}:unsaved')") or "null")
 def status(pg): return (pg.locator(".editor-status").text_content() or "").strip()
@@ -164,7 +168,7 @@ def page_flow(br, key):
     if s["file"]: one["file"] = f"E2E {n} file one"; type_part(pg, s["file"][0], one["file"])
     one["own"] = f"E2E {n} own one"; type_part(pg, s["own"][0], one["own"])
     size0 = size_of(pg, s["design"]); larger(pg, s["design"]); size1 = size_of(pg, s["design"])
-    check(f"[{n}] 2 Larger text makes {s['design']} larger on the page", size1 > size0, f"{size0} -> {size1}")
+    check(f"[{n}] 2 a size step changes {s['design']} on the page", abs(size1 - size0) > 0.5, f"{size0} -> {size1}")
     for el in ([s["design"]] + (["title"] if key == "footer" else [])):
         click_part(pg, el); btn = pg.locator(".ctx button[aria-label='Larger text']").first
         print(f"  info [{n}] Larger text on {el}: disabled={btn.is_disabled() if btn.count() else 'absent'}, size step shown={pg.locator('.ctx').first.inner_text().split(chr(10))[2:5]}, font {size_of(pg, el)}px", flush=True)
