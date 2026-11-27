@@ -195,6 +195,10 @@ ${PREVIEW ? `    ${NOINDEX}\n` : ''}    ${canonical(to)}
   writeFileSync(join(DIST, from, 'index.html'), doc)
   expected.set(join(from, 'index.html'), canonical(to))
 }
+// Which version of the content this copy of the site was built from. The visual editor reads it after
+// publishing, to tell you when your change is live (not only saved).
+const builtFrom = process.env.GITHUB_SHA || execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim()
+writeFileSync(join(DIST, 'version.json'), `${JSON.stringify({ commit: builtFrom })}\n`)
 writeFileSync(join(DIST, 'redirects.json'), JSON.stringify(Object.fromEntries([...redirects].map(([f, t]) => [`/${f}/`, `/${t}/`])), null, 2))
 if (redirects.size) console.log(`Old addresses redirected: ${[...redirects].map(([f, t]) => `/${f}/ -> /${t}/`).join(', ')}`)
 

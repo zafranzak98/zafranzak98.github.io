@@ -134,14 +134,14 @@ with sync_playwright() as p:
     check("Then closing the tab asks first", asks() is True)
     ctx.close()
 
-    # 7. Publish: success only after GitHub confirms; a refusal or lost connection claims nothing.
+    # 7. Publish: saved only after GitHub confirms (and not yet live); a refusal or lost connection claims nothing.
     for how, ok in (("422", False), ("abort", False), ("ok", True)):
         ctx, pg = fresh(); change(pg)
         mode.update(patch=how)
         pg.get_by_role("button", name="Publish").first.click(); pg.wait_for_timeout(4500)
         pg.locator(".editor-panel .editor-primary").click(); pg.wait_for_timeout(1500)
         s = status(pg)
-        if ok: check("Publish shows Published only after GitHub confirms", s.startswith("Published ") and unsaved_copy(pg) is None, s)
+        if ok: check("Publish shows Saved only after GitHub confirms (live comes later)", s == "Saved, updating site…" and unsaved_copy(pg) is None, s)
         else: check(f"Publish refused ({how}): not claimed, work kept", s == "Not saved: see the message" and unsaved_copy(pg) is not None, s)
         ctx.close()
     mode.update(patch="ok")

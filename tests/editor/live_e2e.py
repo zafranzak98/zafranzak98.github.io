@@ -104,7 +104,7 @@ def publish(pg):
     open_publish(pg)
     btn = pg.locator(".editor-panel .editor-primary")
     if not btn.count() or btn.is_disabled(): return "blocked: " + " ".join(pg.locator(".editor-panel").all_inner_texts())
-    btn.click(); return wait_status(pg, "Published")
+    btn.click(); return wait_status(pg, "Saved")
 def keep_all_mine(pg):
     for _ in range(10):
         b = pg.locator(".editor-panel .editor-conflict button", has_text="Keep mine")
@@ -113,13 +113,13 @@ def keep_all_mine(pg):
 def publish_checked(pg, n, label):
     """Publish; a false 'someone else changed' block is a FAIL, then Keep mine is chosen to go on testing."""
     st = publish(pg)
-    check(f"[{n}] {label} says published (no false 'someone else changed' block)", st.startswith("Published"), st[:600] + " | " + notice(pg)[:300])
+    check(f"[{n}] {label} says saved (publishing) (no false 'someone else changed' block)", st.startswith("Saved"), st[:600] + " | " + notice(pg)[:300])
     if "Someone else changed" in st:
         keep_all_mine(pg)
         btn = pg.locator(".editor-panel .editor-primary")
-        if btn.count() and not btn.is_disabled(): btn.click(); st = wait_status(pg, "Published")
+        if btn.count() and not btn.is_disabled(): btn.click(); st = wait_status(pg, "Saved")
         else: st = "still blocked: " + " ".join(pg.locator(".editor-panel").all_inner_texts())[:400]
-        check(f"[{n}] {label} (workaround: Keep mine) then goes through", st.startswith("Published"), st[:600] + " | " + notice(pg)[:300])
+        check(f"[{n}] {label} (workaround: Keep mine) then goes through", st.startswith("Saved"), st[:600] + " | " + notice(pg)[:300])
     return st
 def save_draft(pg):
     pg.locator(".editor-save").click(); return wait_status(pg, "Draft saved")
@@ -199,7 +199,7 @@ def page_flow(br, key):
     check(f"[{n}] 3 main is unchanged by a draft", repo.branches["main"] == start)
     # 4. Publish.
     st = publish(pg)
-    check(f"[{n}] 4 Publish says published", st.startswith("Published"), st[:600] + " | " + notice(pg)[:300])
+    check(f"[{n}] 4 Publish says saved (publishing)", st.startswith("Saved"), st[:600] + " | " + notice(pg)[:300])
     c = chain(repo)
     check(f"[{n}] 4 exactly one new commit on main", len(c) == 2, len(c))
     files = changed(repo, start, repo.branches["main"]) if len(c) >= 2 else []
@@ -235,7 +235,7 @@ def page_flow(br, key):
     check(f"[{n}] 5 after reload the own words show", text_of(pg, s["own"][0]) == one["own"], text_of(pg, s["own"][0]))
     if s["file"]: check(f"[{n}] 5 after reload the file words show", text_of(pg, s["file"][0]) == one["file"], text_of(pg, s["file"][0]))
     check(f"[{n}] 5 after reload the design setting shows", abs(size_of(pg, s["design"]) - size1) < 0.5, size_of(pg, s["design"]))
-    check(f"[{n}] 5 after reload the status is Same as the website", status(pg) in ("Same as the website",) or status(pg).startswith("Published"), status(pg))
+    check(f"[{n}] 5 after reload the status is Same as the website", status(pg) in ("Same as the website",) or status(pg).startswith("Saved"), status(pg))
     # 6. A second publish, then bring back the first.
     two = {"own": f"E2E {n} own two"}
     if s["file"]: two["file"] = f"E2E {n} file two"; type_part(pg, s["file"][0], two["file"])
@@ -298,8 +298,8 @@ def conflict_flow(br, key, choice):
     btn = pg.locator(".editor-panel .editor-primary")
     if not btn.count(): open_publish(pg); btn = pg.locator(".editor-panel .editor-primary")
     if btn.is_disabled(): pg.wait_for_timeout(3000)
-    btn.click(); st = wait_status(pg, "Published")
-    check(f"[{n}] 7 ({choice}) publishes", st.startswith("Published"), st[:600] + " | " + notice(pg)[:300])
+    btn.click(); st = wait_status(pg, "Saved")
+    check(f"[{n}] 7 ({choice}) publishes", st.startswith("Saved"), st[:600] + " | " + notice(pg)[:300])
     new, _ = front(repo.files("main")[path], path)
     check(f"[{n}] 7 ({choice}) committed value is {'mine' if choice == 'mine' else 'theirs'}", at(new, keys) == (mine if choice == "mine" else theirs), at(new, keys))
     if other: check(f"[{n}] 7 ({choice}) unrelated /admin change kept", at(new, other) == (99 if other == ["order"] else f"E2E {n} admin other"), at(new, other))
@@ -344,7 +344,7 @@ def publish_all(br, repo, plan):
             p["focus_after_work"] = frame(pg).evaluate("(() => { const f = document.querySelector(\"[data-el='focus-heading']\"), w = document.querySelector(\"[data-el='work-heading']\"); return !!(f && w && (w.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING)) })()")
             check("[visitor] home section moved in the editor", p["rows_before"] != p["rows_after"] and p["focus_after_work"], f"{p['rows_before']} -> {p['rows_after']}")
         st = publish(pg)
-        check(f"[visitor] publish {n}", st.startswith("Published"), st[:600] + " | " + notice(pg)[:300])
+        check(f"[visitor] publish {n}", st.startswith("Saved"), st[:600] + " | " + notice(pg)[:300])
         ctx.close()
 
 def visitor(br, repo, plan):

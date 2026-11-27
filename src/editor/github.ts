@@ -159,32 +159,43 @@ function withWords(text: string, edits: Edits, startedWith: (field: string) => s
   return updated === text ? null : updated
 }
 
-export type Change = { path: string; edits?: Edits; startedWith?: (field: string) => string; text?: string | null; label?: string; from?: Record<string, string> }
+// A file to change: words to write into it, its whole new text (null removes it), or `compose`, which works
+// out the new text from the file as it is in the version being published (and can stop the publish).
+export type Change = { path: string; edits?: Edits; startedWith?: (field: string) => string; text?: string | null; compose?: (current: string | null) => string | null; label?: string; from?: Record<string, string> }
 
 // Publishing saves every changed file in one step: the page's words, any shared category names
 // and its layout. GitHub accepts the step only if nothing else reached the website since the
 // files were read, so the site is never left half-updated and no one's change is overwritten.
-export async function publishTogether(token: string, changes: Change[], message: string) {
+// Returns the new version (commit) of the website's content, or false when nothing changed.
+export async function publishTogether(token: string, changes: Change[], message: string): Promise<string | false> {
   // The editor only ever writes content files. Anything else is refused here, before GitHub is asked,
   // so a mistake in the editor can never change the website's code (the build guard checks this too).
   const outside = changes.filter((c) => !/^content\/[a-z0-9][a-z0-9/_.-]*$/i.test(c.path) || c.path.includes('..'))
   if (outside.length) throw new Error(`The editor can only change content files, not ${outside.map((c) => c.path).join(', ')}. Nothing was saved.`)
   const head = await api(token, `/git/ref/heads/${MAIN}`)
   const base = head.object.sha as string
-  const commit = await api(token, `/git/commits/${base}`)
+  // These reads do not depend on each other, so they go to GitHub together.
+  const [commit, files] = await Promise.all([
+    api(token, `/git/commits/${base}`),
+    Promise.all(changes.map((c) => (c.edits || c.compose || c.text === null ? api(token, `/contents/${c.path}?ref=${base}`) : null))),
+  ])
   const tree: { path: string; mode: '100644'; type: 'blob'; content?: string; sha?: null }[] = []
-  for (const change of changes) {
+  changes.forEach((change, i) => {
+    const file = files[i]
     if (change.edits) {
-      const file = await api(token, `/contents/${change.path}?ref=${base}`)
       if (!file) throw new Error(`${change.path} was not found. Nothing was saved.`)
       const updated = withWords(fromBase64(file.content), change.edits, change.startedWith!, change.label, change.path.endsWith('.yml'))
       if (updated !== null) tree.push({ path: change.path, mode: '100644', type: 'blob', content: updated })
+    } else if (change.compose) {
+      const text = change.compose(file ? fromBase64(file.content) : null)
+      if (text !== null) tree.push({ path: change.path, mode: '100644', type: 'blob', content: text })
+      else if (file) tree.push({ path: change.path, mode: '100644', type: 'blob', sha: null })
     } else if (change.text === null) {
-      if (await api(token, `/contents/${change.path}?ref=${base}`)) tree.push({ path: change.path, mode: '100644', type: 'blob', sha: null })
+      if (file) tree.push({ path: change.path, mode: '100644', type: 'blob', sha: null })
     } else if (change.text !== undefined) {
       tree.push({ path: change.path, mode: '100644', type: 'blob', content: change.text })
     }
-  }
+  })
   if (!tree.length) return false
   const next = await api(token, '/git/trees', { method: 'POST', body: JSON.stringify({ base_tree: commit.tree.sha, tree }) })
   if (next.sha === commit.tree.sha) return false
@@ -196,7 +207,7 @@ export async function publishTogether(token: string, changes: Change[], message:
   })
   if (res.status === 422 || res.status === 409) throw new Error('The website changed a moment ago. Nothing was saved; publish again.')
   if (!res.ok) throw new Error(`GitHub answered ${res.status}. Nothing was saved.`)
-  return true
+  return made.sha as string
 }
 
 // Writes changed words into the project's content file on main (kept for the word tests).

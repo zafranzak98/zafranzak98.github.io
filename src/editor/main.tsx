@@ -8,6 +8,7 @@ import './editor.css'
 import { caseStudies, type Project } from '#/lib/site'
 import { savedLayoutFor, standardCaseLayout } from '#/layout/render'
 import { fileTarget, savedPage } from '#/lib/page-layouts'
+import { followUpdate, type Update } from './deploy'
 import { editorConfig, layoutWarnings } from './config'
 import * as github from './github'
 import { SHARED_KEY, currentAccount, forgetOwn, keepOwn, keepRefused, refusedToken, sharedToken, signOutHere, type Account } from './signin'
@@ -271,6 +272,20 @@ function ScreenStrip({ width }: { width: number }) {
 const SCREENS_BAR: [string, number][] = [['Desktop', 1440], ['Tablet', 1024], ['Phone', 390]]
 const DESKTOP_WIDTHS = [1280, 1440, 1920]
 // "23 Nov, 14:40": the day is included because the status is remembered across reloads.
+// Wait until the preview has been redrawn at the given width: the page inside reports that width,
+// nothing on it is still moving (endless effects aside), and that has held for two frames in a row. Never longer than 1.5 s.
+async function sizeReached(width: number) {
+  const frame = () => new Promise((r) => requestAnimationFrame(r))
+  const until = performance.now() + 1500
+  let steady = 0
+  while (performance.now() < until) {
+    await frame()
+    const win = (document.getElementById('preview-frame') as HTMLIFrameElement | null)?.contentWindow
+    const moving = [...document.getAnimations(), ...(win?.document.getAnimations() ?? [])].some((a) => a.playState === 'running' && Number.isFinite(Number(a.effect?.getComputedTiming().endTime)))
+    steady = win && Math.round(win.innerWidth) === width && !moving ? steady + 1 : 0
+    if (steady >= 2) return
+  }
+}
 const time = () => new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 // The top bar: the project, the screen size being edited, undo and redo, where the work stands,
@@ -326,6 +341,11 @@ function Actions() {
   useEffect(() => { if (clean.current === '') clean.current = JSON.stringify(data) }, [data, clean])
   const dispatch = usePuck((s) => s.dispatch)
   const [busy, setBusy] = useState('')
+  // The website update after the last publish, followed until the change is live.
+  const [update, setUpdate] = useState<Update | null>(null)
+  const stopFollowing = useRef<(() => void) | null>(null)
+  const followed = useRef('') // the page as published, whose website update is being followed
+  useEffect(() => () => stopFollowing.current?.(), [])
   const [panel, setPanel] = useState<'' | 'publish' | 'history' | 'reset'>('')
   // Only the parts of Puck's interface state this bar uses (the screen size and the open panels).
   const viewports = usePuck((s) => s.appState.ui.viewports)
@@ -367,7 +387,7 @@ function Actions() {
     const found: Finding[] = []
     for (const [screen, width] of sizes) {
       dispatch({ type: 'setUi', ui: { viewports: { ...ui.viewports, current: { width, height: 'auto' } } } })
-      await new Promise((r) => setTimeout(r, 700))
+      await sizeReached(width)
       const doc = (document.getElementById('preview-frame') as HTMLIFrameElement | null)?.contentDocument
       if (doc) { await settled(doc); found.push(...checkPage(doc, screen, nameOf, checkOptions(p))) }
     }
@@ -385,13 +405,16 @@ function Actions() {
     }
     setPanel('publish')
     setFindings(null)
-    if (!DEMO && token) {
-      try {
-        const theirs = await changedElsewhere(token)
-        if (Object.keys(theirs).length) setRemote({ edits: theirs, at: new Date().toISOString() })
-      } catch { /* checked again, field by field, when publishing */ }
-    }
-    setFindings(await checkSizes([['Desktop', 1440], ['Tablet', 1024], ['Phone', 390]]))
+    // Asking GitHub about other changes and checking the three sizes do not depend on each other, so
+    // they run at the same time.
+    const elsewhere = !DEMO && token
+      ? changedElsewhere(token).then((theirs) => {
+          if (Object.keys(theirs).length) setRemote({ edits: theirs, at: new Date().toISOString() })
+        }).catch(() => { /* checked again, field by field, when publishing */ })
+      : null
+    const found = await checkSizes([['Desktop', 1440], ['Tablet', 1024], ['Phone', 390]])
+    await elsewhere
+    setFindings(found)
   }
   const [versions, setVersions] = useState<Version[]>([])
   const [more, setMore] = useState(false)
@@ -490,7 +513,8 @@ function Actions() {
   const status = {
     failed: 'Not saved: see the message',
     busy: `${busy}…`,
-    saved: saved?.text ?? '',
+    // While the editor follows the website update after publishing, the status says where it is.
+    saved: update && saved?.json === followed.current && update.state !== 'live' && update.state !== 'unknown' ? { waiting: 'Saved, updating site…', updating: 'Saved, updating site…', slow: 'Saved, update is slow…', failed: 'Saved, site not updated' }[update.state] : saved?.text ?? '',
     unsaved: online ? 'Not saved yet' : 'Offline: kept in this browser',
     unkept: 'Not saved, and not kept here',
     clean: unpublished ? 'Draft saved, not published' : 'Same as the website',
@@ -622,14 +646,22 @@ function Actions() {
     const { edits: _words, words: _record, ...rootProps } = (data.root.props ?? {}) as { edits?: Edits; words?: Edits }
     // Every word published from the editor is kept with the layout, so Versions brings words back too.
     // A page's own words (header, footer, labels) are read by the website from there.
-    const before = (await github.readLayout(token, p.slug, github.MAIN))?.layout as { content?: unknown; root?: { props?: { words?: Edits } } } | undefined
-    // Published since this editor was opened (another tab, device or browser): never overwrite it unseen.
-    if (before && !sameLayout(before, openedFrom)) throw new Error('This page was published from another tab or device after you opened it. Nothing was saved. Reload the editor to see that version, then make your change again.')
-    const record = { ...(before?.root?.props?.words ?? {}), ...edits }
-    const layout = { ...data, root: { ...data.root, props: { ...rootProps, ...(Object.keys(record).length ? { words: record } : {}) } } }
-    const standard = !page && JSON.stringify(data.content) === JSON.stringify(standardCaseLayout().content) && !Object.keys(record).length
-    const changes = [...fileChanges(edits), { path: github.layoutPath(p.slug), text: standard ? null : `${JSON.stringify(layout, null, 2)}\n` }]
-    await github.publishTogether(token, changes, `Design editor: publish ${p.slug}`)
+    // The layout is worked out against the page as it is in the version being published: if it was
+    // published from another tab, device or browser since this editor opened, nothing is overwritten.
+    let layout = data
+    let standard = false
+    const composeLayout = (current: string | null) => {
+      const before = current ? JSON.parse(current) as { content?: unknown; root?: { props?: { words?: Edits } } } : undefined
+      if (before && !sameLayout(before, openedFrom)) throw new Error('This page was published from another tab or device after you opened it. Nothing was saved. Reload the editor to see that version, then make your change again.')
+      const record = { ...(before?.root?.props?.words ?? {}), ...edits }
+      layout = { ...data, root: { ...data.root, props: { ...rootProps, ...(Object.keys(record).length ? { words: record } : {}) } } }
+      standard = !page && JSON.stringify(data.content) === JSON.stringify(standardCaseLayout().content) && !Object.keys(record).length
+      return standard ? null : `${JSON.stringify(layout, null, 2)}\n`
+    }
+    const changes = [...fileChanges(edits), { path: github.layoutPath(p.slug), compose: composeLayout }]
+    const savingFrom = Date.now()
+    const commit = await github.publishTogether(token, changes, `Design editor: publish ${p.slug}`)
+    const savedIn = ((Date.now() - savingFrom) / 1000).toFixed(1)
     publishedWords = { ...publishedWords, ...edits }
     openedFrom = standard ? undefined : layout
     writeLocal(localKey(p.slug, 'published'), { at: Date.now(), data, layout: openedFrom, words: publishedWords })
@@ -637,8 +669,31 @@ function Actions() {
     setRemote(null)
     removeLocal(localKey(p.slug, 'unsaved'))
     clean.current = JSON.stringify(data)
-    setSaved({ json: clean.current, text: `Published ${time()}` })
-    return 'Published. Your website updates in about a minute, after the usual checks. If a check fails, the site stays as it was and you get the usual email.'
+    if (!commit) {
+      setSaved({ json: clean.current, text: 'Same as the website' })
+      return 'Nothing to publish: the website already has these changes.'
+    }
+    // Saved is not live: the website is rebuilt from the saved version, which takes about a minute.
+    // The editor follows that update and says when the change is really on the website.
+    stopFollowing.current?.()
+    const json = clean.current
+    followed.current = json
+    setUpdate({ state: 'waiting' })
+    setSaved({ json, text: `Saved ${time()}` })
+    stopFollowing.current = followUpdate(commit, (u) => {
+      setUpdate(u)
+      if (u.state === 'live') {
+        setSaved({ json, text: `Live ${time()}` })
+        setNotice(`Live on your website now. Saving took ${savedIn} seconds; the website update took ${u.seconds} seconds.`)
+      } else if (u.state === 'failed') {
+        setNotice('Saved to GitHub, but the website update failed, so your website still shows the previous version. GitHub sends the usual email with the reason, and the change goes live with the next successful update.')
+      } else if (u.state === 'slow') {
+        setNotice('The website update is taking longer than usual. Your change is saved on GitHub and appears on your website when the update finishes.')
+      } else if (u.state === 'unknown') {
+        setNotice('The website update could not be confirmed after ten minutes. Your change is saved on GitHub; check your website in a few minutes.')
+      }
+    })
+    return `Saved to GitHub in ${savedIn} seconds. Your website is updating now, which usually takes about a minute; this message changes when it is live. You can keep working.`
   })
 
   const openHistory = () => run('Loading history', async () => {
