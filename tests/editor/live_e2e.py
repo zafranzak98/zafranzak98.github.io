@@ -249,7 +249,7 @@ def page_flow(br, key):
     pubrows = [i for i, r in enumerate(rows) if r.startswith("Published")]
     check(f"[{n}] 6 Versions lists both published versions", len(pubrows) >= 2, rows)
     if pubrows:
-        pg.locator(".editor-versions li").nth(pubrows[-1]).locator("button").click(); pg.wait_for_timeout(1500)
+        pg.locator(".editor-versions li").nth(pubrows[1] if len(pubrows) > 1 else pubrows[-1]).locator("button").click()  # newest first: the publish before the latest; pg.wait_for_timeout(1500)
         check(f"[{n}] 6 version 1 brings back the own words", text_of(pg, s["own"][0]) == one["own"], text_of(pg, s["own"][0]))
         if s["file"]: check(f"[{n}] 6 version 1 brings back the file words", text_of(pg, s["file"][0]) == one["file"], text_of(pg, s["file"][0]))
         check(f"[{n}] 6 version 1 brings back the layout (design size)", abs(size_of(pg, s["design"]) - size1) < 0.5, f"{size_of(pg, s['design'])} want {size1} (v2 {size2})")
