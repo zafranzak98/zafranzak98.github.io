@@ -45,7 +45,8 @@ const readLocal = <T,>(key: string, fallback: T): T => { try { return JSON.parse
 const writeLocal = (key: string, value: unknown) => { try { localStorage.setItem(key, JSON.stringify(value)); return true } catch { return false } }
 const removeLocal = (key: string) => { try { localStorage.removeItem(key) } catch { /* nothing to remove */ } }
 
-// The page as published: a case study's saved layout, or (demo) any other page's standard one.
+// The page as published: its saved layout (content/layouts), or its standard one. In the demo, a
+// page published in this browser.
 // Demo: a page published here (simulated) opens as last published in this browser. The shared header
 // and footer keep their own published copy (shared.ts).
 const demoPublished = (p: Project) => (DEMO ? readLocal<Version[]>(localKey(p.slug, 'versions'), [])[0]?.layout : undefined)
@@ -83,7 +84,7 @@ function labelPuckControls() {
 }
 
 function EditorApp() {
-  // Which page: a case study (?project=), or in the demo any page of the website (?page=).
+  // Which page: a case study (?project=) or any other page of the website (?page=).
   const [{ p, page, config }] = useState(() => {
     const params = new URLSearchParams(location.search)
     const page = pageFor(params.get('page')) ?? null
@@ -392,8 +393,7 @@ function Actions() {
     return () => { document.removeEventListener('keydown', key); document.removeEventListener('pointerdown', away); window.removeEventListener('blur', blur) }
   }, [more])
   const warnings = layoutWarnings(data.content as never)
-  // Demo safeguards (simulated in this browser): what stops publishing, and the same words changed
-  // in another tab or by someone else.
+  // What stops publishing, and the same words changed in another tab or by someone else.
   const edits = editsOf(data)
   const problems: Problem[] = [...(page && !page.shared ? pageProblems(page.words as never, edits) : []), ...wordProblems(edits, !page)]
   const latest = useRef(data)
@@ -674,12 +674,12 @@ function Actions() {
         <span className="editor-brand">Design editor</span>
         {DEMO && <span className="editor-chip" title="This is the demo: Save draft and Publish are simulated here and stay in this browser. In the editor on your website they save and publish for real.">Demo<span className="editor-chip-more"> · saving simulated</span></span>}
         <label className="editor-field"><span className="sr-only">Page</span>
-            <select className="editor-project" value={page ? `page:${page.key}` : `case:${p.slug}`} onChange={(e) => { const v = e.target.value; location.search = v.startsWith('case:') ? `?project=${v.slice(5)}` : `?page=${v.slice(5)}` }}>
-              {(['Pages', 'Categories'] as const).map((g) => <optgroup key={g} label={g}>{PAGES.filter((x) => x.group === g).map((x) => <option key={x.key} value={`page:${x.key}`}>{x.label}</option>)}</optgroup>)}
-              <optgroup label="Case studies">{caseStudies.map((x) => <option key={x.slug} value={`case:${x.slug}`}>{x.title}</option>)}</optgroup>
-              <optgroup label="Shared on every page">{PAGES.filter((x) => x.group === 'Shared').map((x) => <option key={x.key} value={`page:${x.key}`}>{x.label}</option>)}</optgroup>
-            </select>
-          </label>
+          <select className="editor-project" value={page ? `page:${page.key}` : `case:${p.slug}`} onChange={(e) => { const v = e.target.value; location.search = v.startsWith('case:') ? `?project=${v.slice(5)}` : `?page=${v.slice(5)}` }}>
+            {(['Pages', 'Categories'] as const).map((g) => <optgroup key={g} label={g}>{PAGES.filter((x) => x.group === g).map((x) => <option key={x.key} value={`page:${x.key}`}>{x.label}</option>)}</optgroup>)}
+            <optgroup label="Case studies">{caseStudies.map((x) => <option key={x.slug} value={`case:${x.slug}`}>{x.title}</option>)}</optgroup>
+            <optgroup label="Shared on every page">{PAGES.filter((x) => x.group === 'Shared').map((x) => <option key={x.key} value={`page:${x.key}`}>{x.label}</option>)}</optgroup>
+          </select>
+        </label>
         <div className="editor-history">
           <button type="button" onClick={history.back} disabled={!history.hasPast} title={history.hasPast ? `Undo: ${undoWhat} (Cmd+Z)` : 'Nothing to undo'} aria-label={history.hasPast ? `Undo: ${undoWhat}` : 'Undo'}><UndoIcon /><span className="editor-word">Undo</span></button>
           <button type="button" onClick={history.forward} disabled={!history.hasFuture} title={history.hasFuture ? `Redo: ${redoWhat} (Cmd+Shift+Z)` : 'Nothing to redo'} aria-label={history.hasFuture ? `Redo: ${redoWhat}` : 'Redo'}><RedoIcon /><span className="editor-word">Redo</span></button>

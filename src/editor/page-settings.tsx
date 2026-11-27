@@ -6,7 +6,7 @@ import { applyEdits, useWords, wordsOf, type Edits } from './elements'
 
 const usePuck = createUsePuck()
 
-// Visual editor demo: page settings that are words, not looks. They are kept with the page's other
+// Page settings that are words, not looks. They are kept with the page's other
 // changed words (root.props.edits) until publishing, so Undo, Redo, drafts and recovery cover them.
 //   Homepage clock: clock:show, clock:city, clock:time_zone, clock:line (the same four settings, with
 //     the same rules, as Site settings > Homepage clock in the website editor and the build check).
