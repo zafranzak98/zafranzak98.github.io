@@ -47,7 +47,9 @@ export async function whoAmI(token: string): Promise<string | null> {
 }
 
 async function api(token: string, path: string, init: RequestInit = {}) {
+  // GitHub lets a browser reuse an answer for a minute. Publishing must read what is there now.
   const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}${path}`, {
+    cache: 'no-store',
     ...init,
     headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28', ...init.headers },
   })
@@ -185,6 +187,7 @@ export async function publishTogether(token: string, changes: Change[], message:
   }
   if (!tree.length) return false
   const next = await api(token, '/git/trees', { method: 'POST', body: JSON.stringify({ base_tree: commit.tree.sha, tree }) })
+  if (next.sha === commit.tree.sha) return false
   const made = await api(token, '/git/commits', { method: 'POST', body: JSON.stringify({ message, tree: next.sha, parents: [base] }) })
   const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/git/refs/heads/${MAIN}`, {
     method: 'PATCH',
