@@ -12,7 +12,7 @@ import { CATEGORY_FIELD, applyEdits, categoryEdits, useCanvasEditing, type Edits
 import { SharedAround, sharedEdits } from './shared'
 import { ClockSettings, wordsWithEdits } from './page-settings'
 
-// Demo only (the visual editor demo): every page of the website in one list. A case study keeps
+// Every page of the website in one list. A case study keeps
 // its own editor (config.tsx); every other page is described here: its name, its words, its
 // sections in their standard order, and the frame the website draws around them.
 

@@ -9,3 +9,5 @@ declare module 'virtual:image-widths' {
   const widths: Record<string, [number, number]>
   export default widths
 }
+
+declare const __BUILT_AT__: number

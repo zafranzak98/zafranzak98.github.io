@@ -6,7 +6,7 @@ import { applyEdits, useWords, wordsOf, type Edits } from './elements'
 
 const usePuck = createUsePuck()
 
-// Visual editor demo: page settings that are words, not looks. They are kept with the page's other
+// Page settings that are words, not looks. They are kept with the page's other
 // changed words (root.props.edits) until publishing, so Undo, Redo, drafts and recovery cover them.
 //   Homepage clock: clock:show, clock:city, clock:time_zone, clock:line (the same four settings, with
 //     the same rules, as Site settings > Homepage clock in the website editor and the build check).
@@ -44,6 +44,28 @@ export function pageProblems(words: Words, edits: Edits): Problem[] {
     if (!validTimeZone(now.clock.time_zone)) out.push({ text: `The homepage clock's time zone "${now.clock.time_zone}" is not a real time zone. Use a name such as Europe/London or Asia/Kuala_Lumpur.`, section: 'HomeClock', key: 'clock' })
   }
   if (now.portrait?.image && !now.portrait.alt?.trim()) out.push({ text: 'The About portrait has no description. Add one in the portrait’s settings: screen readers read it to visitors who cannot see the photo.', section: 'AboutHero', key: 'portrait' })
+  return out
+}
+
+// The rules the website's build applies to words (content-collections.ts). Publishing words that break
+// one would stop the website updating, so they are caught here first, with the reason.
+const TYPES = ['Individual project', 'Team project (lead)', 'Team project (member)', 'Freelance', 'University project', 'Personal project']
+export function wordProblems(edits: Edits, caseStudy: boolean): Problem[] {
+  const out: Problem[] = []
+  const len = (field: string) => (edits[field] ?? '').trim().length
+  const check = (field: string, ok: boolean, text: string, section: string, key: string) => { if (field in edits && !ok) out.push({ text, section, key }) }
+  if (caseStudy) {
+    check('title', len('title') >= 1 && len('title') <= 60, 'The project title needs between 1 and 60 characters.', 'Opening', 'title')
+    check('summary', len('summary') >= 1 && len('summary') <= 220, 'The summary needs between 1 and 220 characters.', 'Opening', 'summary')
+    check('role', len('role') >= 1 && len('role') <= 60, 'My role needs between 1 and 60 characters.', 'Facts', 'value-role')
+    check('when', len('when') >= 1, 'When needs some words.', 'Facts', 'value-when')
+    check('type', TYPES.includes((edits.type ?? '').split(' · ')[0].trim()), `The project type must start with one of: ${TYPES.join(', ')}.`, 'Facts', 'value-type')
+    check('homepage_label', len('homepage_label') <= 70, 'The homepage label can have up to 70 characters.', 'Opening', 'title')
+  }
+  for (const field of Object.keys(edits).filter((f) => /^category:/.test(f))) {
+    const n = edits[field].trim().length
+    if (n < 1 || n > 40) out.push({ text: 'A category name needs between 1 and 40 characters.', section: 'ListingHead', key: 'title' })
+  }
   return out
 }
 

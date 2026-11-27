@@ -273,6 +273,7 @@ const encodeSource = readFileSync(encodeJs, 'utf8')
 if (!encodeSource.includes("from 'wasm-feature-detect'")) errors.push('The WebP converter has changed shape: update the copy step in scripts/postbuild.mjs.')
 writeFileSync(encodeJs, encodeSource.replace("from 'wasm-feature-detect'", "from '../wasm-feature-detect/index.js'"))
 cpSync('src/admin/webp-fallback.js', join(ADMIN, 'webp-fallback.js'))
+cpSync('src/admin/design-link.js', join(ADMIN, 'design-link.js'))
 for (const f of ['jsquash-webp/codec/enc/webp_enc.wasm', 'jsquash-webp/codec/enc/webp_enc_simd.wasm']) if (!existsSync(join(VENDOR, f))) errors.push(`The WebP converter is missing ${f}`)
 // The editor holds a GitHub sign-in, so the page may only run code from this site and talk to
 // GitHub and the sign-in helper (Sveltia CMS Authenticator on Cloudflare), which renews it. Also allowed, as data only: the editor's fonts (jsDelivr), GitHub's status page, and
@@ -307,6 +308,7 @@ writeFileSync(join(ADMIN, 'index.html'), `<!doctype html>
   <body>
     <script src="/admin/webp-fallback.js" integrity="${sri('src/admin/webp-fallback.js')}" crossorigin="anonymous"></script>
     <script src="/admin/sveltia-cms.js" integrity="${integrity}" crossorigin="anonymous"></script>
+    <script src="/admin/design-link.js" integrity="${sri('src/admin/design-link.js')}" crossorigin="anonymous"></script>
   </body>
 </html>
 `)

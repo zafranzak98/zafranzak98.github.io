@@ -117,14 +117,31 @@ const describe = (field: string) => {
 // The changed words for one content file: the file's new text, or null when nothing changes.
 // Each changed field is compared with what the editor started from: if someone has changed the
 // same words in the website editor since, nothing is written.
-function withWords(text: string, edits: Edits, startedWith: (field: string) => string, label?: string) {
+// Settings that are yes or no are stored as such (the homepage clock and weather switches).
+const BOOLEAN = /^clock:(show|weather)$/
+// A content file's YAML: the front matter of a Markdown file, or the whole of a .yml file.
+function splitFile(text: string, yaml: boolean) {
+  if (yaml) return { head: text, body: null as string | null }
   const parts = text.match(/^---\n([\s\S]*?\n)---\n?([\s\S]*)$/)
   if (!parts) throw new Error('A content file is not in the expected format. Nothing was saved.')
-  const doc = parseDocument(parts[1])
-  const get = (path: (string | number)[]) => {
-    const node = doc.getIn(path)
-    return node && typeof node === 'object' && 'toJSON' in node ? (node as { toJSON: () => unknown }).toJSON() : node
-  }
+  return { head: parts[1], body: parts[2] }
+}
+const getter = (doc: ReturnType<typeof parseDocument>) => (path: (string | number)[]) => {
+  const node = doc.getIn(path)
+  return node && typeof node === 'object' && 'toJSON' in node ? (node as { toJSON: () => unknown }).toJSON() : node
+}
+// The words the fields show in a content file now, for the check against someone else's change.
+export async function currentWords(token: string, path: string, fields: string[]): Promise<Edits> {
+  const file = await api(token, `/contents/${path}?ref=${MAIN}`)
+  if (!file) return {}
+  const doc = parseDocument(splitFile(fromBase64(file.content), path.endsWith('.yml')).head)
+  return Object.fromEntries(fields.map((f) => [f, wordsAt(f, getter(doc))]))
+}
+
+function withWords(text: string, edits: Edits, startedWith: (field: string) => string, label?: string, yaml = false) {
+  const parts = splitFile(text, yaml)
+  const doc = parseDocument(parts.head)
+  const get = getter(doc)
   const clashes = Object.keys(edits).filter((field) => {
     const now = wordsAt(field, get)
     return now !== startedWith(field) && now !== edits[field]
@@ -133,14 +150,14 @@ function withWords(text: string, edits: Edits, startedWith: (field: string) => s
   for (const [field, words] of Object.entries(edits)) {
     for (const [at, value] of writesFor(field, words)) {
       if (value === undefined) doc.deleteIn(at)
-      else doc.setIn(at, doc.createNode(value))
+      else doc.setIn(at, doc.createNode(BOOLEAN.test(field) ? String(value) === 'true' : typeof value === 'string' ? value.trim() : value))
     }
   }
-  const updated = `---\n${doc.toString({ lineWidth: 0 })}---\n${parts[2]}`
+  const updated = parts.body === null ? doc.toString({ lineWidth: 0 }) : `---\n${doc.toString({ lineWidth: 0 })}---\n${parts.body}`
   return updated === text ? null : updated
 }
 
-export type Change = { path: string; edits?: Edits; startedWith?: (field: string) => string; text?: string | null; label?: string }
+export type Change = { path: string; edits?: Edits; startedWith?: (field: string) => string; text?: string | null; label?: string; from?: Record<string, string> }
 
 // Publishing saves every changed file in one step: the page's words, any shared category names
 // and its layout. GitHub accepts the step only if nothing else reached the website since the
@@ -158,7 +175,7 @@ export async function publishTogether(token: string, changes: Change[], message:
     if (change.edits) {
       const file = await api(token, `/contents/${change.path}?ref=${base}`)
       if (!file) throw new Error(`${change.path} was not found. Nothing was saved.`)
-      const updated = withWords(fromBase64(file.content), change.edits, change.startedWith!, change.label)
+      const updated = withWords(fromBase64(file.content), change.edits, change.startedWith!, change.label, change.path.endsWith('.yml'))
       if (updated !== null) tree.push({ path: change.path, mode: '100644', type: 'blob', content: updated })
     } else if (change.text === null) {
       if (await api(token, `/contents/${change.path}?ref=${base}`)) tree.push({ path: change.path, mode: '100644', type: 'blob', sha: null })

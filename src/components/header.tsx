@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from 'react'
 import { PageLink } from '#/components/page-link'
-import { Editing, useElement, type Elements } from '#/layout/elements'
+import { Editing, lookAt, useElement, type Elements } from '#/layout/elements'
 import { useHeaderWords } from '#/lib/page-words'
 import { asset, cvFileName, cvUrl, mailto, site } from '#/lib/site'
 
@@ -9,6 +9,8 @@ import { asset, cvFileName, cvUrl, mailto, site } from '#/lib/site'
 export default function Header({ elements, menuOpen }: { elements?: Elements; menuOpen?: boolean }) {
   const w = useHeaderWords()
   const el = useElement(elements)
+  // The phone menu leaves out a link that has no words or is hidden on phones.
+  const onPhone = (key: string, words: string) => !!words && !lookAt(elements?.[key], 'phone').hidden
   // A cleared word is left out for visitors (no empty links); in the editor it stays, faded, to fill again.
   const editing = useContext(Editing)
   const show = (words: string) => !!words || editing
@@ -42,12 +44,12 @@ export default function Header({ elements, menuOpen }: { elements?: Elements; me
       </button>
       {open && (
         <nav id="mobile-menu" aria-label="Menu" className="menu-panel">
-          {w.nav.about && <PageLink to="/about/" onClick={done}>{w.nav.about}</PageLink>}
-          {w.nav.projects && <PageLink to="/projects/" onClick={done}>{w.nav.projects}</PageLink>}
-          {cvUrl && w.nav.menu_cv && <a href={cvUrl} download={cvFileName} onClick={done}>{w.nav.menu_cv}</a>}
-          {w.nav.email && <a href={mailto} className="menu-sep" onClick={done}>{w.nav.email}</a>}
-          {site.instagram && w.nav.instagram && <a href={site.instagram} target="_blank" rel="noreferrer" onClick={done}>{w.nav.instagram}</a>}
-          {site.linkedin && w.nav.linkedin && <a href={site.linkedin} target="_blank" rel="noreferrer" onClick={done}>{w.nav.linkedin}</a>}
+          {onPhone('nav-about', w.nav.about) && <PageLink to="/about/" onClick={done}>{w.nav.about}</PageLink>}
+          {onPhone('nav-projects', w.nav.projects) && <PageLink to="/projects/" onClick={done}>{w.nav.projects}</PageLink>}
+          {cvUrl && onPhone('nav-cv', w.nav.menu_cv) && <a href={cvUrl} download={cvFileName} onClick={done}>{w.nav.menu_cv}</a>}
+          {onPhone('nav-email', w.nav.email) && <a href={mailto} className="menu-sep" onClick={done}>{w.nav.email}</a>}
+          {site.instagram && onPhone('nav-instagram', w.nav.instagram) && <a href={site.instagram} target="_blank" rel="noreferrer" onClick={done}>{w.nav.instagram}</a>}
+          {site.linkedin && onPhone('nav-linkedin', w.nav.linkedin) && <a href={site.linkedin} target="_blank" rel="noreferrer" onClick={done}>{w.nav.linkedin}</a>}
         </nav>
       )}
     </header>

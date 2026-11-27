@@ -187,6 +187,18 @@ function currentSize(look: ElementLook, of: HTMLElement | null = selectedEl()): 
 const isCover = (type: string | undefined, key: string) => type === 'Opening' && key === 'image'
 const COVER_OPTIONS = COVER_SIZES.map((c) => [c, COVER_NAMES[c]] as [string, string])
 const sizeName = (look: ElementLook) => SIZE_NAMES[SIZES[currentSize(look)]]
+// Smaller and Larger stay in place at the ends of the scale, greyed with the reason.
+function SizeStep({ label, at, by, onStep, children }: { label: 'Smaller' | 'Larger'; at: () => number; by: -1 | 1; onStep: (size: number) => void; children: ReactNode }) {
+  const atEnd = (next: number) => next < 0 || next >= SIZES.length
+  // Measured once the page shows the chosen part, which happens just after this bar is drawn.
+  const [end, setEnd] = useState(false)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setEnd(atEnd(at() + by)))
+    return () => cancelAnimationFrame(frame)
+  })
+  const why = by > 0 ? 'This text is already the largest size on the scale.' : 'This text is already the smallest size on the scale.'
+  return <button type="button" aria-label={`${label} text`} aria-disabled={end || undefined} aria-description={end ? why : undefined} title={end ? why : label} onClick={() => { const next = at() + by; if (!atEnd(next)) onStep(next) }}>{children}</button>
+}
 
 export const sectionName = kindName
 
@@ -438,9 +450,9 @@ export function ContextBar() {
     <span className="ctx-group ctx-size" role="group" aria-label="Text size">
       <span className="ctx-label ctx-label-plain">Size</span>
       <span className="ctx-stepper">
-        <button type="button" aria-label="Smaller text" title="Smaller" onClick={() => setLook({ size: SIZES[Math.max(0, currentSize(shown) - 1)] })}>−</button>
+        <SizeStep label="Smaller" at={() => currentSize(shown)} by={-1} onStep={(i) => setLook({ size: SIZES[i] })}>−</SizeStep>
         <output>{sizeName(shown)}</output>
-        <button type="button" aria-label="Larger text" title="Larger" onClick={() => setLook({ size: SIZES[Math.min(SIZES.length - 1, currentSize(shown) + 1)] })}>+</button>
+        <SizeStep label="Larger" at={() => currentSize(shown)} by={1} onStep={(i) => setLook({ size: SIZES[i] })}>+</SizeStep>
       </span>
     </span>
   )

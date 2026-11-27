@@ -7,6 +7,7 @@ import '../styles.css'
 import './editor.css'
 import { caseStudies, type Project } from '#/lib/site'
 import { savedLayoutFor, standardCaseLayout } from '#/layout/render'
+import { fileTarget, savedPage } from '#/lib/page-layouts'
 import { editorConfig, layoutWarnings } from './config'
 import * as github from './github'
 import { SHARED_KEY, currentAccount, forgetOwn, keepOwn, sharedToken, signOutHere, type Account } from './signin'
@@ -24,7 +25,7 @@ import { publishShared, UVE_DEMO } from './shared'
 import { setStandardSections } from './sections'
 import { AdminShell } from './admin-demo'
 import { keepCanvasClear } from './float-room'
-import { pageProblems, type Problem } from './page-settings'
+import { pageProblems, wordProblems, type Problem } from './page-settings'
 import { clashes, clearRemote, editsOf, fieldName, readRemote, short, writeRemote, type Clash } from './safeguards'
 
 // The design editor at /admin/design/. Arrange and restyle a page with its real blocks, then
@@ -44,16 +45,29 @@ const readLocal = <T,>(key: string, fallback: T): T => { try { return JSON.parse
 const writeLocal = (key: string, value: unknown) => { try { localStorage.setItem(key, JSON.stringify(value)); return true } catch { return false } }
 const removeLocal = (key: string) => { try { localStorage.removeItem(key) } catch { /* nothing to remove */ } }
 
-// The page as published: a case study's saved layout, or (demo) any other page's standard one.
+// The page as published: its saved layout (content/layouts), or its standard one. In the demo, a
+// page published in this browser.
 // Demo: a page published here (simulated) opens as last published in this browser. The shared header
 // and footer keep their own published copy (shared.ts).
 const demoPublished = (p: Project) => (DEMO ? readLocal<Version[]>(localKey(p.slug, 'versions'), [])[0]?.layout : undefined)
-const publishedOf = (p: Project, page: PageDef | null) => (page ? ((!page.shared && demoPublished(p)) || standardLayout(page)) : ((demoPublished(p) ?? savedLayoutFor(p) ?? standardCaseLayout()) as Data))
+const publishedOf = (p: Project, page: PageDef | null) => (page ? ((DEMO ? !page.shared && demoPublished(p) : (savedPage(page.key) as unknown as Data | undefined)) || standardLayout(page)) : ((demoPublished(p) ?? savedLayoutFor(p) ?? standardCaseLayout()) as Data))
 const standardOf = (page: PageDef | null) => (page ? standardLayout(page) : (standardCaseLayout() as Data))
+// What this editor knows to be published: the saved layout it opened from (to notice a newer publish
+// from another tab or device) and the words published from it since this copy of the site was built.
+type Layout = { content?: unknown; root?: { props?: { words?: Edits } } }
+type Recent = { at: number; data: Data; layout: Layout; words: Edits }
+let openedFrom: Layout | undefined
+let publishedWords: Edits = {}
+const sameLayout = (a?: Layout, b?: Layout) => JSON.stringify([a?.content ?? null, a?.root?.props?.words ?? {}]) === JSON.stringify([b?.content ?? null, b?.root?.props?.words ?? {}])
 function startingLayout(p: Project, page: PageDef | null): { data: Data; restored: boolean } {
+  const stored = readLocal<Recent | null>(localKey(p.slug, 'published'), null)
+  // Published a moment ago and the website not yet rebuilt with it: that is the published page.
+  const recent = !DEMO && stored?.layout && stored.at > __BUILT_AT__ ? stored : null
+  openedFrom = recent?.layout ?? (page ? savedPage(page.key) : savedLayoutFor(p))
+  publishedWords = recent?.words ?? {}
   const unsaved = readLocal<Data | null>(localKey(p.slug, 'unsaved'), null)
   if (unsaved) return { data: unsaved, restored: true }
-  return { data: publishedOf(p, page), restored: false }
+  return { data: recent?.data ?? publishedOf(p, page), restored: false }
 }
 
 // Puck leaves a few of its own controls unnamed; name them for screen readers as they appear.
@@ -70,10 +84,10 @@ function labelPuckControls() {
 }
 
 function EditorApp() {
-  // Which page: a case study (?project=), or in the demo any page of the website (?page=).
+  // Which page: a case study (?project=) or any other page of the website (?page=).
   const [{ p, page, config }] = useState(() => {
     const params = new URLSearchParams(location.search)
-    const page = DEMO ? (pageFor(params.get('page')) ?? null) : null
+    const page = pageFor(params.get('page')) ?? null
     const p = page ? asProject(page) : (caseStudies.find((x) => x.slug === params.get('project')) ?? caseStudies.find((x) => x.design === 'about-face') ?? caseStudies[0])
     setStandardSections(page ? page.sections : standardCaseLayout().content.map((i) => i.type), !page)
     return { p, page, config: page ? pageConfig(page) : editorConfig(p) }
@@ -142,7 +156,7 @@ function EditorApp() {
     const other = (e: StorageEvent) => {
       if (e.key !== localKey(p.slug, 'unsaved') || !e.newValue) return
       // The same words changed differently in both tabs: the top bar asks which to keep instead.
-      try { if (DEMO && clashes(editsOf(latestData.current), editsOf(JSON.parse(e.newValue) as Data)).length) return } catch { /* not readable: say so below */ }
+      try { if (clashes(editsOf(latestData.current), editsOf(JSON.parse(e.newValue) as Data)).length) return } catch { /* not readable: say so below */ }
       setElsewhere(true)
     }
     window.addEventListener('storage', other)
@@ -355,6 +369,12 @@ function Actions() {
     }
     setPanel('publish')
     setFindings(null)
+    if (!DEMO && token) {
+      try {
+        const theirs = await changedElsewhere(token)
+        if (Object.keys(theirs).length) setRemote({ edits: theirs, at: new Date().toISOString() })
+      } catch { /* checked again, field by field, when publishing */ }
+    }
     setFindings(await checkSizes([['Desktop', 1440], ['Tablet', 1024], ['Phone', 390]]))
   }
   const [versions, setVersions] = useState<Version[]>([])
@@ -373,15 +393,13 @@ function Actions() {
     return () => { document.removeEventListener('keydown', key); document.removeEventListener('pointerdown', away); window.removeEventListener('blur', blur) }
   }, [more])
   const warnings = layoutWarnings(data.content as never)
-  // Demo safeguards (simulated in this browser): what stops publishing, and the same words changed
-  // in another tab or by someone else.
+  // What stops publishing, and the same words changed in another tab or by someone else.
   const edits = editsOf(data)
-  const problems: Problem[] = page && !page.shared ? pageProblems(page.words as never, edits) : []
+  const problems: Problem[] = [...(page && !page.shared ? pageProblems(page.words as never, edits) : []), ...wordProblems(edits, !page)]
   const latest = useRef(data)
   latest.current = data
   const [tabClash, setTabClash] = useState<{ found: Clash[]; theirs: Data } | null>(null)
   useEffect(() => {
-    if (!DEMO) return
     const other = (e: StorageEvent) => {
       if (e.key !== localKey(p.slug, 'unsaved') || !e.newValue) return
       try {
@@ -419,12 +437,15 @@ function Actions() {
     setRemote(next)
     setNotice(`Simulated: someone else changed “${fieldName(field)}” in the website editor (/admin) a moment ago, while you had unpublished changes to it. Choose Publish to see the safeguard. Nothing was sent anywhere.`)
   }
+  // Their words, seen and set aside by Keep mine: publishing then replaces them (real editor).
+  const seen = useRef<Edits>({})
   const resolveRemote = (c: Clash, keep: 'mine' | 'theirs') => {
     if (!remote) return
     const rest = { ...remote.edits }
     delete rest[c.field]
     const next = { ...remote, edits: rest }
-    if (Object.keys(rest).length) writeRemote(p.slug, next); else clearRemote(p.slug)
+    if (keep === 'mine') seen.current[c.field] = c.theirs
+    if (DEMO) { if (Object.keys(rest).length) writeRemote(p.slug, next); else clearRemote(p.slug) }
     setRemote(Object.keys(rest).length ? next : null)
     if (keep === 'theirs') { setEdits({ ...edits, [c.field]: c.theirs }); setNotice(`Using their words for “${fieldName(c.field)}”. Undo brings yours back.`, true) }
     else setNotice(`Keeping your words for “${fieldName(c.field)}”. Publishing will replace theirs.`)
@@ -527,6 +548,35 @@ function Actions() {
     return `Draft saved (${stamp()}). Nothing is published until you choose Publish.`
   })
 
+  // Which content file each changed word belongs to (the files /admin edits too), with the words the
+  // editor started from, or their words once Keep mine has set them aside.
+  const fileChanges = (edits: Edits): github.Change[] => {
+    const files: Record<string, { edits: Edits; from: Record<string, string> }> = {}
+    for (const [field, words] of Object.entries(edits)) {
+      const category = field.match(CATEGORY_FIELD)?.[1]
+      const target = category ? { path: `content/categories/${category}.md`, field: 'name' } : page ? (page.shared ? null : fileTarget(page.key, field)) : { path: `content/projects/${p.slug}.md`, field }
+      if (!target) continue
+      const f = (files[target.path] ??= { edits: {}, from: {} })
+      f.edits[target.field] = words
+      f.from[target.field] = field
+    }
+    const startedWith = (field: string) => seen.current[field] ?? publishedWords[field] ?? (CATEGORY_FIELD.test(field) ? categoryName(field.match(CATEGORY_FIELD)![1]) : wordsOf(p, field))
+    return Object.entries(files).map(([path, f]) => ({ path, edits: f.edits, from: f.from, startedWith: (field: string) => startedWith(f.from[field]) }))
+  }
+  // Words changed in the website editor (/admin) since this page was opened, where you changed them too.
+  const changedElsewhere = async (token: string): Promise<Edits> => {
+    const out: Edits = {}
+    for (const change of fileChanges(edits)) {
+      const fields = Object.keys(change.edits!)
+      const now = await github.currentWords(token, change.path, fields)
+      for (const field of fields) {
+        const original = change.from![field]
+        if (now[field] !== change.startedWith!(field) && now[field] !== change.edits![field]) out[original] = now[field]
+      }
+    }
+    return out
+  }
+
   const publish = () => run('Publishing', async () => {
     // Never publish an empty Image section, whichever way Publish was reached.
     if (emptyImages(data.content as never).length) throw new Error('An Image section has no photo. Remove the section, then publish.')
@@ -551,20 +601,24 @@ function Actions() {
       return 'Published in this demo only (simulated). In the real editor this saves the page and your website updates in about a minute, after the usual checks.'
     }
     // Words, shared category names and the layout are saved together, all or nothing.
+    const token = needToken()
     const edits = (data.root.props as { edits?: Edits } | undefined)?.edits ?? {}
-    const pageWords = Object.fromEntries(Object.entries(edits).filter(([field]) => !CATEGORY_FIELD.test(field)))
-    const { edits: _words, ...rootProps } = (data.root.props ?? {}) as { edits?: Edits }
-    const layout = { ...data, root: { ...data.root, props: rootProps } }
-    const standard = JSON.stringify(data.content) === JSON.stringify(standardCaseLayout().content)
-    const changes: github.Change[] = [
-      ...(Object.keys(pageWords).length ? [{ path: `content/projects/${p.slug}.md`, edits: pageWords, startedWith: (field: string) => wordsOf(p, field) }] : []),
-      ...categoryEdits(edits).map(([field, words]) => {
-        const slug = field.match(CATEGORY_FIELD)![1]
-        return { path: `content/categories/${slug}.md`, edits: { name: words }, startedWith: () => categoryName(slug), label: `the "${categoryName(slug)}" category name` }
-      }),
-      { path: github.layoutPath(p.slug), text: standard ? null : `${JSON.stringify(layout, null, 2)}\n` },
-    ]
-    await github.publishTogether(needToken(), changes, `Design editor: publish ${p.slug}`)
+    const { edits: _words, words: _record, ...rootProps } = (data.root.props ?? {}) as { edits?: Edits; words?: Edits }
+    // Every word published from the editor is kept with the layout, so Versions brings words back too.
+    // A page's own words (header, footer, labels) are read by the website from there.
+    const before = (await github.readLayout(token, p.slug, github.MAIN))?.layout as { content?: unknown; root?: { props?: { words?: Edits } } } | undefined
+    // Published since this editor was opened (another tab, device or browser): never overwrite it unseen.
+    if (before && !sameLayout(before, openedFrom)) throw new Error('This page was published from another tab or device after you opened it. Nothing was saved. Reload the editor to see that version, then make your change again.')
+    const record = { ...(before?.root?.props?.words ?? {}), ...edits }
+    const layout = { ...data, root: { ...data.root, props: { ...rootProps, ...(Object.keys(record).length ? { words: record } : {}) } } }
+    const standard = !page && JSON.stringify(data.content) === JSON.stringify(standardCaseLayout().content) && !Object.keys(record).length
+    const changes = [...fileChanges(edits), { path: github.layoutPath(p.slug), text: standard ? null : `${JSON.stringify(layout, null, 2)}\n` }]
+    await github.publishTogether(token, changes, `Design editor: publish ${p.slug}`)
+    publishedWords = { ...publishedWords, ...edits }
+    openedFrom = standard ? undefined : layout
+    writeLocal(localKey(p.slug, 'published'), { at: Date.now(), data, layout: openedFrom, words: publishedWords })
+    seen.current = {}
+    setRemote(null)
     removeLocal(localKey(p.slug, 'unsaved'))
     clean.current = JSON.stringify(data)
     setSaved({ json: clean.current, text: `Published ${time()}` })
@@ -581,8 +635,11 @@ function Actions() {
   })
 
   const loadVersion = (v: Version) => run('Loading that version', async () => {
-    const layout = DEMO ? v.layout : (await github.readLayout(needToken(), p.slug, v.id))?.layout
-    if (!layout) throw new Error('That version has no layout (the standard layout was in use).')
+    const read = DEMO ? v.layout : (await github.readLayout(needToken(), p.slug, v.id))?.layout
+    if (!read) throw new Error('That version has no layout (the standard layout was in use).')
+    // A published version keeps the words published with it: they come back as changes to publish.
+    const { words, edits: kept, ...rest } = ((read as Data).root?.props ?? {}) as { words?: Edits; edits?: Edits }
+    const layout = { ...(read as Data), root: { ...(read as Data).root, props: { ...rest, ...((kept ?? words) ? { edits: { ...(words ?? {}), ...(kept ?? {}) } } : {}) } } }
     dispatch({ type: 'setData', recordHistory: true, data: layout as Data })
     setPanel('')
     return `Loaded the version from ${new Date(v.date).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}. Nothing is published until you choose Publish; Undo takes you back.`
@@ -615,22 +672,14 @@ function Actions() {
     <header className="editor-bar">
       <div className="editor-bar-start">
         <span className="editor-brand">Design editor</span>
-        {DEMO && <span className="editor-chip" title="Everything works, but Preview, Save draft and Publish are simulated: they stay in this browser and never change the website.">Demo<span className="editor-chip-more"> · saving simulated</span></span>}
-        {DEMO ? (
-          <label className="editor-field"><span className="sr-only">Page</span>
-            <select className="editor-project" value={page ? `page:${page.key}` : `case:${p.slug}`} onChange={(e) => { const v = e.target.value; location.search = v.startsWith('case:') ? `?project=${v.slice(5)}` : `?page=${v.slice(5)}` }}>
-              {(['Pages', 'Categories'] as const).map((g) => <optgroup key={g} label={g}>{PAGES.filter((x) => x.group === g).map((x) => <option key={x.key} value={`page:${x.key}`}>{x.label}</option>)}</optgroup>)}
-              <optgroup label="Case studies">{caseStudies.map((x) => <option key={x.slug} value={`case:${x.slug}`}>{x.title}</option>)}</optgroup>
-              <optgroup label="Shared on every page">{PAGES.filter((x) => x.group === 'Shared').map((x) => <option key={x.key} value={`page:${x.key}`}>{x.label}</option>)}</optgroup>
-            </select>
-          </label>
-        ) : (
-          <label className="editor-field"><span className="sr-only">Project</span>
-            <select className="editor-project" value={p.slug} onChange={(e) => { location.search = `?project=${e.target.value}` }}>
-              {caseStudies.map((x) => <option key={x.slug} value={x.slug}>{x.title}</option>)}
-            </select>
-          </label>
-        )}
+        {DEMO && <span className="editor-chip" title="This is the demo: Save draft and Publish are simulated here and stay in this browser. In the editor on your website they save and publish for real.">Demo<span className="editor-chip-more"> · saving simulated</span></span>}
+        <label className="editor-field"><span className="sr-only">Page</span>
+          <select className="editor-project" value={page ? `page:${page.key}` : `case:${p.slug}`} onChange={(e) => { const v = e.target.value; location.search = v.startsWith('case:') ? `?project=${v.slice(5)}` : `?page=${v.slice(5)}` }}>
+            {(['Pages', 'Categories'] as const).map((g) => <optgroup key={g} label={g}>{PAGES.filter((x) => x.group === g).map((x) => <option key={x.key} value={`page:${x.key}`}>{x.label}</option>)}</optgroup>)}
+            <optgroup label="Case studies">{caseStudies.map((x) => <option key={x.slug} value={`case:${x.slug}`}>{x.title}</option>)}</optgroup>
+            <optgroup label="Shared on every page">{PAGES.filter((x) => x.group === 'Shared').map((x) => <option key={x.key} value={`page:${x.key}`}>{x.label}</option>)}</optgroup>
+          </select>
+        </label>
         <div className="editor-history">
           <button type="button" onClick={history.back} disabled={!history.hasPast} title={history.hasPast ? `Undo: ${undoWhat} (Cmd+Z)` : 'Nothing to undo'} aria-label={history.hasPast ? `Undo: ${undoWhat}` : 'Undo'}><UndoIcon /><span className="editor-word">Undo</span></button>
           <button type="button" onClick={history.forward} disabled={!history.hasFuture} title={history.hasFuture ? `Redo: ${redoWhat} (Cmd+Shift+Z)` : 'Nothing to redo'} aria-label={history.hasFuture ? `Redo: ${redoWhat}` : 'Redo'}><RedoIcon /><span className="editor-word">Redo</span></button>
@@ -716,7 +765,7 @@ function Actions() {
           )}
           {remoteClashes.length > 0 && (
             <div className="editor-blocked editor-conflict" role="alert">
-              <p><b>Someone else changed the same words.</b> Since you opened this page, {remoteClashes.length === 1 ? 'this was' : 'these were'} changed in the website editor (simulated). Nothing is published until you choose whose words to keep; your version stays safe in this browser.</p>
+              <p><b>Someone else changed the same words.</b> Since you opened this page, {remoteClashes.length === 1 ? 'this was' : 'these were'} changed in the website editor{DEMO ? ' (simulated)' : ''}. Nothing is published until you choose whose words to keep; your version stays safe in this browser.</p>
               <ul className="editor-blocked-list">{remoteClashes.map((c) => (
                 <li key={c.field}>
                   <span><b>{fieldName(c.field)}</b>. Yours: “{short(c.mine)}”. Theirs: “{short(c.theirs)}”.</span>

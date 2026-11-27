@@ -9,7 +9,7 @@ import { CategoryNames } from '#/components/category-index'
 import { CATEGORY_FIELD, applyEdits, categoryEdits, useCanvasEditing, type Edits } from './elements'
 import { ElementPanel } from './panel'
 import { EmptyImage } from './photos'
-import { SharedAround, UVE_DEMO } from './shared'
+import { SharedAround } from './shared'
 
 // The design editor's building blocks: the website's own blocks (src/layout), plus the controls
 // shown for each. Adding a block here makes it available in the editor for every page.
@@ -168,11 +168,9 @@ function EditorFrame({ p, edits, children }: { p: Project; edits: Edits; childre
     <Editing.Provider value={true}>
       <CategoryNames.Provider value={Object.fromEntries(categoryEdits(edits).map(([field, words]) => [field.match(CATEGORY_FIELD)![1], words]))}>
         <span ref={anchor} hidden />
-        {UVE_DEMO ? (
-          <SharedAround>
-            <CaseFrame p={applyEdits(p, edits)} content={content}>{children}</CaseFrame>
-          </SharedAround>
-        ) : <CaseFrame p={applyEdits(p, edits)} content={content}>{children}</CaseFrame>}
+        <SharedAround>
+          <CaseFrame p={applyEdits(p, edits)} content={content}>{children}</CaseFrame>
+        </SharedAround>
       </CategoryNames.Provider>
     </Editing.Provider>
   )

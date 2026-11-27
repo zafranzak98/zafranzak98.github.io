@@ -69,9 +69,13 @@ with sync_playwright() as p:
         if w < 638: pg.locator(".ctx .ctx-aa").click(); pg.wait_for_timeout(400)
         at = ".ctx-sheet" if w < 638 else ".ctx"
         names = set()
+        # Larger and Smaller step through the scale and are greyed, with the reason, at its ends.
         for _ in range(10):
-            names.add(pg.locator(f"{at} .ctx-stepper output").first.inner_text()); pg.locator(f"{at} button[aria-label='Larger text']").click(); pg.wait_for_timeout(150)
+            names.add(pg.locator(f"{at} .ctx-stepper output").first.inner_text())
+            if pg.locator(f"{at} button[aria-label='Larger text']").get_attribute("aria-disabled") == "true": break
+            pg.locator(f"{at} button[aria-label='Larger text']").click(); pg.wait_for_timeout(150)
         for _ in range(10):
+            if pg.locator(f"{at} button[aria-label='Smaller text']").get_attribute("aria-disabled") == "true": break
             pg.locator(f"{at} button[aria-label='Smaller text']").click(); pg.wait_for_timeout(150); names.add(pg.locator(f"{at} .ctx-stepper output").first.inner_text())
         if w < 638: pg.keyboard.press("Escape"); pg.wait_for_timeout(300)
         clash = names & {"Title", "Heading", "Label", "Statement", "Caption", "Note"}
