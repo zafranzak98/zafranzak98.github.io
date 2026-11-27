@@ -170,34 +170,37 @@ function currentSize(look: ElementLook, of: HTMLElement | null = selectedEl()): 
   const el = of
   const doc = canvas()
   if (!el || !doc) return SIZES.indexOf('body')
-  const probe = doc.createElement('span')
-  doc.body.append(probe)
   const actual = parseFloat(getComputedStyle(el).fontSize)
   let best = 0
   let gap = Infinity
-  SIZES.forEach((s, i) => {
-    probe.style.fontSize = TEXT_SIZES[s][1]
-    const d = Math.abs(parseFloat(doc.defaultView!.getComputedStyle(probe).fontSize) - actual)
+  scaleOf(doc).forEach((px, i) => {
+    const d = Math.abs(px - actual)
     if (d < gap) { gap = d; best = i }
   })
-  probe.remove()
   return best
+}
+// The size scale in pixels for the page at its current width. The scale only changes with the
+// width, so it is measured once per width instead of on every redraw.
+let scale: { doc: Document; width: number; px: number[] } | null = null
+function scaleOf(doc: Document) {
+  const width = doc.documentElement.clientWidth
+  if (scale?.doc === doc && scale.width === width) return scale.px
+  const probe = doc.createElement('span')
+  doc.body.append(probe)
+  const px = SIZES.map((s) => { probe.style.fontSize = TEXT_SIZES[s][1]; return parseFloat(doc.defaultView!.getComputedStyle(probe).fontSize) })
+  probe.remove()
+  scale = { doc, width, px }
+  return px
 }
 // A project's opening cover is sized in steps rather than by width.
 const isCover = (type: string | undefined, key: string) => type === 'Opening' && key === 'image'
 const COVER_OPTIONS = COVER_SIZES.map((c) => [c, COVER_NAMES[c]] as [string, string])
 const sizeName = (look: ElementLook) => SIZE_NAMES[SIZES[currentSize(look)]]
 // Smaller and Larger stay in place at the ends of the scale, greyed with the reason.
-function SizeStep({ label, at, by, onStep, children }: { label: 'Smaller' | 'Larger'; at: () => number; by: -1 | 1; onStep: (size: number) => void; children: ReactNode }) {
-  const atEnd = (next: number) => next < 0 || next >= SIZES.length
-  // Measured once the page shows the chosen part, which happens just after this bar is drawn.
-  const [end, setEnd] = useState(false)
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setEnd(atEnd(at() + by)))
-    return () => cancelAnimationFrame(frame)
-  })
+function SizeStep({ label, at, by, onStep, children }: { label: 'Smaller' | 'Larger'; at: number; by: -1 | 1; onStep: (size: number) => void; children: ReactNode }) {
+  const end = at + by < 0 || at + by >= SIZES.length
   const why = by > 0 ? 'This text is already the largest size on the scale.' : 'This text is already the smallest size on the scale.'
-  return <button type="button" aria-label={`${label} text`} aria-disabled={end || undefined} aria-description={end ? why : undefined} title={end ? why : label} onClick={() => { const next = at() + by; if (!atEnd(next)) onStep(next) }}>{children}</button>
+  return <button type="button" aria-label={`${label} text`} aria-disabled={end || undefined} aria-description={end ? why : undefined} title={end ? why : label} onClick={() => { if (!end) onStep(at + by) }}>{children}</button>
 }
 
 export const sectionName = kindName
@@ -251,6 +254,21 @@ const tipsWanted = () => { try { return localStorage.getItem(TIPS_KEY) !== 'hidd
 
 export function ContextBar() {
   const { key, item, selected, screen, own, shown, setLook, from, resetAll } = useLook()
+  // The text's step on the size scale: its set size, or measured on the page. The page may still show
+  // the previous part while this bar draws, so it is measured again once the chosen part is drawn,
+  // and redrawn only if that gives a different step.
+  const sizeWatch = `${selected?.blockId}|${key}|${shown.size ?? ''}|${screen}`
+  const [measured, setMeasured] = useState<{ watch: string; at: number } | null>(null)
+  const sizeAt = measured?.watch === sizeWatch ? measured.at : currentSize(shown)
+  const drawnAt = useRef(sizeAt)
+  drawnAt.current = sizeAt
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const at = currentSize(shown)
+      if (at !== drawnAt.current) setMeasured({ watch: sizeWatch, at })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [sizeWatch])
   const { select } = useContext(Selection)
   const ui = usePuck((s) => s.appState.ui)
   const dispatch = usePuck((s) => s.dispatch)
@@ -450,9 +468,9 @@ export function ContextBar() {
     <span className="ctx-group ctx-size" role="group" aria-label="Text size">
       <span className="ctx-label ctx-label-plain">Size</span>
       <span className="ctx-stepper">
-        <SizeStep label="Smaller" at={() => currentSize(shown)} by={-1} onStep={(i) => setLook({ size: SIZES[i] })}>−</SizeStep>
-        <output>{sizeName(shown)}</output>
-        <SizeStep label="Larger" at={() => currentSize(shown)} by={1} onStep={(i) => setLook({ size: SIZES[i] })}>+</SizeStep>
+        <SizeStep label="Smaller" at={sizeAt} by={-1} onStep={(i) => setLook({ size: SIZES[i] })}>−</SizeStep>
+        <output>{SIZE_NAMES[SIZES[sizeAt]]}</output>
+        <SizeStep label="Larger" at={sizeAt} by={1} onStep={(i) => setLook({ size: SIZES[i] })}>+</SizeStep>
       </span>
     </span>
   )

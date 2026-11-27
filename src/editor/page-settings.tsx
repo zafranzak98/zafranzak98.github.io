@@ -15,9 +15,13 @@ const usePuck = createUsePuck()
 
 // The same rule as the website editor's pattern and the build's check (scripts/postbuild.mjs).
 const ZONE_PATTERN = /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)+$/
+const zones = new Map<string, boolean>()
 export function validTimeZone(zone: string) {
   if (!ZONE_PATTERN.test(zone)) return false
-  try { new Intl.DateTimeFormat('en-GB', { timeZone: zone }); return true } catch { return false }
+  if (!zones.has(zone)) {
+    try { new Intl.DateTimeFormat('en-GB', { timeZone: zone }); zones.set(zone, true) } catch { zones.set(zone, false) }
+  }
+  return zones.get(zone)!
 }
 
 type Words = Record<string, unknown> & { clock?: { show?: unknown; weather?: unknown; city: string; time_zone: string; line?: string }; portrait?: { image?: string; alt?: string } }
