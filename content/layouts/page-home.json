@@ -1,0 +1,42 @@
+{
+  "root": {
+    "props": {
+      "words": {
+        "areas_of_focus:0:label": "Test"
+      }
+    }
+  },
+  "content": [
+    {
+      "type": "HomeIntro",
+      "props": {
+        "id": "HomeIntro-standard"
+      }
+    },
+    {
+      "type": "HomeClock",
+      "props": {
+        "id": "HomeClock-standard"
+      }
+    },
+    {
+      "type": "HomeLine",
+      "props": {
+        "id": "HomeLine-standard"
+      }
+    },
+    {
+      "type": "HomeFocus",
+      "props": {
+        "id": "HomeFocus-standard"
+      }
+    },
+    {
+      "type": "HomeWork",
+      "props": {
+        "id": "HomeWork-standard"
+      }
+    }
+  ],
+  "zones": {}
+}
