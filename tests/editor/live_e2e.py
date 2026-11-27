@@ -165,6 +165,10 @@ def page_flow(br, key):
     one["own"] = f"E2E {n} own one"; type_part(pg, s["own"][0], one["own"])
     size0 = size_of(pg, s["design"]); larger(pg, s["design"]); size1 = size_of(pg, s["design"])
     check(f"[{n}] 2 Larger text makes {s['design']} larger on the page", size1 > size0, f"{size0} -> {size1}")
+    for el in ([s["design"]] + (["title"] if key == "footer" else [])):
+        click_part(pg, el); btn = pg.locator(".ctx button[aria-label='Larger text']").first
+        print(f"  info [{n}] Larger text on {el}: disabled={btn.is_disabled() if btn.count() else 'absent'}, size step shown={pg.locator('.ctx').first.inner_text().split(chr(10))[2:5]}, font {size_of(pg, el)}px", flush=True)
+        pg.keyboard.press("Escape"); pg.wait_for_timeout(200)
     extra_files = set()
     if key == "home":
         # The weather switch: stored as a yes/no value in site.yml.

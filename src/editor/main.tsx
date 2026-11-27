@@ -609,7 +609,7 @@ function Actions() {
     const before = (await github.readLayout(token, p.slug, github.MAIN))?.layout as { content?: unknown; root?: { props?: { words?: Edits } } } | undefined
     // Published since this editor was opened (another tab, device or browser): never overwrite it unseen.
     if (before && !sameLayout(before, openedFrom)) throw new Error('This page was published from another tab or device after you opened it. Nothing was saved. Reload the editor to see that version, then make your change again.')
-    const record = { ...(before?.root?.props?.words ?? {}), ...Object.fromEntries(Object.entries(edits).filter(([field]) => !CATEGORY_FIELD.test(field))) }
+    const record = { ...(before?.root?.props?.words ?? {}), ...edits }
     const layout = { ...data, root: { ...data.root, props: { ...rootProps, ...(Object.keys(record).length ? { words: record } : {}) } } }
     const standard = !page && JSON.stringify(data.content) === JSON.stringify(standardCaseLayout().content) && !Object.keys(record).length
     const changes = [...fileChanges(edits), { path: github.layoutPath(p.slug), text: standard ? null : `${JSON.stringify(layout, null, 2)}\n` }]

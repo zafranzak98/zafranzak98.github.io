@@ -321,6 +321,7 @@ html[data-preview] [data-puck-component] { cursor: default !important; }
 .editor-bar .ctx-icon[aria-pressed='true'] { border-color: var(--olive); background: #fff; }
 .ctx-stepper { display: inline-grid; grid-template-columns: 2rem auto 2rem; align-items: center; height: 2.25rem; border: 1px solid #b9bea9; border-radius: 6px; background: #fff; overflow: hidden; }
 .editor-bar .ctx-stepper button { height: 100%; padding: 0; border: 0; border-radius: 0; font-size: 17px; }
+.ctx-stepper button[aria-disabled='true'] { opacity: 0.4; cursor: default; }
 .ctx-stepper output { min-width: 5.5rem; padding: 0 0.375rem; text-align: center; border-inline: 1px solid #dfe3d6; line-height: 2.25rem; }
 .ctx-segment { display: inline-flex; border: 1px solid #b9bea9; border-radius: 6px; background: #fff; overflow: hidden; }
 .editor-bar .ctx-segment button { display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.125rem; padding: 0; border: 0; border-left: 1px solid #dfe3d6; border-radius: 0; background: none; }
