@@ -2,7 +2,8 @@
   "root": {
     "props": {
       "words": {
-        "areas_of_focus:0:label": "Editorial & Content"
+        "areas_of_focus:0:label": "Editorial & Content",
+        "home_intro": "I turn **cultural conversations** into campaigns, content and stories..."
       }
     }
   },
