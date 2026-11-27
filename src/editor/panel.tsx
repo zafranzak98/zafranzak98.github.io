@@ -190,7 +190,12 @@ const sizeName = (look: ElementLook) => SIZE_NAMES[SIZES[currentSize(look)]]
 // Smaller and Larger stay in place at the ends of the scale, greyed with the reason.
 function SizeStep({ label, at, by, onStep, children }: { label: 'Smaller' | 'Larger'; at: () => number; by: -1 | 1; onStep: (size: number) => void; children: ReactNode }) {
   const atEnd = (next: number) => next < 0 || next >= SIZES.length
-  const end = atEnd(at() + by)
+  // Measured once the page shows the chosen part, which happens just after this bar is drawn.
+  const [end, setEnd] = useState(false)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setEnd(atEnd(at() + by)))
+    return () => cancelAnimationFrame(frame)
+  })
   const why = by > 0 ? 'This text is already the largest size on the scale.' : 'This text is already the smallest size on the scale.'
   return <button type="button" aria-label={`${label} text`} aria-disabled={end || undefined} aria-description={end ? why : undefined} title={end ? why : label} onClick={() => { const next = at() + by; if (!atEnd(next)) onStep(next) }}>{children}</button>
 }
