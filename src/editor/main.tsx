@@ -278,11 +278,19 @@ const time = () => new Date().toLocaleString('en-GB', { day: 'numeric', month: '
 function Actions() {
   const { p, page, token, setToken, setNotice, notice, markClean, clean, login, shared, expire, signOut, keptHere } = useContext(SessionContext)!
   const data = usePuck((s) => s.appState.data)
-  const history = usePuck((s) => s.history)
+  // Only the parts of Puck's history this bar uses: Puck replaces the history object itself on every
+  // selection, which would otherwise redraw the whole bar each time.
+  const index = usePuck((s) => s.history.index)
+  const histories = usePuck((s) => s.history.histories)
+  const hasPast = usePuck((s) => s.history.hasPast)
+  const hasFuture = usePuck((s) => s.history.hasFuture)
+  const back = usePuck((s) => s.history.back)
+  const forward = usePuck((s) => s.history.forward)
+  const history = { index, histories, hasPast, hasFuture, back, forward }
   // What one step back or forward changes, in words (shown on the buttons and after undoing).
-  const pageAt = (i: number) => (history.histories[i]?.state as { data?: never } | undefined)?.data
-  const undoWhat = describeStep(pageAt(history.index - 1), pageAt(history.index))
-  const redoWhat = describeStep(pageAt(history.index), pageAt(history.index + 1))
+  const pageAt = (i: number) => (histories[i]?.state as { data?: never } | undefined)?.data
+  const undoWhat = useMemo(() => describeStep(pageAt(index - 1), pageAt(index)), [histories, index])
+  const redoWhat = useMemo(() => describeStep(pageAt(index), pageAt(index + 1)), [histories, index])
   const [undone, setUndone] = useState('')
   // Undo and Redo from the buttons or the keyboard: one step back (or forward, with nothing new added).
   const step = useRef({ index: history.index, length: history.histories.length })
@@ -319,7 +327,12 @@ function Actions() {
   const dispatch = usePuck((s) => s.dispatch)
   const [busy, setBusy] = useState('')
   const [panel, setPanel] = useState<'' | 'publish' | 'history' | 'reset'>('')
-  const ui = usePuck((s) => s.appState.ui)
+  // Only the parts of Puck's interface state this bar uses (the screen size and the open panels).
+  const viewports = usePuck((s) => s.appState.ui.viewports)
+  const leftSideBarVisible = usePuck((s) => s.appState.ui.leftSideBarVisible)
+  const rightSideBarVisible = usePuck((s) => s.appState.ui.rightSideBarVisible)
+  const plugin = usePuck((s) => s.appState.ui.plugin)
+  const ui = useMemo(() => ({ viewports, leftSideBarVisible, rightSideBarVisible, plugin }), [viewports, leftSideBarVisible, rightSideBarVisible, plugin])
   // Puck draws the rail buttons (Sections, Settings) as plain boxes; make them real buttons for the
   // keyboard and screen readers, saying which panel is open.
   useEffect(() => {

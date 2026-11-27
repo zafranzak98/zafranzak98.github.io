@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, memo, type ReactNode } from 'react'
 
 // Simple formatting in text from the website editor and the design editor. Everything else stays plain text.
 //   *bold*        → bold, in the same typeface and colour (only the weight changes)
@@ -83,7 +83,8 @@ export function plainText(text: string): string {
   return flat(parseRich(text))
 }
 
-export function Rich({ text, highlight = false, breaks = false }: { text?: string; highlight?: boolean; breaks?: boolean }) {
+// Drawn again only when its words change (the editor redraws the page often while you work).
+export const Rich = memo(function Rich({ text, highlight = false, breaks = false }: { text?: string; highlight?: boolean; breaks?: boolean }) {
   if (!text) return null
   return <>{render(parseRich(text), highlight, breaks)}</>
-}
+})

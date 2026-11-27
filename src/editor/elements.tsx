@@ -353,17 +353,24 @@ export function useCanvasEditing(p: Project, edits: Edits) {
     }
     const place = (n: HTMLElement, el: HTMLElement) => {
       const r = visualBox(el)
-      Object.assign(n.style, { left: `${r.left + view.scrollX}px`, top: `${r.top + view.scrollY}px`, width: `${r.width}px`, height: `${r.height}px`, display: 'block' })
+      const isFrame = n.classList.contains('el-frame')
       // A turned image's frame turns with it (its name tag stays level), as in Canva and Figma.
+      const turned = isFrame && IMAGES.test(el.dataset.el ?? '') && !grouped() ? angleOf(el) : 0
+      const left = r.left + view.scrollX
+      const top = r.top + view.scrollY
+      // Written only when something changed: each write makes the browser recalculate the page's styles.
+      const box = `${left}|${top}|${r.width}|${r.height}|${turned}`
+      if (n.dataset.box === box && n.style.display === 'block') return
+      n.dataset.box = box
+      Object.assign(n.style, { left: `${left}px`, top: `${top}px`, width: `${r.width}px`, height: `${r.height}px`, display: 'block' })
       // Near the top of the page the rotate handle would be out of reach, so it sits below instead.
-      if (n.classList.contains('el-frame')) n.toggleAttribute('data-rotate-below', r.top + view.scrollY < pagePixels(48))
-      const turned = n.classList.contains('el-frame') && IMAGES.test(el.dataset.el ?? '') && !grouped() ? angleOf(el) : 0
+      if (isFrame) n.toggleAttribute('data-rotate-below', top < pagePixels(48))
       n.style.rotate = turned ? `${turned}deg` : ''
       const tag = n.querySelector<HTMLElement>('.el-tag')
       if (tag) tag.style.rotate = turned ? `${-turned}deg` : ''
     }
     const tagOf = (n: HTMLElement) => n.querySelector<HTMLElement>('.el-tag')!
-    const hide = (n: HTMLElement | null) => { if (n) n.style.display = 'none' }
+    const hide = (n: HTMLElement | null) => { if (n && n.style.display !== 'none') n.style.display = 'none' }
 
     const previewing = () => html.hasAttribute('data-preview')
     const onPointerMove = (e: PointerEvent) => {
@@ -764,8 +771,10 @@ export function useCanvasEditing(p: Project, edits: Edits) {
 
     // Keep the frame on the selected element as the page reflows, zooms or redraws.
     let raf = 0
+    let ui = ''
     const sync = () => {
-      html.style.setProperty('--ui', `${1 / scale()}px`)
+      const size = `${1 / scale()}px`
+      if (size !== ui) { ui = size; html.style.setProperty('--ui', size) }
       const el = selectedEl()
       const frame = doc.querySelector<HTMLElement>('.el-frame')
       if (frame) {

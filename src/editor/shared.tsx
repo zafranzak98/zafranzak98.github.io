@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { memo, useMemo, type ReactNode } from 'react'
 import Footer from '#/components/footer'
 import Header from '#/components/header'
 import { Editing } from '#/layout/elements'
@@ -16,9 +16,15 @@ export const UVE_DEMO = !SIGN_IN_HOSTS.includes(location.hostname)
 
 export const SHARED_KEY = (part: 'header' | 'footer') => `uve-demo:shared:${part}`
 export const sharedEdits = (part: 'header' | 'footer'): Edits => { if (!UVE_DEMO) return {}; try { return JSON.parse(localStorage.getItem(SHARED_KEY(part)) ?? '{}') as Edits } catch { return {} } }
-export const publishShared = (part: 'header' | 'footer', edits: Edits) => { try { localStorage.setItem(SHARED_KEY(part), JSON.stringify(edits)) } catch { /* kept until the tab closes */ } }
-export const publishedHeader = (): HeaderWords => applyEdits(headerWords() as never, sharedEdits('header')) as unknown as HeaderWords
-export const publishedFooter = (): FooterWords => applyEdits(footerWords() as never, sharedEdits('footer')) as unknown as FooterWords
+// The shared words as published, worked out once and kept until they are published again, so the
+// header and footer around the page are not redrawn on every change in the editor.
+let published: { header?: HeaderWords; footer?: FooterWords } = {}
+export const publishShared = (part: 'header' | 'footer', edits: Edits) => {
+  published = {}
+  try { localStorage.setItem(SHARED_KEY(part), JSON.stringify(edits)) } catch { /* kept until the tab closes */ }
+}
+export const publishedHeader = (): HeaderWords => (published.header ??= applyEdits(headerWords() as never, sharedEdits('header')) as unknown as HeaderWords)
+export const publishedFooter = (): FooterWords => (published.footer ??= applyEdits(footerWords() as never, sharedEdits('footer')) as unknown as FooterWords)
 
 function SharedPart({ part, children }: { part: 'header' | 'footer'; children: ReactNode }) {
   const open = () => { window.parent.location.search = `?page=${part}` }
@@ -36,13 +42,17 @@ function SharedPart({ part, children }: { part: 'header' | 'footer'; children: R
 
 // A page in the canvas with the shared parts around it, as visitors see it.
 export function SharedAround({ children, header, footer, editing }: { children: ReactNode; header?: HeaderWords; footer?: FooterWords; editing?: 'header' | 'footer' }) {
+  const words = useMemo(() => ({ header: header ?? publishedHeader(), footer: footer ?? publishedFooter() }), [header, footer])
   return (
-    <SharedWords.Provider value={{ header: header ?? publishedHeader(), footer: footer ?? publishedFooter() }}>
+    <SharedWords.Provider value={words}>
       <div className="page" id="top">
-        {editing === 'header' ? null : <Editing.Provider value={false}><SharedPart part="header"><Header elements={sharedElements('header')} /></SharedPart></Editing.Provider>}
+        {editing === 'header' ? null : <SharedHeader />}
         {children}
-        {editing === 'footer' ? null : <Editing.Provider value={false}><SharedPart part="footer"><Footer elements={sharedElements('footer')} /></SharedPart></Editing.Provider>}
+        {editing === 'footer' ? null : <SharedFooter />}
       </div>
     </SharedWords.Provider>
   )
 }
+// Drawn again only when the shared words change, not with every change to the page between them.
+const SharedHeader = memo(() => <Editing.Provider value={false}><SharedPart part="header"><Header elements={sharedElements('header')} /></SharedPart></Editing.Provider>)
+const SharedFooter = memo(() => <Editing.Provider value={false}><SharedPart part="footer"><Footer elements={sharedElements('footer')} /></SharedPart></Editing.Provider>)
